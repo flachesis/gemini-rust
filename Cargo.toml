@@ -1,12 +1,12 @@
 [package]
 name = "gemini-rust"
-version = "0.4.2"
+version = "0.4.3"
 edition = "2021"
 description = "Rust client for Google Gemini API"
 license = "MIT"
 repository = "https://github.com/flachesis/gemini-rust"
 readme = "README.md"
-keywords = ["gemini", "google", "ai", "client"]
+keywords = ["gemini", "embed", "google", "ai", "client"]
 categories = ["api-bindings"]
 
 [dependencies]
@@ -19,3 +19,6 @@ url = "^2.4"
 async-trait = "^0.1"
 futures = "^0.3.1"
 futures-util = "^0.3"
+
+
+dotenv = "0.15.0"

@@ -111,6 +111,13 @@ impl Message {
         }
     }
 
+    pub fn embed(text: impl Into<String>) -> Self {
+        Self {
+            content: Content::text(text),
+            role: Role::Model,
+        }
+    }
+
     /// Create a new function message with function response content from JSON
     pub fn function(name: impl Into<String>, response: serde_json::Value) -> Self {
         Self {
@@ -209,6 +216,27 @@ pub struct GenerationResponse {
     pub usage_metadata: Option<UsageMetadata>,
 }
 
+/// Content of the embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentEmbedding {
+    /// The values generated
+    pub values: Vec<f32>, //Maybe Quantize this
+}
+
+/// Response from the Gemini API for content embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentEmbeddingResponse {
+    /// The embeddings generated
+    pub embedding: ContentEmbedding,
+}
+
+/// Response from the Gemini API for batch content embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchContentEmbeddingResponse {
+    /// The embeddings generated
+    pub embeddings: Vec<ContentEmbedding>,
+}
+
 /// Feedback about the prompt
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PromptFeedback {
@@ -267,6 +295,30 @@ pub struct GenerateContentRequest {
     /// The system instruction
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_instruction: Option<Content>,
+}
+
+/// Request to embed words
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbedContentRequest {
+    /// The specified embedding model
+    pub model: String,
+    /// The chunks content to generate embeddings
+    pub content: Content,
+    /// The embedding task type (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_type: Option<TaskType>,
+    /// The title of the document (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_dimensionality: Option<i32>,
+}
+
+/// Request to batch embed requests
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchEmbedContentsRequest {
+    /// The list of embed requests
+    pub requests: Vec<EmbedContentRequest>,
 }
 
 /// Configuration for generation
@@ -405,4 +457,26 @@ pub enum HarmBlockThreshold {
     BlockOnlyHigh,
     /// Never block content
     BlockNone,
+}
+
+/// Embedding Task types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TaskType {
+    ///Used to generate embeddings that are optimized to assess text similarity
+    SemanticSimilarity,
+    ///Used to generate embeddings that are optimized to classify texts according to preset labels
+    Classification,
+    ///Used to generate embeddings that are optimized to cluster texts based on their similarities
+    Clustering,
+
+    ///Used to generate embeddings that are optimized for document search or information retrieval.
+    RetrievalDocument, 
+    RetrievalQuery, 
+    QuestionAnswering, 
+    FactVerification,
+
+    /// Used to retrieve a code block based on a natural language query, such as sort an array or reverse a linked list. 
+    /// Embeddings of the code blocks are computed using RETRIEVAL_DOCUMENT.
+    CodeRetrievalQuery
 }
