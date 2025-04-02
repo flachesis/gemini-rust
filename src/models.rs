@@ -151,6 +151,7 @@ pub struct SafetyRating {
 
 /// Citation metadata for content
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CitationMetadata {
     /// The citation sources
     pub citation_sources: Vec<CitationSource>,
@@ -158,6 +159,7 @@ pub struct CitationMetadata {
 
 /// Citation source
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CitationSource {
     /// The URI of the citation source
     pub uri: Option<String>,
@@ -175,6 +177,7 @@ pub struct CitationSource {
 
 /// A candidate response
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Candidate {
     /// The content of the candidate
     pub content: Content,
@@ -194,6 +197,7 @@ pub struct Candidate {
 
 /// Metadata about token usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
     /// The number of prompt tokens
     pub prompt_token_count: i32,
@@ -205,6 +209,7 @@ pub struct UsageMetadata {
 
 /// Response from the Gemini API for content generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerationResponse {
     /// The candidates generated
     pub candidates: Vec<Candidate>,
@@ -239,6 +244,7 @@ pub struct BatchContentEmbeddingResponse {
 
 /// Feedback about the prompt
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PromptFeedback {
     /// The safety ratings for the prompt
     pub safety_ratings: Vec<SafetyRating>,
