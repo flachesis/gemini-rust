@@ -59,6 +59,13 @@ impl ContentBuilder {
         self
     }
 
+    /// Add a inline data (blob data) to the request
+    pub fn with_inline_data(mut self, data: impl Into<String>, mime_type: impl Into<String>) -> Self {
+        let content = Content::inline_data(mime_type, data);
+        self.contents.push(content);
+        self
+    }
+
     /// Add a function response to the request using a JSON value
     pub fn with_function_response(
         mut self,

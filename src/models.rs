@@ -19,6 +19,11 @@ pub enum Part {
         /// The text content
         text: String,
     },
+    InlineData {
+        /// The blob data
+        #[serde(rename = "inlineData")]
+        inline_data: Blob,
+    },
     /// Function call from the model
     FunctionCall {
         /// The function call details
@@ -31,6 +36,24 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+}
+
+/// Blob for a message part
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Blob {
+    pub mime_type : String,
+    pub data: String, // Base64 encoded data
+}
+
+impl Blob {
+    /// Create a new blob with mime type and data
+    pub fn new(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            mime_type: mime_type.into(),
+            data: data.into(),
+        }
+    }
 }
 
 /// Content of a message
@@ -74,6 +97,14 @@ impl Content {
             parts: vec![Part::FunctionResponse {
                 function_response: super::tools::FunctionResponse::new(name, response),
             }],
+            role: None,
+        }
+    }
+
+    /// Create a new content with inline data (blob data)
+    pub fn inline_data(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            parts: vec![Part::InlineData { inline_data: Blob::new(mime_type, data) }],
             role: None,
         }
     }
@@ -316,6 +347,7 @@ pub struct EmbedContentRequest {
     /// The title of the document (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    /// The output_dimensionality (optional)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_dimensionality: Option<i32>,
 }
