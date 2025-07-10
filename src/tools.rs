@@ -220,14 +220,12 @@ impl FunctionCall {
                 if let Some(value) = obj.get(key) {
                     serde_json::from_value(value.clone()).map_err(|e| {
                         crate::Error::FunctionCallError(format!(
-                            "Error deserializing parameter {}: {}",
-                            key, e
+                            "Error deserializing parameter {key}: {e}"
                         ))
                     })
                 } else {
                     Err(crate::Error::FunctionCallError(format!(
-                        "Missing parameter: {}",
-                        key
+                        "Missing parameter: {key}"
                     )))
                 }
             }
