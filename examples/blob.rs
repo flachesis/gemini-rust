@@ -1,15 +1,14 @@
+use base64::{engine::general_purpose, Engine as _};
 use gemini_rust::{Gemini, GenerationConfig};
 use std::env;
-use std::path::Path;
 use std::fs::File;
 use std::io::Read;
-use base64::{Engine as _, engine::general_purpose};
+use std::path::Path;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
-
 
     // Image file path (in the same directory)
     let image_path = Path::new(file!())

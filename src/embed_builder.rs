@@ -1,8 +1,13 @@
 use std::sync::Arc;
 
-use crate::{client::GeminiClient, models::{BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse, EmbedContentRequest, TaskType}, Content, Message, Result};
-
-
+use crate::{
+    client::GeminiClient,
+    models::{
+        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
+        EmbedContentRequest, TaskType,
+    },
+    Content, Message, Result,
+};
 
 /// Builder for embed generation requests
 pub struct EmbedBuilder {
@@ -34,7 +39,7 @@ impl EmbedBuilder {
 
     /// Add a vec of chunks to batch embed to the request
     pub fn with_chunks(mut self, chunks: Vec<impl Into<String>>) -> Self {
-        //for each chunks 
+        //for each chunks
         for chunk in chunks {
             let message = Message::embed(chunk);
             self.contents.push(message.content);
@@ -42,7 +47,7 @@ impl EmbedBuilder {
         self
     }
 
-    /// Specify embedding task type 
+    /// Specify embedding task type
     pub fn with_task_type(mut self, task_type: TaskType) -> Self {
         self.task_type = Some(task_type);
         self
@@ -54,7 +59,7 @@ impl EmbedBuilder {
         self.title = Some(title);
         self
     }
-    
+
     /// Specify output_dimensionality. If set, excessive values in the output embedding are truncated from the end
     /// Supported by newer models since 2024 only !!
     pub fn with_output_dimensionality(mut self, title: String) -> Self {
@@ -77,7 +82,9 @@ impl EmbedBuilder {
 
     /// Execute the request
     pub async fn execute_batch(self) -> Result<BatchContentEmbeddingResponse> {
-        let mut batch_request = BatchEmbedContentsRequest { requests: Vec::new() };
+        let mut batch_request = BatchEmbedContentsRequest {
+            requests: Vec::new(),
+        };
 
         for content in self.contents {
             let request = EmbedContentRequest {
@@ -92,5 +99,4 @@ impl EmbedBuilder {
 
         self.client.embed_content_batch(batch_request).await
     }
-
 }
