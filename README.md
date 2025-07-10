@@ -99,6 +99,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Configurable Base URL
+
+You can configure a custom base URL for the Gemini API client if you need to use a different endpoint:
+
+```rust
+use gemini_rust::Gemini;
+use tokio;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let api_key = std::env::var("GEMINI_API_KEY")?;
+    
+    // Using custom base URL
+    let client = Gemini::with_base_url(api_key.clone(), "https://custom-api.example.com/v1/".to_string());
+    
+    // Or with both custom model and base URL
+    let client = Gemini::with_model_and_base_url(
+        api_key,
+        "models/gemini-pro".to_string(),
+        "https://custom-api.example.com/v1/".to_string()
+    );
+    
+    let response = client.generate_content()
+        .with_user_message("Hello, how are you?")
+        .execute()
+        .await?;
+    
+    println!("Response: {}", response.text());
+    
+    Ok(())
+}
+```
+
 ## Documentation
 
 For more examples and detailed documentation, see [docs.rs](https://docs.rs/gemini-rust).
