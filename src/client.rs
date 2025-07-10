@@ -15,7 +15,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use url::Url;
 
-const BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
+const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
 const DEFAULT_MODEL: &str = "models/gemini-2.0-flash";
 
 /// Internal client for making requests to the Gemini API
@@ -23,15 +23,23 @@ pub(crate) struct GeminiClient {
     http_client: Client,
     api_key: String,
     pub model: String,
+    base_url: String,
 }
 
 impl GeminiClient {
     /// Create a new client
+    #[allow(dead_code)]
     fn new(api_key: impl Into<String>, model: String) -> Self {
+        Self::with_base_url(api_key, model, DEFAULT_BASE_URL.to_string())
+    }
+
+    /// Create a new client with custom base URL
+    fn with_base_url(api_key: impl Into<String>, model: String, base_url: String) -> Self {
         Self {
             http_client: Client::new(),
             api_key: api_key.into(),
             model,
+            base_url,
         }
     }
 
@@ -153,7 +161,7 @@ impl GeminiClient {
         // "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$API_KEY"
         let url_str = format!(
             "{}{}:{}?key={}",
-            BASE_URL, self.model, endpoint, self.api_key
+            self.base_url, self.model, endpoint, self.api_key
         );
         Url::parse(&url_str).map_err(|e| Error::RequestError(e.to_string()))
     }
@@ -178,7 +186,21 @@ impl Gemini {
 
     /// Create a new client with the specified API key and model
     pub fn with_model(api_key: impl Into<String>, model: String) -> Self {
-        let client = GeminiClient::new(api_key, model);
+        Self::with_model_and_base_url(api_key, model, DEFAULT_BASE_URL.to_string())
+    }
+
+    /// Create a new client with custom base URL
+    pub fn with_base_url(api_key: impl Into<String>, base_url: String) -> Self {
+        Self::with_model_and_base_url(api_key, DEFAULT_MODEL.to_string(), base_url)
+    }
+
+    /// Create a new client with the specified API key, model, and base URL
+    pub fn with_model_and_base_url(
+        api_key: impl Into<String>,
+        model: String,
+        base_url: String,
+    ) -> Self {
+        let client = GeminiClient::with_base_url(api_key, model, base_url);
         Self {
             client: Arc::new(client),
         }
