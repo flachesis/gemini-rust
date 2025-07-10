@@ -19,6 +19,11 @@ pub enum Part {
         /// The text content
         text: String,
     },
+    InlineData {
+        /// The blob data
+        #[serde(rename = "inlineData")]
+        inline_data: Blob,
+    },
     /// Function call from the model
     FunctionCall {
         /// The function call details
@@ -31,6 +36,24 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+}
+
+/// Blob for a message part
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Blob {
+    pub mime_type : String,
+    pub data: String, // Base64 encoded data
+}
+
+impl Blob {
+    /// Create a new blob with mime type and data
+    pub fn new(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            mime_type: mime_type.into(),
+            data: data.into(),
+        }
+    }
 }
 
 /// Content of a message
@@ -78,6 +101,14 @@ impl Content {
         }
     }
 
+    /// Create a new content with inline data (blob data)
+    pub fn inline_data(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            parts: vec![Part::InlineData { inline_data: Blob::new(mime_type, data) }],
+            role: None,
+        }
+    }
+
     /// Add a role to this content
     pub fn with_role(mut self, role: Role) -> Self {
         self.role = Some(role);
@@ -107,6 +138,13 @@ impl Message {
     pub fn model(text: impl Into<String>) -> Self {
         Self {
             content: Content::text(text).with_role(Role::Model),
+            role: Role::Model,
+        }
+    }
+
+    pub fn embed(text: impl Into<String>) -> Self {
+        Self {
+            content: Content::text(text),
             role: Role::Model,
         }
     }
@@ -144,6 +182,7 @@ pub struct SafetyRating {
 
 /// Citation metadata for content
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CitationMetadata {
     /// The citation sources
     pub citation_sources: Vec<CitationSource>,
@@ -151,6 +190,7 @@ pub struct CitationMetadata {
 
 /// Citation source
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CitationSource {
     /// The URI of the citation source
     pub uri: Option<String>,
@@ -168,6 +208,7 @@ pub struct CitationSource {
 
 /// A candidate response
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Candidate {
     /// The content of the candidate
     pub content: Content,
@@ -187,6 +228,7 @@ pub struct Candidate {
 
 /// Metadata about token usage
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
     /// The number of prompt tokens
     pub prompt_token_count: i32,
@@ -198,6 +240,7 @@ pub struct UsageMetadata {
 
 /// Response from the Gemini API for content generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerationResponse {
     /// The candidates generated
     pub candidates: Vec<Candidate>,
@@ -209,8 +252,30 @@ pub struct GenerationResponse {
     pub usage_metadata: Option<UsageMetadata>,
 }
 
+/// Content of the embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentEmbedding {
+    /// The values generated
+    pub values: Vec<f32>, //Maybe Quantize this
+}
+
+/// Response from the Gemini API for content embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContentEmbeddingResponse {
+    /// The embeddings generated
+    pub embedding: ContentEmbedding,
+}
+
+/// Response from the Gemini API for batch content embedding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchContentEmbeddingResponse {
+    /// The embeddings generated
+    pub embeddings: Vec<ContentEmbedding>,
+}
+
 /// Feedback about the prompt
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PromptFeedback {
     /// The safety ratings for the prompt
     pub safety_ratings: Vec<SafetyRating>,
@@ -267,6 +332,31 @@ pub struct GenerateContentRequest {
     /// The system instruction
     #[serde(skip_serializing_if = "Option::is_none")]
     pub system_instruction: Option<Content>,
+}
+
+/// Request to embed words
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EmbedContentRequest {
+    /// The specified embedding model
+    pub model: String,
+    /// The chunks content to generate embeddings
+    pub content: Content,
+    /// The embedding task type (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_type: Option<TaskType>,
+    /// The title of the document (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    /// The output_dimensionality (optional)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_dimensionality: Option<i32>,
+}
+
+/// Request to batch embed requests
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchEmbedContentsRequest {
+    /// The list of embed requests
+    pub requests: Vec<EmbedContentRequest>,
 }
 
 /// Configuration for generation
@@ -405,4 +495,26 @@ pub enum HarmBlockThreshold {
     BlockOnlyHigh,
     /// Never block content
     BlockNone,
+}
+
+/// Embedding Task types
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TaskType {
+    ///Used to generate embeddings that are optimized to assess text similarity
+    SemanticSimilarity,
+    ///Used to generate embeddings that are optimized to classify texts according to preset labels
+    Classification,
+    ///Used to generate embeddings that are optimized to cluster texts based on their similarities
+    Clustering,
+
+    ///Used to generate embeddings that are optimized for document search or information retrieval.
+    RetrievalDocument, 
+    RetrievalQuery, 
+    QuestionAnswering, 
+    FactVerification,
+
+    /// Used to retrieve a code block based on a natural language query, such as sort an array or reverse a linked list. 
+    /// Embeddings of the code blocks are computed using RETRIEVAL_DOCUMENT.
+    CodeRetrievalQuery
 }
