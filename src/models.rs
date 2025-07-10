@@ -42,7 +42,7 @@ pub enum Part {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Blob {
-    pub mime_type : String,
+    pub mime_type: String,
     pub data: String, // Base64 encoded data
 }
 
@@ -104,7 +104,9 @@ impl Content {
     /// Create a new content with inline data (blob data)
     pub fn inline_data(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
         Self {
-            parts: vec![Part::InlineData { inline_data: Blob::new(mime_type, data) }],
+            parts: vec![Part::InlineData {
+                inline_data: Blob::new(mime_type, data),
+            }],
             role: None,
         }
     }
@@ -509,12 +511,12 @@ pub enum TaskType {
     Clustering,
 
     ///Used to generate embeddings that are optimized for document search or information retrieval.
-    RetrievalDocument, 
-    RetrievalQuery, 
-    QuestionAnswering, 
+    RetrievalDocument,
+    RetrievalQuery,
+    QuestionAnswering,
     FactVerification,
 
-    /// Used to retrieve a code block based on a natural language query, such as sort an array or reverse a linked list. 
+    /// Used to retrieve a code block based on a natural language query, such as sort an array or reverse a linked list.
     /// Embeddings of the code blocks are computed using RETRIEVAL_DOCUMENT.
-    CodeRetrievalQuery
+    CodeRetrievalQuery,
 }

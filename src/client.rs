@@ -1,7 +1,11 @@
 use crate::{
-    content_builder::ContentBuilder, embed_builder::EmbedBuilder, models::{
-        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse, EmbedContentRequest, GenerateContentRequest, GenerationResponse
-    }, Error, Result
+    content_builder::ContentBuilder,
+    embed_builder::EmbedBuilder,
+    models::{
+        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
+        EmbedContentRequest, GenerateContentRequest, GenerationResponse,
+    },
+    Error, Result,
 };
 use futures::stream::Stream;
 use futures_util::StreamExt;
@@ -39,7 +43,7 @@ impl GeminiClient {
         let url = self.build_url("generateContent")?;
 
         let response = self.http_client.post(url).json(&request).send().await?;
-        
+
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await?;
@@ -127,9 +131,9 @@ impl GeminiClient {
     /// Embed content base function
     async fn embed<T: serde::Serialize>(&self, request: T, endpoint: &str) -> Result<Value> {
         let url = self.build_url(endpoint)?;
-    
+
         let response = self.http_client.post(url).json(&request).send().await?;
-    
+
         let status = response.status();
         if !status.is_success() {
             let error_text = response.text().await?;
@@ -142,7 +146,7 @@ impl GeminiClient {
         let response = response.json().await?;
         Ok(response)
     }
-    
+
     /// Build a URL for the API
     fn build_url(&self, endpoint: &str) -> Result<Url> {
         // All Gemini API endpoints now use the format with colon:

@@ -2,9 +2,12 @@ use std::{pin::Pin, sync::Arc};
 
 use futures::Stream;
 
-use crate::{client::GeminiClient, models::{FunctionCallingConfig, GenerateContentRequest, ToolConfig}, Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse, Message, Role, Tool, Result};
-
-
+use crate::{
+    client::GeminiClient,
+    models::{FunctionCallingConfig, GenerateContentRequest, ToolConfig},
+    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
+    Message, Result, Role, Tool,
+};
 
 /// Builder for content generation requests
 pub struct ContentBuilder {
@@ -60,7 +63,11 @@ impl ContentBuilder {
     }
 
     /// Add a inline data (blob data) to the request
-    pub fn with_inline_data(mut self, data: impl Into<String>, mime_type: impl Into<String>) -> Self {
+    pub fn with_inline_data(
+        mut self,
+        data: impl Into<String>,
+        mime_type: impl Into<String>,
+    ) -> Self {
         let content = Content::inline_data(mime_type, data);
         self.contents.push(content);
         self
