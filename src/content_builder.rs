@@ -4,7 +4,7 @@ use futures::Stream;
 
 use crate::{
     client::GeminiClient,
-    models::{FunctionCallingConfig, GenerateContentRequest, ToolConfig},
+    models::{FunctionCallingConfig, GenerateContentRequest, ThinkingConfig, ToolConfig},
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
     Message, Result, Role, Tool,
 };
@@ -240,6 +240,54 @@ impl ContentBuilder {
             });
         } else if let Some(tool_config) = &mut self.tool_config {
             tool_config.function_calling_config = Some(FunctionCallingConfig { mode });
+        }
+        self
+    }
+
+    /// Set the thinking configuration for the request (Gemini 2.5 series only)
+    pub fn with_thinking_config(mut self, thinking_config: ThinkingConfig) -> Self {
+        if self.generation_config.is_none() {
+            self.generation_config = Some(GenerationConfig::default());
+        }
+        if let Some(config) = &mut self.generation_config {
+            config.thinking_config = Some(thinking_config);
+        }
+        self
+    }
+
+    /// Set the thinking budget for the request (Gemini 2.5 series only)
+    pub fn with_thinking_budget(mut self, budget: i32) -> Self {
+        if self.generation_config.is_none() {
+            self.generation_config = Some(GenerationConfig::default());
+        }
+        if let Some(config) = &mut self.generation_config {
+            if config.thinking_config.is_none() {
+                config.thinking_config = Some(ThinkingConfig::default());
+            }
+            if let Some(thinking_config) = &mut config.thinking_config {
+                thinking_config.thinking_budget = Some(budget);
+            }
+        }
+        self
+    }
+
+    /// Enable dynamic thinking (model decides the budget) (Gemini 2.5 series only)
+    pub fn with_dynamic_thinking(self) -> Self {
+        self.with_thinking_budget(-1)
+    }
+
+    /// Include thought summaries in the response (Gemini 2.5 series only)
+    pub fn with_thoughts_included(mut self, include: bool) -> Self {
+        if self.generation_config.is_none() {
+            self.generation_config = Some(GenerationConfig::default());
+        }
+        if let Some(config) = &mut self.generation_config {
+            if config.thinking_config.is_none() {
+                config.thinking_config = Some(ThinkingConfig::default());
+            }
+            if let Some(thinking_config) = &mut config.thinking_config {
+                thinking_config.include_thoughts = Some(include);
+            }
         }
         self
     }

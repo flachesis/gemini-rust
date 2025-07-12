@@ -18,6 +18,9 @@ pub enum Part {
     Text {
         /// The text content
         text: String,
+        /// Whether this is a thought summary (Gemini 2.5 series only)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        thought: Option<bool>,
     },
     InlineData {
         /// The blob data
@@ -70,7 +73,10 @@ impl Content {
     /// Create a new text content
     pub fn text(text: impl Into<String>) -> Self {
         Self {
-            parts: vec![Part::Text { text: text.into() }],
+            parts: vec![Part::Text {
+                text: text.into(),
+                thought: None,
+            }],
             role: None,
         }
     }
@@ -223,9 +229,9 @@ pub struct Candidate {
     /// The finish reason for the candidate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<String>,
-    /// The tokens used in the response
+    /// The index of the candidate
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub usage_metadata: Option<UsageMetadata>,
+    pub index: Option<i32>,
 }
 
 /// Metadata about token usage
@@ -235,9 +241,13 @@ pub struct UsageMetadata {
     /// The number of prompt tokens
     pub prompt_token_count: i32,
     /// The number of response tokens
-    pub candidates_token_count: i32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub candidates_token_count: Option<i32>,
     /// The total number of tokens
     pub total_token_count: i32,
+    /// The number of thinking tokens (Gemini 2.5 series only)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thoughts_token_count: Option<i32>,
 }
 
 /// Response from the Gemini API for content generation
@@ -293,7 +303,7 @@ impl GenerationResponse {
             .first()
             .and_then(|c| {
                 c.content.parts.first().and_then(|p| match p {
-                    Part::Text { text } => Some(text.clone()),
+                    Part::Text { text, thought: _ } => Some(text.clone()),
                     _ => None,
                 })
             })
@@ -307,6 +317,35 @@ impl GenerationResponse {
             .flat_map(|c| {
                 c.content.parts.iter().filter_map(|p| match p {
                     Part::FunctionCall { function_call } => Some(function_call),
+                    _ => None,
+                })
+            })
+            .collect()
+    }
+
+    /// Get thought summaries from the response
+    pub fn thoughts(&self) -> Vec<String> {
+        self.candidates
+            .iter()
+            .flat_map(|c| {
+                c.content.parts.iter().filter_map(|p| match p {
+                    Part::Text {
+                        text,
+                        thought: Some(true),
+                    } => Some(text.clone()),
+                    _ => None,
+                })
+            })
+            .collect()
+    }
+
+    /// Get all text parts (both regular text and thoughts)
+    pub fn all_text(&self) -> Vec<(String, bool)> {
+        self.candidates
+            .iter()
+            .flat_map(|c| {
+                c.content.parts.iter().filter_map(|p| match p {
+                    Part::Text { text, thought } => Some((text.clone(), thought.unwrap_or(false))),
                     _ => None,
                 })
             })
@@ -359,6 +398,65 @@ pub struct EmbedContentRequest {
 pub struct BatchEmbedContentsRequest {
     /// The list of embed requests
     pub requests: Vec<EmbedContentRequest>,
+}
+
+/// Configuration for thinking (Gemini 2.5 series only)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThinkingConfig {
+    /// The thinking budget (number of thinking tokens)
+    ///
+    /// - Set to 0 to disable thinking
+    /// - Set to -1 for dynamic thinking (model decides)
+    /// - Set to a positive number for a specific token budget
+    ///
+    /// Model-specific ranges:
+    /// - 2.5 Pro: 128 to 32768 (cannot disable thinking)
+    /// - 2.5 Flash: 0 to 24576
+    /// - 2.5 Flash Lite: 512 to 24576
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_budget: Option<i32>,
+
+    /// Whether to include thought summaries in the response
+    ///
+    /// When enabled, the response will include synthesized versions of the model's
+    /// raw thoughts, providing insights into the reasoning process.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_thoughts: Option<bool>,
+}
+
+impl ThinkingConfig {
+    /// Create a new thinking config with default settings
+    pub fn new() -> Self {
+        Self {
+            thinking_budget: None,
+            include_thoughts: None,
+        }
+    }
+
+    /// Set the thinking budget
+    pub fn with_thinking_budget(mut self, budget: i32) -> Self {
+        self.thinking_budget = Some(budget);
+        self
+    }
+
+    /// Enable dynamic thinking (model decides the budget)
+    pub fn with_dynamic_thinking(mut self) -> Self {
+        self.thinking_budget = Some(-1);
+        self
+    }
+
+    /// Include thought summaries in the response
+    pub fn with_thoughts_included(mut self, include: bool) -> Self {
+        self.include_thoughts = Some(include);
+        self
+    }
+}
+
+impl Default for ThinkingConfig {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// Configuration for generation
@@ -415,6 +513,12 @@ pub struct GenerationConfig {
     /// Specifies the JSON schema for structured responses.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_schema: Option<serde_json::Value>,
+
+    /// The thinking configuration
+    ///
+    /// Configuration for the model's thinking process (Gemini 2.5 series only).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_config: Option<ThinkingConfig>,
 }
 
 impl Default for GenerationConfig {
@@ -428,6 +532,7 @@ impl Default for GenerationConfig {
             stop_sequences: None,
             response_mime_type: None,
             response_schema: None,
+            thinking_config: None,
         }
     }
 }

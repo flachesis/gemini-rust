@@ -24,6 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             stop_sequences: Some(vec!["END".to_string()]),
             response_mime_type: None,
             response_schema: None,
+            thinking_config: None,
         })
         .execute()
         .await?;

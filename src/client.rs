@@ -8,7 +8,6 @@ use crate::{
     Error, Result,
 };
 use futures::stream::Stream;
-use futures_util::StreamExt;
 use reqwest::Client;
 use serde_json::Value;
 use std::pin::Pin;
@@ -16,7 +15,7 @@ use std::sync::Arc;
 use url::Url;
 
 const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
-const DEFAULT_MODEL: &str = "models/gemini-2.0-flash";
+const DEFAULT_MODEL: &str = "models/gemini-2.5-flash";
 
 /// Internal client for making requests to the Gemini API
 pub(crate) struct GeminiClient {
@@ -84,33 +83,20 @@ impl GeminiClient {
             });
         }
 
-        let stream = response
-            .bytes_stream()
-            .map(|result| {
-                match result {
-                    Ok(bytes) => {
-                        let text = String::from_utf8_lossy(&bytes);
-                        // The stream returns each chunk as a separate JSON object
-                        // Each line that starts with "data: " contains a JSON object
-                        let mut responses = Vec::new();
-                        for line in text.lines() {
-                            if let Some(json_str) = line.strip_prefix("data: ") {
-                                if json_str == "[DONE]" {
-                                    continue;
-                                }
-                                match serde_json::from_str::<GenerationResponse>(json_str) {
-                                    Ok(response) => responses.push(Ok(response)),
-                                    Err(e) => responses.push(Err(Error::JsonError(e))),
-                                }
-                            }
-                        }
-                        futures::stream::iter(responses)
-                    }
-                    Err(e) => futures::stream::iter(vec![Err(Error::HttpError(e))]),
-                }
-            })
-            .flatten();
+        // Get the full response as bytes and parse as JSON array
+        let bytes = response.bytes().await?;
+        let text = String::from_utf8_lossy(&bytes);
 
+        // The Gemini API returns a JSON array format like: [{json1}, {json2}, {json3}]
+        let responses: Vec<Result<GenerationResponse>> =
+            match serde_json::from_str::<Vec<GenerationResponse>>(&text) {
+                Ok(json_array) => json_array.into_iter().map(Ok).collect(),
+                Err(e) => {
+                    vec![Err(Error::JsonError(e))]
+                }
+            };
+
+        let stream = futures::stream::iter(responses);
         Ok(Box::pin(stream))
     }
 
@@ -181,7 +167,7 @@ impl Gemini {
 
     /// Create a new client for the Gemini Pro model
     pub fn pro(api_key: impl Into<String>) -> Self {
-        Self::with_model(api_key, "models/gemini-2.0-pro-exp-02-05".to_string())
+        Self::with_model(api_key, "models/gemini-2.5-pro".to_string())
     }
 
     /// Create a new client with the specified API key and model

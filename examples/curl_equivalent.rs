@@ -42,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a content part that matches the JSON in the curl example
     let text_part = Part::Text {
         text: "Explain how AI works in a few words".to_string(),
+        thought: None,
     };
 
     let content = Content {

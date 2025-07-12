@@ -32,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create a content part that matches the JSON in the curl example
     let text_part = Part::Text {
         text: "What is the current Google stock price?".to_string(),
+        thought: None,
     };
 
     let content = Content {

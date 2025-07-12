@@ -13,7 +13,7 @@ pub use client::Gemini;
 pub use error::Error;
 pub use models::{
     Candidate, CitationMetadata, Content, FunctionCallingMode, GenerationConfig,
-    GenerationResponse, Message, Part, Role, SafetyRating, TaskType, UsageMetadata,
+    GenerationResponse, Message, Part, Role, SafetyRating, TaskType, ThinkingConfig, UsageMetadata,
 };
 pub use tools::{FunctionCall, FunctionDeclaration, FunctionParameters, PropertyDetails, Tool};
 
