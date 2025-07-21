@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-07-21
+
+### ✨ Features
+
+#### Public API Enhancements
+- **`Blob` Type Export**: The `Blob` struct is now publicly exported from the crate root
+  - Enables direct usage of `Blob` for inline data handling without importing from internal modules
+  - Improves ergonomics for multimodal applications working with images and binary data
+  - Maintains all existing functionality including `new()` constructor and base64 encoding support
+
+### 🙏 Contributors
+
+- **@anandkapdi** - Made `Blob` struct publicly accessible ([#6](https://github.com/flachesis/gemini-rust/pull/6))
+
+### 📋 Usage Examples
+
+#### Direct Blob Usage
+```rust
+use gemini_rust::{Gemini, Blob};
+
+// Now you can use Blob directly from the crate root
+let blob = Blob::new("image/jpeg", base64_encoded_data);
+let response = client
+    .generate_content()
+    .with_user_message("What's in this image?")
+    .with_inline_data(blob)
+    .execute()
+    .await?;
+```
+
 ## [1.0.0] - 2025-07-12
 
 ### 🎉 Initial Stable Release
