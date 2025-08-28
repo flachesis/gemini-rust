@@ -400,6 +400,21 @@ pub struct BatchEmbedContentsRequest {
     pub requests: Vec<EmbedContentRequest>,
 }
 
+/// Request to batch generate content
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchGenerateContentRequest {
+    /// The list of generate content requests
+    pub requests: Vec<GenerateContentRequest>,
+}
+
+/// Response from the Gemini API for batch content generation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchGenerateContentResponse {
+    /// The generated responses
+    pub generation_responses: Vec<GenerationResponse>,
+}
+
 /// Configuration for thinking (Gemini 2.5 series only)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

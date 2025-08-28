@@ -31,4 +31,14 @@ pub enum Error {
     /// Error with function calls
     #[error("Function call error: {0}")]
     FunctionCallError(String),
+
+    /// Error converting between types
+    #[error("Try from error: {0}")]
+    TryFromError(String),
+}
+
+impl From<serde_json::Value> for Error {
+    fn from(value: serde_json::Value) -> Self {
+        Error::TryFromError(value.to_string())
+    }
 }

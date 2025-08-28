@@ -292,18 +292,22 @@ impl ContentBuilder {
         self
     }
 
-    /// Execute the request
-    pub async fn execute(self) -> Result<GenerationResponse> {
-        let request = GenerateContentRequest {
+    pub fn build(self) -> GenerateContentRequest {
+        GenerateContentRequest {
             contents: self.contents,
             generation_config: self.generation_config,
             safety_settings: None,
             tools: self.tools,
             tool_config: self.tool_config,
             system_instruction: self.system_instruction,
-        };
+        }
+    }
 
-        self.client.generate_content_raw(request).await
+    /// Execute the request
+    pub async fn execute(self) -> Result<GenerationResponse> {
+        let client = self.client.clone();
+        let request = self.build();
+        client.generate_content_raw(request).await
     }
 
     /// Execute the request with streaming
