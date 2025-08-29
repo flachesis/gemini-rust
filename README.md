@@ -1,91 +1,183 @@
 # gemini-rust
 
-A Rust client library for Google's Gemini 2.0 API.
+A comprehensive Rust client library for Google's Gemini 2.5 API.
 
-## Features
+[![Crates.io](https://img.shields.io/crates/v/gemini-rust.svg)](https://crates.io/crates/gemini-rust)
+[![Documentation](https://docs.rs/gemini-rust/badge.svg)](https://docs.rs/gemini-rust)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-- Complete implementation of the Gemini 2.0 API
-- Support for system prompts, user prompts
-- Tools and function calling (including Google Search)
-- Streaming responses
-- Async/await API
+## ✨ Features
 
-## Installation
+- **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
+- **🛠️ Function Calling & Tools** - Custom functions and Google Search integration
+- **📦 Batch Processing** - Efficient batch content generation and embedding
+- **🔄 Streaming Responses** - Real-time streaming of generated content
+- **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
+- **🖼️ Multimodal Support** - Images and binary data processing
+- **📊 Text Embeddings** - Advanced embedding generation with multiple task types
+- **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters
+- **🔒 Type Safe** - Comprehensive type definitions with full `serde` support
+- **⚡ Async/Await** - Built on `tokio` for high-performance async operations
+
+## 📦 Installation
 
 Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gemini-rust = "0.1.0"
+gemini-rust = "1.2.1"
 ```
 
-## Usage
+## 🚀 Quick Start
 
-### Basic Usage
+### Basic Content Generation
 
 ```rust
-use gemini_rust::{Gemini, Message, Role, Content};
-use tokio;
+use gemini_rust::Gemini;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY")?;
-    let client = Gemini::new(&api_key);
+    let client = Gemini::new(api_key);
     
-    let response = client.generate_content()
+    let response = client
+        .generate_content()
         .with_system_prompt("You are a helpful assistant.")
         .with_user_message("Hello, how are you?")
         .execute()
         .await?;
     
     println!("Response: {}", response.text());
-    
     Ok(())
 }
 ```
 
-### Using Google Search Tool
+### Streaming Responses
 
 ```rust
-use gemini_rust::{Gemini, Tool};
-use tokio;
+use gemini_rust::Gemini;
+use futures::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let api_key = std::env::var("GEMINI_API_KEY")?;
-    let client = Gemini::new(&api_key);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
     
-    // Create a Google Search tool
-    let google_search_tool = Tool::google_search();
-    
-    let response = client.generate_content()
-        .with_user_message("What is the current Google stock price?")
-        .with_tool(google_search_tool)
-        .execute()
+    let mut stream = client
+        .generate_content()
+        .with_user_message("Tell me a story about programming")
+        .execute_stream()
         .await?;
-    
-    println!("Response: {}", response.text());
-    
+
+    while let Some(chunk) = stream.next().await {
+        print!("{}", chunk?.text());
+    }
     Ok(())
 }
 ```
 
-### Text Embedding
+## 🛠️ Advanced Features
+
+### Function Calling
+
+```rust
+use gemini_rust::{Gemini, FunctionDeclaration, FunctionParameters, PropertyDetails};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    
+    // Define a custom function
+    let weather_function = FunctionDeclaration::new(
+        "get_weather",
+        "Get the current weather for a location",
+        FunctionParameters::object()
+            .with_property(
+                "location",
+                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
+                true,
+            )
+    );
+    
+    let response = client
+        .generate_content()
+        .with_user_message("What's the weather like in Tokyo?")
+        .with_function(weather_function)
+        .execute()
+        .await?;
+    
+    // Handle function calls
+    if let Some(function_call) = response.function_calls().first() {
+        println!("Function: {}", function_call.name);
+        println!("Args: {}", function_call.args);
+    }
+    Ok(())
+}
+```
+
+### Google Search Tool
+
+```rust
+use gemini_rust::{Gemini, Tool};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    
+    let response = client
+        .generate_content()
+        .with_user_message("What's the latest news about Rust programming language?")
+        .with_tool(Tool::google_search())
+        .execute()
+        .await?;
+
+    println!("Response: {}", response.text());
+    Ok(())
+}
+```
+
+### Thinking Mode (Gemini 2.5)
+
+```rust
+use gemini_rust::Gemini;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Use Gemini 2.5 Pro for advanced thinking capabilities
+    let client = Gemini::with_model(
+        std::env::var("GEMINI_API_KEY")?,
+        "models/gemini-2.5-pro".to_string()
+    );
+
+    let response = client
+        .generate_content()
+        .with_user_message("Explain quantum computing in simple terms")
+        .with_dynamic_thinking()  // Let model decide thinking budget
+        .with_thoughts_included(true)  // Include thinking process
+        .execute()
+        .await?;
+
+    // Access thinking summaries
+    for thought in response.thoughts() {
+        println!("Thought: {}", thought);
+    }
+
+    println!("Response: {}", response.text());
+    Ok(())
+}
+```
+
+### Text Embeddings
 
 ```rust
 use gemini_rust::{Gemini, TaskType};
-use tokio;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {    
-    let api_key = std::env::var("GEMINI_API_KEY")?;
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::with_model(
+        std::env::var("GEMINI_API_KEY")?,
+        "models/text-embedding-004".to_string()
+    );
 
-    // Create client with the default model (gemini-2.0-flash)
-    let client = Gemini::with_model(api_key, "models/text-embedding-004".to_string());
-
-    println!("Sending embedding request to Gemini API...");
-
-    // Simple text embedding
     let response = client
         .embed_content()
         .with_text("Hello, this is my text to embed")
@@ -93,49 +185,184 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Response: {:?}", response.embedding.values);
-
+    println!("Embedding dimensions: {}", response.embedding.values.len());
     Ok(())
 }
 ```
 
-### Configurable Base URL
-
-You can configure a custom base URL for the Gemini API client if you need to use a different endpoint:
+### Batch Processing
 
 ```rust
-use gemini_rust::Gemini;
-use tokio;
+use gemini_rust::{Gemini, Message};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let api_key = std::env::var("GEMINI_API_KEY")?;
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+
+    // Create multiple requests
+    let request1 = client
+        .generate_content()
+        .with_user_message("What is the meaning of life?")
+        .build();
+
+    let request2 = client
+        .generate_content()
+        .with_user_message("What is the best programming language?")
+        .build();
+
+    // Submit batch request
+    let batch_response = client
+        .batch_generate_content_sync()
+        .with_request(request1)
+        .with_request(request2)
+        .execute()
+        .await?;
+
+    println!("Batch ID: {}", batch_response.name);
+    println!("State: {}", batch_response.metadata.state);
+    Ok(())
+}
+```
+
+### Image Processing
+
+```rust
+use gemini_rust::{Gemini, Blob};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
     
-    // Using custom base URL
-    let client = Gemini::with_base_url(api_key.clone(), "https://custom-api.example.com/v1/".to_string());
+    // Load and encode image as base64
+    let image_data = std::fs::read("path/to/image.jpg")?;
+    let base64_image = base64::encode(&image_data);
     
-    // Or with both custom model and base URL
-    let client = Gemini::with_model_and_base_url(
-        api_key,
-        "models/gemini-pro".to_string(),
-        "https://custom-api.example.com/v1/".to_string()
-    );
+    let blob = Blob::new("image/jpeg", base64_image);
     
-    let response = client.generate_content()
-        .with_user_message("Hello, how are you?")
+    let response = client
+        .generate_content()
+        .with_user_message("What's in this image?")
+        .with_inline_data("image/jpeg", base64_image)
         .execute()
         .await?;
     
     println!("Response: {}", response.text());
-    
     Ok(())
 }
 ```
 
-## Documentation
+### Generation Configuration
 
-For more examples and detailed documentation, see [docs.rs](https://docs.rs/gemini-rust).
+```rust
+use gemini_rust::{Gemini, GenerationConfig};
 
-## License
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
 
-MIT
+    let response = client
+        .generate_content()
+        .with_user_message("Write a creative story")
+        .with_generation_config(GenerationConfig {
+            temperature: Some(0.9),
+            max_output_tokens: Some(1000),
+            top_p: Some(0.8),
+            top_k: Some(40),
+            stop_sequences: Some(vec!["END".to_string()]),
+            ..Default::default()
+        })
+        .execute()
+        .await?;
+    
+    println!("Response: {}", response.text());
+    Ok(())
+}
+```
+
+## 🔧 Configuration
+
+### Custom Models
+
+```rust
+use gemini_rust::Gemini;
+
+// Use Gemini 2.5 Flash (default)
+let client = Gemini::new(api_key);
+
+// Use Gemini 2.5 Pro for advanced tasks
+let client = Gemini::pro(api_key);
+
+// Use specific model
+let client = Gemini::with_model(api_key, "models/gemini-1.5-pro".to_string());
+```
+
+### Custom Base URL
+
+```rust
+use gemini_rust::Gemini;
+
+// Custom endpoint
+let client = Gemini::with_base_url(
+    api_key,
+    "https://custom-api.example.com/v1/".to_string()
+);
+
+// Custom model and endpoint
+let client = Gemini::with_model_and_base_url(
+    api_key,
+    "models/gemini-pro".to_string(),
+    "https://custom-api.example.com/v1/".to_string()
+);
+```
+
+## 📚 Examples
+
+The repository includes comprehensive examples:
+
+| Example | Description |
+|---------|-------------|
+| [`simple.rs`](examples/simple.rs) | Basic text generation and function calling |
+| [`streaming.rs`](examples/streaming.rs) | Real-time streaming responses |
+| [`tools.rs`](examples/tools.rs) | Custom function declarations |
+| [`google_search.rs`](examples/google_search.rs) | Google Search integration |
+| [`thinking_basic.rs`](examples/thinking_basic.rs) | Gemini 2.5 thinking mode |
+| [`batch_generate.rs`](examples/batch_generate.rs) | Batch content generation |
+| [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
+| [`blob.rs`](examples/blob.rs) | Image and binary data processing |
+| [`structured_response.rs`](examples/structured_response.rs) | Structured JSON output |
+
+Run an example:
+
+```bash
+GEMINI_API_KEY="your-api-key" cargo run --example simple
+```
+
+## 🔑 API Key Setup
+
+Get your API key from [Google AI Studio](https://aistudio.google.com/apikey) and set it as an environment variable:
+
+```bash
+export GEMINI_API_KEY="your-api-key-here"
+```
+
+## 🚦 Supported Models
+
+- **Gemini 2.5 Flash** - Fast, efficient model (default)
+- **Gemini 2.5 Pro** - Advanced model with thinking capabilities
+- **Gemini 1.5 Flash** - Previous generation fast model
+- **Gemini 1.5 Pro** - Previous generation advanced model
+- **Text Embedding 004** - Latest embedding model
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Google for providing the Gemini API
+- The Rust community for excellent async and HTTP libraries
+- All contributors who have helped improve this library
