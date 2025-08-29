@@ -1,17 +1,18 @@
 use crate::{
+    batch_builder::BatchBuilder,
     content_builder::ContentBuilder,
     embed_builder::EmbedBuilder,
     models::{
-        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
-        EmbedContentRequest, GenerateContentRequest, GenerationResponse,
+        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
+        BatchGenerateContentResponse, ContentEmbeddingResponse, EmbedContentRequest,
+        GenerateContentRequest, GenerationResponse,
     },
     Error, Result,
 };
 use futures::stream::Stream;
 use reqwest::Client;
 use serde_json::Value;
-use std::pin::Pin;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use url::Url;
 
 const DEFAULT_BASE_URL: &str = "https://generativelanguage.googleapis.com/v1beta/";
@@ -105,7 +106,7 @@ impl GeminiClient {
         &self,
         request: EmbedContentRequest,
     ) -> Result<ContentEmbeddingResponse> {
-        let value = self.embed(request, "embedContent").await?;
+        let value = self.post_json(request, "embedContent").await?;
         let response = serde_json::from_value::<ContentEmbeddingResponse>(value)?;
 
         Ok(response)
@@ -116,14 +117,24 @@ impl GeminiClient {
         &self,
         request: BatchEmbedContentsRequest,
     ) -> Result<BatchContentEmbeddingResponse> {
-        let value = self.embed(request, "batchEmbedContents").await?;
+        let value = self.post_json(request, "batchEmbedContents").await?;
         let response = serde_json::from_value::<BatchContentEmbeddingResponse>(value)?;
 
         Ok(response)
     }
 
-    /// Embed content base function
-    async fn embed<T: serde::Serialize>(&self, request: T, endpoint: &str) -> Result<Value> {
+    /// Synchronous Batch Generate content
+    pub(crate) async fn batch_generate_content_sync(
+        &self,
+        request: BatchGenerateContentRequest,
+    ) -> Result<BatchGenerateContentResponse> {
+        let value = self.post_json(request, "batchGenerateContent").await?;
+        let response = serde_json::from_value::<BatchGenerateContentResponse>(value)?;
+        Ok(response)
+    }
+
+    /// Post JSON to an endpoint
+    async fn post_json<T: serde::Serialize>(&self, request: T, endpoint: &str) -> Result<Value> {
         let url = self.build_url(endpoint)?;
 
         let response = self.http_client.post(url).json(&request).send().await?;
@@ -143,8 +154,6 @@ impl GeminiClient {
 
     /// Build a URL for the API
     fn build_url(&self, endpoint: &str) -> Result<Url> {
-        // All Gemini API endpoints now use the format with colon:
-        // "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$API_KEY"
         let url_str = format!(
             "{}{}:{}?key={}",
             self.base_url, self.model, endpoint, self.api_key
@@ -200,5 +209,10 @@ impl Gemini {
     /// Start building a content generation request
     pub fn embed_content(&self) -> EmbedBuilder {
         EmbedBuilder::new(self.client.clone())
+    }
+
+    /// Start building a synchronous batch content generation request
+    pub fn batch_generate_content_sync(&self) -> BatchBuilder {
+        BatchBuilder::new(self.client.clone())
     }
 }

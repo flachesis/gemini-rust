@@ -2,6 +2,7 @@
 //!
 //! A Rust client library for Google's Gemini 2.0 API.
 
+mod batch_builder;
 mod client;
 mod content_builder;
 mod embed_builder;
@@ -9,6 +10,7 @@ mod error;
 mod models;
 mod tools;
 
+pub use batch_builder::BatchBuilder;
 pub use client::Gemini;
 pub use error::Error;
 pub use models::{
