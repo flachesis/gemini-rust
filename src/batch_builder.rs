@@ -2,7 +2,10 @@ use std::sync::Arc;
 
 use crate::{
     client::GeminiClient,
-    models::{BatchGenerateContentRequest, BatchGenerateContentResponse, GenerateContentRequest},
+    models::{
+        BatchConfig, BatchGenerateContentRequest, BatchGenerateContentResponse, BatchRequestItem,
+        GenerateContentRequest, InputConfig, RequestMetadata, RequestsContainer,
+    },
     Result,
 };
 
@@ -43,8 +46,27 @@ impl BatchBuilder {
 
     /// Build the batch request
     pub fn build(self) -> BatchGenerateContentRequest {
+        let batch_requests: Vec<BatchRequestItem> = self
+            .requests
+            .into_iter()
+            .enumerate()
+            .map(|(i, request)| BatchRequestItem {
+                request,
+                metadata: Some(RequestMetadata {
+                    key: format!("request-{}", i + 1),
+                }),
+            })
+            .collect();
+
         BatchGenerateContentRequest {
-            requests: self.requests,
+            batch: BatchConfig {
+                display_name: self.display_name,
+                input_config: InputConfig {
+                    requests: RequestsContainer {
+                        requests: batch_requests,
+                    },
+                },
+            },
         }
     }
 

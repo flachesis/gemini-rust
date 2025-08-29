@@ -41,9 +41,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    // Print the responses
-    for (i, response) in batch_response.generation_responses.iter().enumerate() {
-        println!("Response {}: {}", i + 1, response.text());
+    // Print the batch information
+    println!("Batch created successfully!");
+    println!("Batch ID: {}", batch_response.name);
+    println!("State: {}", batch_response.metadata.state);
+    println!(
+        "Request count: {}",
+        batch_response.metadata.batch_stats.request_count
+    );
+
+    if batch_response.metadata.state == "BATCH_STATE_PENDING" {
+        println!("Batch is currently processing. You would need to poll the batch status to get results.");
+        println!("Note: This is an async operation that may take some time to complete.");
     }
 
     Ok(())

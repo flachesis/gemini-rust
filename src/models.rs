@@ -400,19 +400,103 @@ pub struct BatchEmbedContentsRequest {
     pub requests: Vec<EmbedContentRequest>,
 }
 
-/// Request to batch generate content
+/// Request for batch content generation (corrected format)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchGenerateContentRequest {
-    /// The list of generate content requests
-    pub requests: Vec<GenerateContentRequest>,
+    /// The batch configuration
+    pub batch: BatchConfig,
 }
 
-/// Response from the Gemini API for batch content generation
+/// Batch configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchConfig {
+    /// Display name for the batch
+    pub display_name: String,
+    /// Input configuration
+    pub input_config: InputConfig,
+}
+
+/// Input configuration for batch requests
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InputConfig {
+    /// The requests container
+    pub requests: RequestsContainer,
+}
+
+/// Container for requests
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestsContainer {
+    /// List of requests
+    pub requests: Vec<BatchRequestItem>,
+}
+
+/// Individual batch request item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchRequestItem {
+    /// The actual request
+    pub request: GenerateContentRequest,
+    /// Metadata for the request
+    pub metadata: Option<RequestMetadata>,
+}
+
+/// Metadata for batch request
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RequestMetadata {
+    /// Key for the request
+    pub key: String,
+}
+
+/// Response from the Gemini API for batch content generation (async batch creation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BatchGenerateContentResponse {
-    /// The generated responses
-    pub generation_responses: Vec<GenerationResponse>,
+    /// The name/ID of the created batch
+    pub name: String,
+    /// Metadata about the batch
+    pub metadata: BatchMetadata,
+}
+
+/// Metadata for the batch operation
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchMetadata {
+    /// Type annotation
+    #[serde(rename = "@type")]
+    pub type_annotation: String,
+    /// Model used for the batch
+    pub model: String,
+    /// Display name of the batch
+    pub display_name: String,
+    /// Creation time
+    pub create_time: String,
+    /// Update time
+    pub update_time: String,
+    /// Batch statistics
+    pub batch_stats: BatchStats,
+    /// Current state of the batch
+    pub state: String,
+    /// Name of the batch (duplicate)
+    pub name: String,
+}
+
+/// Statistics for the batch
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchStats {
+    /// Total number of requests in the batch
+    pub request_count: String,
+    /// Number of pending requests
+    pub pending_request_count: Option<String>,
+    /// Number of completed requests
+    pub completed_request_count: Option<String>,
+    /// Number of failed requests
+    pub failed_request_count: Option<String>,
 }
 
 /// Configuration for thinking (Gemini 2.5 series only)

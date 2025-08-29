@@ -12,10 +12,13 @@ mod tools;
 
 pub use batch_builder::BatchBuilder;
 pub use client::Gemini;
+pub use content_builder::ContentBuilder;
 pub use error::Error;
 pub use models::{
-    Blob, Candidate, CitationMetadata, Content, FunctionCallingMode, GenerationConfig,
-    GenerationResponse, Message, Part, Role, SafetyRating, TaskType, ThinkingConfig, UsageMetadata,
+    BatchConfig, BatchMetadata, BatchRequestItem, BatchStats, Blob, Candidate, CitationMetadata,
+    Content, FunctionCallingMode, GenerateContentRequest, GenerationConfig, GenerationResponse,
+    InputConfig, Message, Part, RequestMetadata, RequestsContainer, Role, SafetyRating, TaskType,
+    ThinkingConfig, UsageMetadata,
 };
 
 pub use tools::{FunctionCall, FunctionDeclaration, FunctionParameters, PropertyDetails, Tool};
