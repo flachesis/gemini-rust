@@ -35,6 +35,30 @@ pub enum Error {
     /// Error converting between types
     #[error("Try from error: {0}")]
     TryFromError(String),
+
+    /// Error indicating a batch operation has failed
+    #[error("Batch operation failed: {name}")]
+    BatchFailed { name: String, error: OperationError },
+
+    /// Error indicating a batch operation has expired
+    #[error("Batch operation expired: {name}")]
+    BatchExpired { name: String },
+
+    /// Error indicating an inconsistent state from the Batch API
+    #[error("Inconsistent batch state: {description}")]
+    InconsistentBatchState { description: String },
+
+    /// Error indicating the batch operation resulted in an unsupported output format (e.g., GCS)
+    #[error("Unsupported batch output: {description}")]
+    UnsupportedBatchOutput { description: String },
+}
+
+/// Represents an error within a long-running operation.
+#[derive(Debug, serde::Deserialize, serde::Serialize)]
+pub struct OperationError {
+    pub code: i32,
+    pub message: String,
+    // details are not included as they are not consistently typed in the API
 }
 
 impl From<serde_json::Value> for Error {

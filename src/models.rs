@@ -11,7 +11,7 @@ pub enum Role {
 }
 
 /// Content part that can be included in a message
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Part {
     /// Text content
@@ -42,7 +42,7 @@ pub enum Part {
 }
 
 /// Blob for a message part
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Blob {
     pub mime_type: String,
@@ -60,7 +60,7 @@ impl Blob {
 }
 
 /// Content of a message
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Content {
     /// Parts of the content
@@ -182,7 +182,7 @@ impl Message {
 }
 
 /// Safety rating for content
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct SafetyRating {
     /// The category of the safety rating
     pub category: String,
@@ -191,7 +191,7 @@ pub struct SafetyRating {
 }
 
 /// Citation metadata for content
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationMetadata {
     /// The citation sources
@@ -199,7 +199,7 @@ pub struct CitationMetadata {
 }
 
 /// Citation source
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct CitationSource {
     /// The URI of the citation source
@@ -217,7 +217,7 @@ pub struct CitationSource {
 }
 
 /// A candidate response
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
     /// The content of the candidate
@@ -237,7 +237,7 @@ pub struct Candidate {
 }
 
 /// Metadata about token usage
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
     /// The number of prompt tokens
@@ -256,7 +256,7 @@ pub struct UsageMetadata {
 }
 
 /// Details about prompt tokens by modality
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptTokenDetails {
     /// The modality (e.g., "TEXT")
@@ -266,7 +266,7 @@ pub struct PromptTokenDetails {
 }
 
 /// Response from the Gemini API for content generation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationResponse {
     /// The candidates generated
@@ -307,7 +307,7 @@ pub struct BatchContentEmbeddingResponse {
 }
 
 /// Feedback about the prompt
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct PromptFeedback {
     /// The safety ratings for the prompt
@@ -338,12 +338,19 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.as_ref().map(|parts| {
-                    parts.iter().filter_map(|p| match p {
-                        Part::FunctionCall { function_call } => Some(function_call),
-                        _ => None,
-                    }).collect::<Vec<_>>()
-                }).unwrap_or_default()
+                c.content
+                    .parts
+                    .as_ref()
+                    .map(|parts| {
+                        parts
+                            .iter()
+                            .filter_map(|p| match p {
+                                Part::FunctionCall { function_call } => Some(function_call),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
             })
             .collect()
     }
@@ -353,15 +360,22 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.as_ref().map(|parts| {
-                    parts.iter().filter_map(|p| match p {
-                        Part::Text {
-                            text,
-                            thought: Some(true),
-                        } => Some(text.clone()),
-                        _ => None,
-                    }).collect::<Vec<_>>()
-                }).unwrap_or_default()
+                c.content
+                    .parts
+                    .as_ref()
+                    .map(|parts| {
+                        parts
+                            .iter()
+                            .filter_map(|p| match p {
+                                Part::Text {
+                                    text,
+                                    thought: Some(true),
+                                } => Some(text.clone()),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
             })
             .collect()
     }
@@ -371,12 +385,21 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.as_ref().map(|parts| {
-                    parts.iter().filter_map(|p| match p {
-                        Part::Text { text, thought } => Some((text.clone(), thought.unwrap_or(false))),
-                        _ => None,
-                    }).collect::<Vec<_>>()
-                }).unwrap_or_default()
+                c.content
+                    .parts
+                    .as_ref()
+                    .map(|parts| {
+                        parts
+                            .iter()
+                            .filter_map(|p| match p {
+                                Part::Text { text, thought } => {
+                                    Some((text.clone(), thought.unwrap_or(false)))
+                                }
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
             })
             .collect()
     }
@@ -510,9 +533,24 @@ pub struct BatchMetadata {
     /// Batch statistics
     pub batch_stats: BatchStats,
     /// Current state of the batch
-    pub state: String,
+    pub state: BatchState,
     /// Name of the batch (duplicate)
     pub name: String,
+    /// The output configuration for the batch.
+    pub output: Option<OutputConfig>,
+}
+
+/// The state of a batch operation.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum BatchState {
+    BatchStateUnspecified,
+    BatchStatePending,
+    BatchStateRunning,
+    BatchStateSucceeded,
+    BatchStateFailed,
+    BatchStateCancelled,
+    BatchStateExpired,
 }
 
 /// Statistics for the batch
@@ -520,13 +558,38 @@ pub struct BatchMetadata {
 #[serde(rename_all = "camelCase")]
 pub struct BatchStats {
     /// Total number of requests in the batch
-    pub request_count: String,
+    #[serde(deserialize_with = "from_str_to_i64")]
+    pub request_count: i64,
     /// Number of pending requests
-    pub pending_request_count: Option<String>,
+    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    pub pending_request_count: Option<i64>,
     /// Number of completed requests
-    pub completed_request_count: Option<String>,
+    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    pub completed_request_count: Option<i64>,
     /// Number of failed requests
-    pub failed_request_count: Option<String>,
+    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    pub failed_request_count: Option<i64>,
+    /// Number of successful requests
+    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    pub successful_request_count: Option<i64>,
+}
+
+fn from_str_to_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: String = serde::Deserialize::deserialize(deserializer)?;
+    s.parse::<i64>().map_err(serde::de::Error::custom)
+}
+
+fn from_str_to_i64_optional<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    match Option::<String>::deserialize(deserializer)? {
+        Some(s) => s.parse::<i64>().map(Some).map_err(serde::de::Error::custom),
+        None => Ok(None),
+    }
 }
 
 /// Configuration for thinking (Gemini 2.5 series only)
@@ -637,7 +700,6 @@ pub struct GenerationConfig {
     /// Specifies the format of the model's response.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_mime_type: Option<String>,
-
     /// The response schema
     ///
     /// Specifies the JSON schema for structured responses.
@@ -754,4 +816,212 @@ pub enum TaskType {
     /// Used to retrieve a code block based on a natural language query, such as sort an array or reverse a linked list.
     /// Embeddings of the code blocks are computed using RETRIEVAL_DOCUMENT.
     CodeRetrievalQuery,
+}
+
+/// Represents the overall status of a batch operation.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BatchStatus {
+    /// The operation is waiting to be processed.
+    Pending,
+    /// The operation is currently being processed.
+    Running {
+        pending_count: i64,
+        completed_count: i64,
+        failed_count: i64,
+        total_count: i64,
+    },
+    /// The operation has completed successfully.
+    Succeeded { results: Vec<BatchResultItem> },
+    /// The operation was cancelled by the user.
+    Cancelled,
+    /// The operation has expired.
+    Expired,
+}
+
+impl BatchStatus {
+    /// Creates a `BatchStatus` from a `BatchOperation` response.
+    pub(crate) fn from_operation(operation: BatchOperation) -> crate::Result<Self> {
+        if operation.done {
+            // The operation is complete. Determine the final state.
+            match operation.result {
+                Some(OperationResult::Failure { error }) => {
+                    Err(crate::Error::BatchFailed {
+                        name: operation.name,
+                        error,
+                    })
+                }
+                Some(OperationResult::Success { response }) => {
+                    let mut results: Vec<BatchResultItem> = response
+                        .inlined_responses
+                        .inlined_responses
+                        .into_iter()
+                        .map(|item| match item {
+                            BatchGenerateContentResponseItem::Success { response, metadata } => {
+                                BatchResultItem::Success {
+                                    key: metadata.key,
+                                    response,
+                                }
+                            }
+                            BatchGenerateContentResponseItem::Error { error, metadata } => {
+                                BatchResultItem::Error {
+                                    key: metadata.key,
+                                    error,
+                                }
+                            }
+                        })
+                        .collect();
+
+                    // Sort results by key to ensure a consistent order.
+                    results.sort_by_key(|item| {
+                        let key_str = match item {
+                            BatchResultItem::Success { key, .. } => key,
+                            BatchResultItem::Error { key, .. } => key,
+                        };
+                        key_str.parse::<usize>().unwrap_or(usize::MAX)
+                    });
+
+                    Ok(BatchStatus::Succeeded { results })
+                }
+                // If `done` is true with no error, a response is expected for success.
+                // If not, it might be a successful cancellation or an inconsistent state.
+                None => match operation.metadata.state {
+                    BatchState::BatchStateCancelled => Ok(BatchStatus::Cancelled),
+                    BatchState::BatchStateExpired => Ok(BatchStatus::Expired),
+                    BatchState::BatchStateSucceeded => Ok(BatchStatus::Succeeded { results: vec![] }), // Succeeded but with no data
+                    _ => Err(crate::Error::InconsistentBatchState {
+                        description: format!(
+                            "Operation is done but has no response or error. Final state is ambiguous: {:?}.",
+                            operation.metadata.state
+                        ),
+                    }),
+                },
+            }
+        } else {
+            // The operation is still in progress.
+            match operation.metadata.state {
+                BatchState::BatchStatePending => Ok(BatchStatus::Pending),
+                BatchState::BatchStateRunning => {
+                    let total_count = operation.metadata.batch_stats.request_count;
+                    let pending_count = operation
+                        .metadata
+                        .batch_stats
+                        .pending_request_count
+                        .unwrap_or(total_count); // Assume all are pending if not specified
+                    let completed_count = operation
+                        .metadata
+                        .batch_stats
+                        .completed_request_count
+                        .unwrap_or(0);
+                    let failed_count = operation
+                        .metadata
+                        .batch_stats
+                        .failed_request_count
+                        .unwrap_or(0);
+                    Ok(BatchStatus::Running {
+                        pending_count,
+                        completed_count,
+                        failed_count,
+                        total_count,
+                    })
+                }
+                // Any other state is inconsistent with `done: false`.
+                terminal_state => Err(crate::Error::InconsistentBatchState {
+                    description: format!(
+                        "Operation is not done, but API reported a terminal state: {:?}.",
+                        terminal_state
+                    ),
+                }),
+            }
+        }
+    }
+}
+
+/// Represents a long-running operation from the Gemini API.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BatchOperation {
+    pub name: String,
+    pub metadata: BatchMetadata,
+    #[serde(default)]
+    pub done: bool,
+    #[serde(flatten)]
+    pub result: Option<OperationResult>,
+}
+
+/// Represents the result of a completed batch operation, which is either a response or an error.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OperationResult {
+    Success { response: BatchOperationResponse },
+    Failure { error: crate::error::OperationError },
+}
+
+/// Represents the response of a batch operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BatchOperationResponse {
+    #[serde(rename = "@type")]
+    pub type_annotation: String,
+    pub inlined_responses: InlinedResponses,
+}
+
+/// Represents the output configuration of a batch operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputConfig {
+    pub inlined_responses: InlinedResponses,
+}
+
+/// A container for inlined responses.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlinedResponses {
+    pub inlined_responses: Vec<BatchGenerateContentResponseItem>,
+}
+
+/// An item in a batch generate content response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[serde(untagged)]
+pub enum BatchGenerateContentResponseItem {
+    Success {
+        response: GenerationResponse,
+        metadata: RequestMetadata,
+    },
+    Error {
+        error: IndividualRequestError,
+        metadata: RequestMetadata,
+    },
+}
+
+/// An error for an individual request in a batch.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct IndividualRequestError {
+    pub code: i32,
+    pub message: String,
+    /// Additional details about the error
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<serde_json::Value>,
+}
+
+/// The outcome of a single request in a batch operation.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BatchResultItem {
+    Success {
+        key: String,
+        response: GenerationResponse,
+    },
+    Error {
+        key: String,
+        error: IndividualRequestError,
+    },
+}
+
+/// Response from the Gemini API for listing batch operations.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListBatchesResponse {
+    /// A list of batch operations.
+    pub operations: Vec<BatchOperation>,
+    /// A token to retrieve the next page of results.
+    pub next_page_token: Option<String>,
 }
