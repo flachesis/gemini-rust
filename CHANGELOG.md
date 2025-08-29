@@ -5,6 +5,78 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2025-08-29
+
+### 🛠️ Bug Fixes
+
+#### Content Structure Improvements
+- **Fixed Content Serialization**: Resolved issues with Content structure serialization to match Gemini API requirements
+  - Changed `Content.parts` from `Vec<Part>` to `Option<Vec<Part>>` to handle API responses where parts may be absent
+  - Added `#[serde(rename_all = "camelCase")]` to `Content` struct for proper JSON field naming
+  - Added `#[serde(rename_all = "camelCase")]` to `GenerateContentRequest` for consistent API formatting
+  - Fixed `GenerationConfig` serialization with proper camelCase field naming
+
+#### API Response Handling
+- **Enhanced Response Parsing**: Improved handling of Gemini API responses with missing content parts
+  - Updated `GenerationResponse.text()` method to safely handle `Option<Vec<Part>>`
+  - Updated `GenerationResponse.function_calls()` method with proper option handling
+  - Updated `GenerationResponse.thoughts()` and `GenerationResponse.all_text()` methods for safe access
+  - Added support for missing parts in API responses (common with certain model configurations)
+
+#### Example Updates
+- **Fixed Example Code**: Updated examples to work with new Content structure
+  - Updated `examples/advanced.rs` to use `Option<Vec<Part>>` when manually building content
+  - Updated `examples/curl_equivalent.rs` with proper Content construction
+  - Updated `examples/curl_google_search.rs` for compatibility
+  - Improved `examples/simple.rs` with better token limits (`max_output_tokens: 1000`)
+
+#### Additional Response Fields
+- **Extended Response Model**: Added missing fields to `GenerationResponse`
+  - Added `model_version: Option<String>` field for tracking model version information
+  - Added `response_id: Option<String>` field for response identification
+  - Enhanced `UsageMetadata` with proper field structure for token counting
+
+### 🔧 Technical Improvements
+
+#### Serialization Consistency
+- **Unified camelCase Naming**: Ensured all API-facing structs use consistent camelCase field naming
+  - Prevents JSON serialization mismatches with Gemini API
+  - Improves reliability of API communication
+  - Maintains backward compatibility in Rust code
+
+#### Error Resilience
+- **Robust Content Handling**: Improved handling of edge cases in API responses
+  - Better support for responses with empty or missing content parts
+  - Safer default values for optional fields
+  - Reduced likelihood of deserialization failures
+
+### 📋 Usage Impact
+
+#### Breaking Changes
+- **Content Construction**: Direct manipulation of `Content.parts` now requires `Option` wrapping
+  ```rust
+  // Old (no longer works)
+  content.parts.push(part);
+
+  // New (correct approach)
+  content.parts = Some(vec![part]);
+  ```
+
+#### Migration Guide
+- **Automatic Migration**: Most users won't need changes as the `Content::text()`, `Content::function_call()`, etc. helper methods handle the Option wrapping automatically
+- **Direct Content Building**: Only users manually constructing Content structs need to wrap parts in `Some()`
+
+### 🙏 Contributors
+
+- **@flachesis** - Comprehensive Content structure refactoring and API compatibility improvements
+
+### 📝 Notes
+
+- This release improves compatibility with various Gemini API response formats
+- No functional changes to public API methods - all builder patterns work unchanged
+- Enhanced error resilience when processing API responses with missing content parts
+- Better support for different model configurations that may return sparse content
+
 ## [1.2.0] - 2025-08-29
 
 ### ✨ Features
