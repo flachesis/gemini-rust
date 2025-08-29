@@ -5,6 +5,112 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-29
+
+### ✨ Features
+
+#### Batch Content Generation API
+- **Asynchronous Batch Processing**: Complete implementation of Gemini API's batch content generation
+  - Support for submitting multiple content generation requests in a single batch operation
+  - Proper handling of asynchronous batch processing with batch tracking
+  - Detailed batch status monitoring with request counts and state tracking
+  - Full compliance with Google's batch API format including nested request structures
+
+#### Enhanced API Structure
+- **Batch Request Models**: New comprehensive type system for batch operations
+  - `BatchGenerateContentRequest` with proper nested structure (`batch.input_config.requests.requests`)
+  - `BatchConfig` for batch configuration with display names
+  - `InputConfig` and `RequestsContainer` for structured request organization
+  - `BatchRequestItem` with metadata support for individual requests
+  - `RequestMetadata` for request identification and tracking
+
+#### Improved Response Handling
+- **Batch Response Processing**: Detailed batch operation response handling
+  - `BatchGenerateContentResponse` with batch creation confirmation
+  - `BatchMetadata` including creation/update timestamps and model information
+  - `BatchStats` with comprehensive request counting (pending, completed, failed)
+  - Proper state tracking for batch operations (`BATCH_STATE_PENDING`, etc.)
+
+#### Public API Enhancements
+- **Extended Type Exports**: Additional types now available from crate root
+  - `ContentBuilder` now publicly exported for advanced usage patterns
+  - `GenerateContentRequest` accessible for custom request building
+  - All batch-related types exported for external batch management
+  - Enhanced builder pattern accessibility
+
+### 🛠️ Technical Improvements
+
+#### Dependency Management
+- **Development Dependencies Optimization**: Moved `tokio` to dev-dependencies
+  - Reduced production bundle size by moving tokio to development-only dependencies
+  - Maintained full async functionality while optimizing dependency tree
+  - Better separation of concerns between runtime and library dependencies
+
+#### Code Organization
+- **Enhanced Builder Architecture**: Improved batch builder implementation
+  - Automatic metadata generation for batch requests
+  - Streamlined batch creation with fluent API
+  - Better error handling and validation for batch operations
+
+### 📋 Usage Examples
+
+#### Batch Content Generation
+```rust
+use gemini_rust::{Gemini, Message};
+
+let client = Gemini::new(api_key);
+
+// Create individual requests
+let request1 = client
+    .generate_content()
+    .with_message(Message::user("What is the meaning of life?"))
+    .build();
+
+let request2 = client
+    .generate_content()
+    .with_message(Message::user("What is the best programming language?"))
+    .build();
+
+// Submit batch request
+let batch_response = client
+    .batch_generate_content_sync()
+    .with_request(request1)
+    .with_request(request2)
+    .execute()
+    .await?;
+
+println!("Batch ID: {}", batch_response.name);
+println!("State: {}", batch_response.metadata.state);
+```
+
+#### Advanced Request Building
+```rust
+use gemini_rust::{ContentBuilder, GenerateContentRequest};
+
+// Direct access to ContentBuilder for advanced patterns
+let mut builder: ContentBuilder = client.generate_content();
+let request: GenerateContentRequest = builder
+    .with_user_message("Custom request")
+    .build();
+```
+
+### 🙏 Contributors
+
+- **@npatsakula** - Implemented basic batch API foundation ([#8](https://github.com/flachesis/gemini-rust/pull/8))
+- **@brekkylab** - Optimized dependency management ([#7](https://github.com/flachesis/gemini-rust/pull/7))
+- **@flachesis** - Enhanced batch API with detailed request/response structures
+
+### 🔄 Breaking Changes
+
+None. This release maintains full backward compatibility with v1.1.0.
+
+### 📝 Notes
+
+- Batch operations are asynchronous and require polling for completion status
+- Batch API follows Google's official format specification exactly
+- Enhanced type safety with comprehensive batch operation modeling
+- Improved error handling for batch-specific scenarios
+
 ## [1.1.0] - 2025-07-21
 
 ### ✨ Features
