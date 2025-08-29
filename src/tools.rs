@@ -196,7 +196,7 @@ impl PropertyDetails {
 }
 
 /// A function call made by the model
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionCall {
     /// The name of the function
     pub name: String,
@@ -237,7 +237,7 @@ impl FunctionCall {
 }
 
 /// A response from a function
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionResponse {
     /// The name of the function
     pub name: String,
