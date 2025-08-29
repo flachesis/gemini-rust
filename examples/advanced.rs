@@ -74,9 +74,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Add the function call from the model's response
         let mut call_content = Content::default();
-        call_content.parts.push(Part::FunctionCall {
+        call_content.parts = Some(vec![Part::FunctionCall {
             function_call: (*function_call).clone(),
-        });
+        }]);
         final_request.contents.push(call_content);
 
         // Now add the function response using the JSON value

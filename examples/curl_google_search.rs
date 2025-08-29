@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let content = Content {
-        parts: vec![text_part],
+        parts: vec![text_part].into(),
         role: None,
     };
 

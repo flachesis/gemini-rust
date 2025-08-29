@@ -61,9 +61,11 @@ impl Blob {
 
 /// Content of a message
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Content {
     /// Parts of the content
-    pub parts: Vec<Part>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parts: Option<Vec<Part>>,
     /// Role of the content
     #[serde(skip_serializing_if = "Option::is_none")]
     pub role: Option<Role>,
@@ -73,10 +75,10 @@ impl Content {
     /// Create a new text content
     pub fn text(text: impl Into<String>) -> Self {
         Self {
-            parts: vec![Part::Text {
+            parts: Some(vec![Part::Text {
                 text: text.into(),
                 thought: None,
-            }],
+            }]),
             role: None,
         }
     }
@@ -84,7 +86,7 @@ impl Content {
     /// Create a new content with a function call
     pub fn function_call(function_call: super::tools::FunctionCall) -> Self {
         Self {
-            parts: vec![Part::FunctionCall { function_call }],
+            parts: Some(vec![Part::FunctionCall { function_call }]),
             role: None,
         }
     }
@@ -92,7 +94,7 @@ impl Content {
     /// Create a new content with a function response
     pub fn function_response(function_response: super::tools::FunctionResponse) -> Self {
         Self {
-            parts: vec![Part::FunctionResponse { function_response }],
+            parts: Some(vec![Part::FunctionResponse { function_response }]),
             role: None,
         }
     }
@@ -100,9 +102,9 @@ impl Content {
     /// Create a new content with a function response from name and JSON value
     pub fn function_response_json(name: impl Into<String>, response: serde_json::Value) -> Self {
         Self {
-            parts: vec![Part::FunctionResponse {
+            parts: Some(vec![Part::FunctionResponse {
                 function_response: super::tools::FunctionResponse::new(name, response),
-            }],
+            }]),
             role: None,
         }
     }
@@ -110,9 +112,9 @@ impl Content {
     /// Create a new content with inline data (blob data)
     pub fn inline_data(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
         Self {
-            parts: vec![Part::InlineData {
+            parts: Some(vec![Part::InlineData {
                 inline_data: Blob::new(mime_type, data),
-            }],
+            }]),
             role: None,
         }
     }
@@ -248,6 +250,19 @@ pub struct UsageMetadata {
     /// The number of thinking tokens (Gemini 2.5 series only)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thoughts_token_count: Option<i32>,
+    /// Detailed prompt token information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_tokens_details: Option<Vec<PromptTokenDetails>>,
+}
+
+/// Details about prompt tokens by modality
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PromptTokenDetails {
+    /// The modality (e.g., "TEXT")
+    pub modality: String,
+    /// Token count for this modality
+    pub token_count: i32,
 }
 
 /// Response from the Gemini API for content generation
@@ -262,6 +277,12 @@ pub struct GenerationResponse {
     /// Usage metadata
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage_metadata: Option<UsageMetadata>,
+    /// Model version used
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_version: Option<String>,
+    /// Response ID
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_id: Option<String>,
 }
 
 /// Content of the embedding
@@ -302,9 +323,11 @@ impl GenerationResponse {
         self.candidates
             .first()
             .and_then(|c| {
-                c.content.parts.first().and_then(|p| match p {
-                    Part::Text { text, thought: _ } => Some(text.clone()),
-                    _ => None,
+                c.content.parts.as_ref().and_then(|parts| {
+                    parts.first().and_then(|p| match p {
+                        Part::Text { text, thought: _ } => Some(text.clone()),
+                        _ => None,
+                    })
                 })
             })
             .unwrap_or_default()
@@ -315,10 +338,12 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.iter().filter_map(|p| match p {
-                    Part::FunctionCall { function_call } => Some(function_call),
-                    _ => None,
-                })
+                c.content.parts.as_ref().map(|parts| {
+                    parts.iter().filter_map(|p| match p {
+                        Part::FunctionCall { function_call } => Some(function_call),
+                        _ => None,
+                    }).collect::<Vec<_>>()
+                }).unwrap_or_default()
             })
             .collect()
     }
@@ -328,13 +353,15 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.iter().filter_map(|p| match p {
-                    Part::Text {
-                        text,
-                        thought: Some(true),
-                    } => Some(text.clone()),
-                    _ => None,
-                })
+                c.content.parts.as_ref().map(|parts| {
+                    parts.iter().filter_map(|p| match p {
+                        Part::Text {
+                            text,
+                            thought: Some(true),
+                        } => Some(text.clone()),
+                        _ => None,
+                    }).collect::<Vec<_>>()
+                }).unwrap_or_default()
             })
             .collect()
     }
@@ -344,10 +371,12 @@ impl GenerationResponse {
         self.candidates
             .iter()
             .flat_map(|c| {
-                c.content.parts.iter().filter_map(|p| match p {
-                    Part::Text { text, thought } => Some((text.clone(), thought.unwrap_or(false))),
-                    _ => None,
-                })
+                c.content.parts.as_ref().map(|parts| {
+                    parts.iter().filter_map(|p| match p {
+                        Part::Text { text, thought } => Some((text.clone(), thought.unwrap_or(false))),
+                        _ => None,
+                    }).collect::<Vec<_>>()
+                }).unwrap_or_default()
             })
             .collect()
     }
@@ -355,6 +384,7 @@ impl GenerationResponse {
 
 /// Request to generate content
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerateContentRequest {
     /// The contents to generate content from
     pub contents: Vec<Content>,
@@ -560,6 +590,7 @@ impl Default for ThinkingConfig {
 
 /// Configuration for generation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GenerationConfig {
     /// The temperature for the model (0.0 to 1.0)
     ///

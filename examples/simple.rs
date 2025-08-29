@@ -16,11 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("--- Simple generation ---");
     let response = client
         .generate_content()
-        .with_system_prompt("You are a helpful assistant.")
         .with_user_message("Hello, can you tell me a joke about programming?")
         .with_generation_config(GenerationConfig {
             temperature: Some(0.7),
-            max_output_tokens: Some(100),
+            max_output_tokens: Some(1000),
             ..Default::default()
         })
         .execute()

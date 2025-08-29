@@ -17,8 +17,8 @@ pub use error::Error;
 pub use models::{
     BatchConfig, BatchMetadata, BatchRequestItem, BatchStats, Blob, Candidate, CitationMetadata,
     Content, FunctionCallingMode, GenerateContentRequest, GenerationConfig, GenerationResponse,
-    InputConfig, Message, Part, RequestMetadata, RequestsContainer, Role, SafetyRating, TaskType,
-    ThinkingConfig, UsageMetadata,
+    InputConfig, Message, Part, PromptTokenDetails, RequestMetadata, RequestsContainer, Role,
+    SafetyRating, TaskType, ThinkingConfig, UsageMetadata,
 };
 
 pub use tools::{FunctionCall, FunctionDeclaration, FunctionParameters, PropertyDetails, Tool};
