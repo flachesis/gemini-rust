@@ -13,32 +13,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create client
     let client = Gemini::new(api_key);
 
-    println!("--- Google Search with Function Calling example ---");
+    println!("--- Meeting Scheduler Function Calling example ---");
 
-    // Define a calculator function
-    let calculate = FunctionDeclaration::new(
-        "calculate",
-        "Perform a calculation",
+    // Define a meeting scheduler function that matches the curl example
+    let schedule_meeting = FunctionDeclaration::new(
+        "schedule_meeting",
+        "Schedules a meeting with specified attendees at a given time and date.",
         FunctionParameters::object()
             .with_property(
-                "operation",
-                PropertyDetails::enum_type(
-                    "The mathematical operation to perform",
-                    ["add", "subtract", "multiply", "divide"],
+                "attendees",
+                PropertyDetails::array(
+                    "List of people attending the meeting.",
+                    PropertyDetails::string("Attendee name"),
                 ),
                 true,
             )
-            .with_property("a", PropertyDetails::number("The first number"), true)
-            .with_property("b", PropertyDetails::number("The second number"), true),
+            .with_property(
+                "date",
+                PropertyDetails::string("Date of the meeting (e.g., '2024-07-29')"),
+                true,
+            )
+            .with_property(
+                "time",
+                PropertyDetails::string("Time of the meeting (e.g., '15:00')"),
+                true,
+            )
+            .with_property(
+                "topic",
+                PropertyDetails::string("The subject or topic of the meeting."),
+                true,
+            ),
     );
 
     // Create function tool
-    let function_tool = Tool::new(calculate);
+    let function_tool = Tool::new(schedule_meeting);
 
-    // Create a request with both tools
+    // Create a request with the tool - matching the curl example
     let response = client
         .generate_content()
-        .with_user_message("What is the current Google stock price multiplied by 2?")
+        .with_user_message("Schedule a meeting with Bob and Alice for 03/27/2025 at 10:00 AM about the Q3 planning.")
         .with_tool(function_tool.clone())
         .with_function_calling_mode(FunctionCallingMode::Any)
         .execute()
@@ -51,64 +64,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             function_call.name, function_call.args
         );
 
-        // Handle the calculate function
-        if function_call.name == "calculate" {
-            let operation: String = function_call.get("operation")?;
-            let a: f64 = function_call.get("a")?;
-            let b: f64 = function_call.get("b")?;
+        // Handle the schedule_meeting function
+        if function_call.name == "schedule_meeting" {
+            let attendees: Vec<String> = function_call.get("attendees")?;
+            let date: String = function_call.get("date")?;
+            let time: String = function_call.get("time")?;
+            let topic: String = function_call.get("topic")?;
 
-            println!("Calculation: {} {} {}", a, operation, b);
+            println!("Scheduling meeting:");
+            println!("  Attendees: {:?}", attendees);
+            println!("  Date: {}", date);
+            println!("  Time: {}", time);
+            println!("  Topic: {}", topic);
 
-            let result = match operation.as_str() {
-                "add" => a + b,
-                "subtract" => a - b,
-                "multiply" => a * b,
-                "divide" => a / b,
-                _ => panic!("Unknown operation"),
-            };
-
-            let function_response = json!({
-                "result": result,
-            })
-            .to_string();
-
-            // Based on the curl example, we need to structure the conversation properly:
-            // 1. A user message with the original query
-            // 2. A model message containing the function call
-            // 3. A user message containing the function response
-
-            // Construct conversation following the exact curl pattern
-            let mut conversation = client.generate_content();
-
-            // 1. Add user message with original query
-            conversation = conversation
-                .with_user_message("What is the current Google stock price multiplied by 2?");
-
-            // 2. Create model message with function call
-            let model_function_call = FunctionCall::new(
-                "calculate",
-                json!({
-                    "operation": operation,
-                    "a": a,
-                    "b": b
-                }),
+            // Simulate scheduling the meeting
+            let meeting_id = format!(
+                "meeting_{}",
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs()
             );
 
-            // Create model content with function call
-            let model_content = Content::function_call(model_function_call).with_role(Role::Model);
+            let function_response = json!({
+                "success": true,
+                "meeting_id": meeting_id,
+                "message": format!("Meeting '{}' scheduled for {} at {} with {:?}", topic, date, time, attendees)
+            });
 
-            // Add as model message
+            // Create conversation with function response
+            let mut conversation = client.generate_content();
+
+            // 1. Add original user message
+            conversation = conversation
+                .with_user_message("Schedule a meeting with Bob and Alice for 03/27/2025 at 10:00 AM about the Q3 planning.");
+
+            // 2. Add model message with function call
+            let model_function_call =
+                FunctionCall::new("schedule_meeting", function_call.args.clone());
+            let model_content = Content::function_call(model_function_call).with_role(Role::Model);
             let model_message = Message {
                 content: model_content,
                 role: Role::Model,
             };
             conversation = conversation.with_message(model_message);
 
-            // 3. Add user message with function response
+            // 3. Add function response
             conversation =
-                conversation.with_function_response_str("calculate", function_response)?;
+                conversation.with_function_response("schedule_meeting", function_response);
 
-            // Execute the request
+            // Execute final request
             let final_response = conversation.execute().await?;
 
             println!("Final response: {}", final_response.text());

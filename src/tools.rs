@@ -88,7 +88,7 @@ impl FunctionParameters {
     /// Create a new object parameter set
     pub fn object() -> Self {
         Self {
-            param_type: "OBJECT".to_string(),
+            param_type: "object".to_string(),
             properties: Some(HashMap::new()),
             required: Some(Vec::new()),
         }
@@ -134,7 +134,7 @@ impl PropertyDetails {
     /// Create a new string property
     pub fn string(description: impl Into<String>) -> Self {
         Self {
-            property_type: "STRING".to_string(),
+            property_type: "string".to_string(),
             description: description.into(),
             enum_values: None,
             items: None,
@@ -144,7 +144,7 @@ impl PropertyDetails {
     /// Create a new number property
     pub fn number(description: impl Into<String>) -> Self {
         Self {
-            property_type: "NUMBER".to_string(),
+            property_type: "number".to_string(),
             description: description.into(),
             enum_values: None,
             items: None,
@@ -154,7 +154,7 @@ impl PropertyDetails {
     /// Create a new integer property
     pub fn integer(description: impl Into<String>) -> Self {
         Self {
-            property_type: "INTEGER".to_string(),
+            property_type: "integer".to_string(),
             description: description.into(),
             enum_values: None,
             items: None,
@@ -164,7 +164,7 @@ impl PropertyDetails {
     /// Create a new boolean property
     pub fn boolean(description: impl Into<String>) -> Self {
         Self {
-            property_type: "BOOLEAN".to_string(),
+            property_type: "boolean".to_string(),
             description: description.into(),
             enum_values: None,
             items: None,
@@ -174,7 +174,7 @@ impl PropertyDetails {
     /// Create a new array property
     pub fn array(description: impl Into<String>, items: PropertyDetails) -> Self {
         Self {
-            property_type: "ARRAY".to_string(),
+            property_type: "array".to_string(),
             description: description.into(),
             enum_values: None,
             items: Some(Box::new(items)),
@@ -187,14 +187,13 @@ impl PropertyDetails {
         enum_values: impl IntoIterator<Item = impl Into<String>>,
     ) -> Self {
         Self {
-            property_type: "STRING".to_string(),
+            property_type: "string".to_string(),
             description: description.into(),
             enum_values: Some(enum_values.into_iter().map(|s| s.into()).collect()),
             items: None,
         }
     }
 }
-
 /// A function call made by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionCall {
