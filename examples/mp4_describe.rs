@@ -1,11 +1,11 @@
 // Please put your sample video at examples/sample.mp4
 // This example sends the mp4 video content to Gemini API and asks AI to describe the video.
 
-use gemini_rust::{Gemini, Content};
+use base64::{engine::general_purpose, Engine as _};
+use gemini_rust::{Content, Gemini};
+use std::env;
 use std::fs::File;
 use std::io::Read;
-use std::env;
-use base64::{engine::general_purpose, Engine as _};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
