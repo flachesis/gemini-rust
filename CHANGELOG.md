@@ -5,6 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2025-09-01
+
+### 🚀 Major Features
+
+#### Batch API Response Decoding and Type-Safe Interface
+
+- **Complete Batch API Implementation**: Added comprehensive batch operation support with type-safe interfaces
+  - New `Batch` struct for managing long-running batch operations
+  - Type-safe `BatchStatus` enum with structured status information
+  - Resource-safe API design that prevents invalid operations on consumed batches
+  - Error recovery mechanism allowing operation retries on transient failures
+
+#### Enhanced Batch Operations
+
+- **Batch Creation and Management**: Full lifecycle management for batch operations
+  - `batch_generate_content_sync()` for synchronous batch content generation
+  - Automatic status polling with `wait_for_completion()` method
+  - Manual status checking with `status()` method for fine-grained control
+
+- **Batch Control Operations**: Complete operational control over batch processes
+  - `cancel()` method for terminating running batch operations
+  - `delete()` method for cleanup of completed batch metadata
+  - Graceful cancellation handling with CTRL-C signal support
+
+- **Batch Listing and Discovery**: Stream-based batch operation discovery
+  - `list_batches()` method with pagination support
+  - Asynchronous stream interface using `futures::Stream`
+  - Efficient memory usage for large batch lists
+
+### ✨ New Examples
+
+#### Comprehensive Batch API Examples
+
+- **Batch Generate Example**: `examples/batch_generate.rs`
+  - Demonstrates creating batch requests with multiple content generation tasks
+  - Shows proper waiting and result handling patterns
+  - Includes error handling for individual request failures
+
+- **Batch Cancellation Example**: `examples/batch_cancel.rs`
+  - Advanced example with CTRL-C signal handling
+  - Demonstrates safe batch cancellation in concurrent environments
+  - Shows retry patterns for network failure scenarios
+
+- **Batch Management Examples**:
+  - `examples/batch_list.rs` - Stream-based batch operation listing
+  - `examples/batch_delete.rs` - Cleanup of completed batch operations
+
+### 🔧 Technical Improvements
+
+#### Type Safety Enhancements
+
+- **Enhanced Model Definitions**: Added `PartialEq` trait to core data structures
+  - Improved testability and debugging capabilities
+  - Better support for structured comparisons and assertions
+
+#### Error Handling Improvements
+
+- **Batch-Specific Error Types**: New error variants for batch operations
+  - `BatchFailed` - for operations that completed with errors
+  - `BatchExpired` - for operations that exceeded time limits
+  - `InconsistentBatchState` - for API state inconsistencies
+  - `UnsupportedBatchOutput` - for unsupported output formats
+
+#### API Consistency
+
+- **Streaming Interface**: Consistent use of async streams for paginated results
+- **Resource Management**: Consumer-based API design preventing resource leaks
+- **Documentation**: Comprehensive inline documentation with usage examples
+
+### 🙏 Contributors
+
+- **@npatsakula** - Complete batch API implementation, type-safe interfaces, and comprehensive examples
+- **@flachesis** - Integration, testing, and release management
+
+### 📝 Notes
+
+- This release significantly expands the library's batch processing capabilities
+- The new batch API follows Rust best practices for resource management and error handling
+- All new functionality is fully documented with practical examples
+- Breaking changes are minimal - existing API remains fully compatible
+
 ## [1.2.2] - 2025-09-01
 
 ### 🛠️ Bug Fixes
