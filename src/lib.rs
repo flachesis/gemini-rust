@@ -20,9 +20,10 @@ pub use models::{
     BatchConfig, BatchGenerateContentResponseItem, BatchMetadata, BatchOperationResponse,
     BatchRequestItem, BatchResultItem, BatchState, BatchStats, BatchStatus, Blob, Candidate,
     CitationMetadata, Content, FunctionCallingMode, GenerateContentRequest, GenerationConfig,
-    GenerationResponse, InlinedResponses, InputConfig, Message, OutputConfig, Part,
-    PromptTokenDetails, RequestMetadata, RequestsContainer, Role, SafetyRating, TaskType,
-    ThinkingConfig, UsageMetadata,
+    GenerationResponse, InlinedResponses, InputConfig, Message, MultiSpeakerVoiceConfig,
+    OutputConfig, Part, PrebuiltVoiceConfig, PromptTokenDetails, RequestMetadata,
+    RequestsContainer, Role, SafetyRating, SpeakerVoiceConfig, SpeechConfig, TaskType,
+    ThinkingConfig, UsageMetadata, VoiceConfig,
 };
 
 pub use tools::{FunctionCall, FunctionDeclaration, FunctionParameters, PropertyDetails, Tool};

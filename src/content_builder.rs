@@ -4,7 +4,10 @@ use futures::Stream;
 
 use crate::{
     client::GeminiClient,
-    models::{FunctionCallingConfig, GenerateContentRequest, ThinkingConfig, ToolConfig},
+    models::{
+        FunctionCallingConfig, GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig,
+        ThinkingConfig, ToolConfig,
+    },
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
     Message, Result, Role, Tool,
 };
@@ -290,6 +293,40 @@ impl ContentBuilder {
             }
         }
         self
+    }
+
+    /// Enable audio output (text-to-speech)
+    pub fn with_audio_output(mut self) -> Self {
+        if self.generation_config.is_none() {
+            self.generation_config = Some(GenerationConfig::default());
+        }
+        if let Some(config) = &mut self.generation_config {
+            config.response_modalities = Some(vec!["AUDIO".to_string()]);
+        }
+        self
+    }
+
+    /// Set speech configuration for text-to-speech generation
+    pub fn with_speech_config(mut self, speech_config: SpeechConfig) -> Self {
+        if self.generation_config.is_none() {
+            self.generation_config = Some(GenerationConfig::default());
+        }
+        if let Some(config) = &mut self.generation_config {
+            config.speech_config = Some(speech_config);
+        }
+        self
+    }
+
+    /// Set a single voice for text-to-speech generation
+    pub fn with_voice(self, voice_name: impl Into<String>) -> Self {
+        let speech_config = SpeechConfig::single_voice(voice_name);
+        self.with_speech_config(speech_config).with_audio_output()
+    }
+
+    /// Set multi-speaker configuration for text-to-speech generation
+    pub fn with_multi_speaker_config(self, speakers: Vec<SpeakerVoiceConfig>) -> Self {
+        let speech_config = SpeechConfig::multi_speaker(speakers);
+        self.with_speech_config(speech_config).with_audio_output()
     }
 
     pub fn build(self) -> GenerateContentRequest {

@@ -706,6 +706,14 @@ pub struct GenerationConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_schema: Option<serde_json::Value>,
 
+    /// Response modalities (for TTS and other multimodal outputs)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_modalities: Option<Vec<String>>,
+
+    /// Speech configuration for text-to-speech generation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub speech_config: Option<SpeechConfig>,
+
     /// The thinking configuration
     ///
     /// Configuration for the model's thinking process (Gemini 2.5 series only).
@@ -724,7 +732,94 @@ impl Default for GenerationConfig {
             stop_sequences: None,
             response_mime_type: None,
             response_schema: None,
+            response_modalities: None,
+            speech_config: None,
             thinking_config: None,
+        }
+    }
+}
+
+/// Configuration for speech generation (text-to-speech)
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeechConfig {
+    /// Single voice configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub voice_config: Option<VoiceConfig>,
+    /// Multi-speaker voice configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub multi_speaker_voice_config: Option<MultiSpeakerVoiceConfig>,
+}
+
+/// Voice configuration for text-to-speech
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct VoiceConfig {
+    /// Prebuilt voice configuration
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prebuilt_voice_config: Option<PrebuiltVoiceConfig>,
+}
+
+/// Prebuilt voice configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct PrebuiltVoiceConfig {
+    /// The name of the voice to use
+    pub voice_name: String,
+}
+
+/// Multi-speaker voice configuration
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MultiSpeakerVoiceConfig {
+    /// Configuration for each speaker
+    pub speaker_voice_configs: Vec<SpeakerVoiceConfig>,
+}
+
+/// Configuration for a specific speaker in multi-speaker TTS
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeakerVoiceConfig {
+    /// The name of the speaker (must match the name used in the prompt)
+    pub speaker: String,
+    /// Voice configuration for this speaker
+    pub voice_config: VoiceConfig,
+}
+
+impl SpeechConfig {
+    /// Create a new speech config with a single voice
+    pub fn single_voice(voice_name: impl Into<String>) -> Self {
+        Self {
+            voice_config: Some(VoiceConfig {
+                prebuilt_voice_config: Some(PrebuiltVoiceConfig {
+                    voice_name: voice_name.into(),
+                }),
+            }),
+            multi_speaker_voice_config: None,
+        }
+    }
+
+    /// Create a new speech config with multiple speakers
+    pub fn multi_speaker(speakers: Vec<SpeakerVoiceConfig>) -> Self {
+        Self {
+            voice_config: None,
+            multi_speaker_voice_config: Some(MultiSpeakerVoiceConfig {
+                speaker_voice_configs: speakers,
+            }),
+        }
+    }
+}
+
+impl SpeakerVoiceConfig {
+    /// Create a new speaker voice configuration
+    pub fn new(speaker: impl Into<String>, voice_name: impl Into<String>) -> Self {
+        Self {
+            speaker: speaker.into(),
+            voice_config: VoiceConfig {
+                prebuilt_voice_config: Some(PrebuiltVoiceConfig {
+                    voice_name: voice_name.into(),
+                }),
+            },
         }
     }
 }

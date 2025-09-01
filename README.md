@@ -14,6 +14,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **🔄 Streaming Responses** - Real-time streaming of generated content
 - **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
 - **🎨 Image Generation** - Text-to-image generation and image editing capabilities
+- **🎤 Speech Generation** - Text-to-speech with single and multi-speaker support
 - **🖼️ Multimodal Support** - Images and binary data processing
 - **📊 Text Embeddings** - Advanced embedding generation with multiple task types
 - **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters
@@ -147,6 +148,60 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let image_bytes = BASE64.decode(&inline_data.data)?;
                     fs::write("generated_image.png", image_bytes)?;
                     println!("Image saved as generated_image.png");
+                }
+            }
+        }
+    }
+    Ok(())
+}
+```
+
+### Speech Generation
+
+```rust
+use gemini_rust::{Gemini, GenerationConfig, SpeechConfig, VoiceConfig, PrebuiltVoiceConfig};
+use base64::{Engine as _, engine::general_purpose};
+use std::fs::File;
+use std::io::Write;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::with_model(
+        std::env::var("GEMINI_API_KEY")?,
+        "models/gemini-2.5-flash-preview-tts".to_string()
+    );
+
+    let generation_config = GenerationConfig {
+        response_modalities: Some(vec!["AUDIO".to_string()]),
+        speech_config: Some(SpeechConfig {
+            voice_config: Some(VoiceConfig {
+                prebuilt_voice_config: Some(PrebuiltVoiceConfig {
+                    voice_name: "Puck".to_string(),
+                }),
+            }),
+            multi_speaker_voice_config: None,
+        }),
+        ..Default::default()
+    };
+
+    let response = client
+        .generate_content()
+        .with_user_message("Hello! Welcome to Gemini text-to-speech.")
+        .with_generation_config(generation_config)
+        .execute()
+        .await?;
+
+    // Save generated audio
+    for candidate in response.candidates.iter() {
+        if let Some(parts) = &candidate.content.parts {
+            for part in parts.iter() {
+                if let gemini_rust::Part::InlineData { inline_data } = part {
+                    if inline_data.mime_type.starts_with("audio/") {
+                        let audio_bytes = general_purpose::STANDARD.decode(&inline_data.data)?;
+                        let mut file = File::create("speech_output.wav")?;
+                        file.write_all(&audio_bytes)?;
+                        println!("Audio saved as speech_output.wav");
+                    }
                 }
             }
         }
@@ -380,6 +435,8 @@ The repository includes comprehensive examples:
 | [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
 | [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
 | [`image_editing.rs`](examples/image_editing.rs) | Image editing with text prompts |
+| [`simple_speech_generation.rs`](examples/simple_speech_generation.rs) | Basic text-to-speech generation |
+| [`multi_speaker_tts.rs`](examples/multi_speaker_tts.rs) | Multi-speaker text-to-speech dialogue |
 | [`structured_response.rs`](examples/structured_response.rs) | Structured JSON output |
 | [`generation_config.rs`](examples/generation_config.rs) | Custom generation parameters |
 | [`custom_base_url.rs`](examples/custom_base_url.rs) | Using a custom API endpoint |

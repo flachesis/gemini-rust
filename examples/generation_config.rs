@@ -25,6 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             response_mime_type: None,
             response_schema: None,
             thinking_config: None,
+            ..Default::default()
         })
         .execute()
         .await?;
