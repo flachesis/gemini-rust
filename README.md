@@ -25,7 +25,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gemini-rust = "1.2.1"
+gemini-rust = "1.2.3"
 ```
 
 ## 🚀 Quick Start
