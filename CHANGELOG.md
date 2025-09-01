@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-09-01
+
+### 🎤 New Features
+
+#### Text-to-Speech (TTS) Generation Support
+
+- **Complete Speech Generation Implementation**: Added comprehensive text-to-speech support using Gemini 2.5 TTS capabilities
+  - New `SpeechConfig` struct for speech generation configuration
+  - `VoiceConfig` and `PrebuiltVoiceConfig` for single-speaker TTS
+  - `MultiSpeakerVoiceConfig` and `SpeakerVoiceConfig` for dialogue generation
+  - Support for multiple prebuilt voices (Puck, Charon, Kore, Fenrir, Aoede)
+
+#### Enhanced Content Generation
+
+- **Response Modalities Support**: Extended `GenerationConfig` with `response_modalities` field for multimodal outputs
+- **Fluent Speech API**: Added convenience methods to `ContentBuilder`
+  - `with_audio_output()` - Enable audio output mode
+  - `with_speech_config()` - Set custom speech configuration
+  - `with_voice()` - Quick single-voice setup
+  - `with_multi_speaker_config()` - Multi-speaker dialogue setup
+
+#### New Examples
+
+- **Speech Generation Examples**: Added comprehensive TTS examples
+  - `simple_speech_generation.rs` - Basic single-speaker text-to-speech
+  - `multi_speaker_tts.rs` - Multi-speaker dialogue generation
+- **Updated Documentation**: Enhanced README with speech generation examples and API documentation
+
+### 🔧 API Enhancements
+
+- **Non-Breaking Changes**: All speech generation features are backward compatible
+- **Type Safety**: Full `serde` support for all new speech-related structures
+- **Audio Processing**: Base64 audio data handling with proper MIME type detection
+
 ## [1.2.3] - 2025-09-01
 
 ### 🚀 Major Features
