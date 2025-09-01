@@ -1,6 +1,6 @@
 [package]
 name = "gemini-rust"
-version = "1.3.0"
+version = "1.3.1"
 edition = "2021"
 description = "Rust client for Google Gemini API"
 license = "MIT"
