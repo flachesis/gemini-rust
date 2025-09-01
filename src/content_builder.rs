@@ -68,7 +68,7 @@ impl ContentBuilder {
         data: impl Into<String>,
         mime_type: impl Into<String>,
     ) -> Self {
-        let content = Content::inline_data(mime_type, data);
+        let content = Content::inline_data(mime_type, data).with_role(Role::User);
         self.contents.push(content);
         self
     }

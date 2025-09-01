@@ -5,6 +5,67 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2025-09-01
+
+### 🛠️ Bug Fixes
+
+#### Content Builder Improvements
+
+- **Fixed `with_inline_data` Role Assignment**: Resolved API validation error when using inline data (blobs)
+  - `ContentBuilder::with_inline_data()` now automatically sets `Role::User` for blob content
+  - Prevents "Please use a valid role: user, model" API errors when sending media files
+  - Ensures consistency with other content builder methods that properly handle roles
+
+### ✨ New Examples
+
+#### Video Processing Example
+
+- **Added MP4 Video Description Example**: New `examples/mp4_describe.rs` demonstrating video analysis
+  - Shows how to read MP4 files and send them to Gemini API for content description
+  - Demonstrates two approaches: using `Message` struct and using `with_inline_data` builder method
+  - Includes proper base64 encoding of video content for API transmission
+  - English-language prompts and documentation for broader accessibility
+
+### 🔧 Technical Improvements
+
+#### Content Builder Consistency
+
+- **Role Handling Standardization**: Improved consistency across content builder methods
+  - `with_inline_data()` now matches behavior of `with_function_response()` by auto-setting user role
+  - Reduces boilerplate code when working with media content
+  - Maintains backward compatibility while fixing the underlying issue
+
+### 📋 Usage Impact
+
+#### Enhanced Developer Experience
+
+- **Simplified Media Handling**: Media files can now be added more easily without manual role assignment
+
+  ```rust
+  // Now works correctly without additional role setup
+  let response = gemini
+      .generate_content()
+      .with_user_message("Describe this video")
+      .with_inline_data(base64_video, "video/mp4")
+      .execute()
+      .await?;
+  ```
+
+#### Example Enhancements
+
+- **Video Processing Workflow**: Complete example showing video file handling from disk to API
+- **Base64 Encoding Integration**: Demonstrates proper encoding of binary media for API transmission
+
+### 🙏 Contributors
+
+- **@flachesis** - Content builder role assignment fix and video example implementation
+
+### 📝 Notes
+
+- This release focuses on improving the developer experience when working with media content
+- The fix ensures that `with_inline_data()` works correctly out of the box without additional configuration
+- Video example provides a practical template for media analysis applications
+
 ## [1.2.1] - 2025-08-29
 
 ### 🛠️ Bug Fixes
