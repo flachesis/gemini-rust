@@ -191,16 +191,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    // Save generated audio
+    // Save generated audio as PCM format
     for candidate in response.candidates.iter() {
         if let Some(parts) = &candidate.content.parts {
             for part in parts.iter() {
                 if let gemini_rust::Part::InlineData { inline_data } = part {
                     if inline_data.mime_type.starts_with("audio/") {
                         let audio_bytes = general_purpose::STANDARD.decode(&inline_data.data)?;
-                        let mut file = File::create("speech_output.wav")?;
+                        let mut file = File::create("speech_output.pcm")?;
                         file.write_all(&audio_bytes)?;
-                        println!("Audio saved as speech_output.wav");
+                        println!("Audio saved as speech_output.pcm");
+                        println!("Convert to WAV using: ffmpeg -f s16le -ar 24000 -ac 1 -i speech_output.pcm speech_output.wav");
                     }
                 }
             }
