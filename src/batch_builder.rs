@@ -1,15 +1,20 @@
 use std::sync::Arc;
 
 use crate::{
+    batch::Batch,
     client::GeminiClient,
     models::{
-        BatchConfig, BatchGenerateContentRequest, BatchGenerateContentResponse, BatchRequestItem,
-        GenerateContentRequest, InputConfig, RequestMetadata, RequestsContainer,
+        BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
+        InputConfig, RequestMetadata, RequestsContainer,
     },
     Result,
 };
 
-/// Builder for synchronous batch content generation requests
+/// A builder for creating and executing synchronous batch content generation requests.
+///
+/// This builder simplifies the process of constructing a batch request, allowing you to
+/// add multiple `GenerateContentRequest` items and then execute them as a single
+/// long-running operation.
 pub struct BatchBuilder {
     client: Arc<GeminiClient>,
     display_name: String,
@@ -26,25 +31,27 @@ impl BatchBuilder {
         }
     }
 
-    /// Set the display name for the batch request
+    /// Sets the user-friendly display name for the batch request.
     pub fn with_name(mut self, name: String) -> Self {
         self.display_name = name;
         self
     }
 
-    /// Set the requests for the batch request
+    /// Sets all requests for the batch operation, replacing any existing requests.
     pub fn with_requests(mut self, requests: Vec<GenerateContentRequest>) -> Self {
         self.requests = requests;
         self
     }
 
-    /// Add a request to the batch request
+    /// Adds a single `GenerateContentRequest` to the batch.
     pub fn with_request(mut self, request: GenerateContentRequest) -> Self {
         self.requests.push(request);
         self
     }
 
-    /// Build the batch request
+    /// Constructs the final `BatchGenerateContentRequest` from the builder's configuration.
+    ///
+    /// This method consumes the builder.
     pub fn build(self) -> BatchGenerateContentRequest {
         let batch_requests: Vec<BatchRequestItem> = self
             .requests
@@ -52,9 +59,7 @@ impl BatchBuilder {
             .enumerate()
             .map(|(i, request)| BatchRequestItem {
                 request,
-                metadata: Some(RequestMetadata {
-                    key: format!("request-{}", i + 1),
-                }),
+                metadata: Some(RequestMetadata { key: i.to_string() }),
             })
             .collect();
 
@@ -70,10 +75,13 @@ impl BatchBuilder {
         }
     }
 
-    /// Execute the batch request
-    pub async fn execute(self) -> Result<BatchGenerateContentResponse> {
+    /// Submits the batch request to the Gemini API and returns a `Batch` handle.
+    ///
+    /// This method consumes the builder and initiates the long-running batch operation.
+    pub async fn execute(self) -> Result<Batch> {
         let client = self.client.clone();
         let request = self.build();
-        client.batch_generate_content_sync(request).await
+        let response = client.batch_generate_content_sync(request).await?;
+        Ok(Batch::new(response.name, client))
     }
 }

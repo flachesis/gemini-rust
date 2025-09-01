@@ -4,10 +4,10 @@ use crate::{
     embed_builder::EmbedBuilder,
     models::{
         BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
-        BatchGenerateContentResponse, ContentEmbeddingResponse, EmbedContentRequest,
-        GenerateContentRequest, GenerationResponse,
+        BatchGenerateContentResponse, BatchOperation, ContentEmbeddingResponse,
+        EmbedContentRequest, GenerateContentRequest, GenerationResponse, ListBatchesResponse,
     },
-    Error, Result,
+    Batch, Error, Result,
 };
 use futures::stream::Stream;
 use reqwest::Client;
@@ -133,6 +133,97 @@ impl GeminiClient {
         Ok(response)
     }
 
+    /// Get a batch operation
+    pub(crate) async fn get_batch_operation<T: serde::de::DeserializeOwned>(
+        &self,
+        name: &str,
+    ) -> Result<T> {
+        let url = self.build_batch_url(name, None)?;
+        let response = self.http_client.get(url).send().await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            return Err(Error::ApiError {
+                status_code: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        let response = response.json().await?;
+        Ok(response)
+    }
+
+    /// List batch operations
+    pub(crate) async fn list_batch_operations(
+        &self,
+        page_size: Option<u32>,
+        page_token: Option<String>,
+    ) -> Result<ListBatchesResponse> {
+        let mut url = self.build_batch_url("batches", None)?;
+
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", &token);
+        }
+
+        let response = self.http_client.get(url).send().await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            return Err(Error::ApiError {
+                status_code: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        let response = response.json().await?;
+        Ok(response)
+    }
+
+    /// Cancel a batch operation
+    pub(crate) async fn cancel_batch_operation(&self, name: &str) -> Result<()> {
+        let url = self.build_batch_url(name, Some("cancel"))?;
+        let response = self
+            .http_client
+            .post(url)
+            .json(&serde_json::json!({}))
+            .send()
+            .await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            return Err(Error::ApiError {
+                status_code: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        Ok(())
+    }
+
+    /// Delete a batch operation
+    pub(crate) async fn delete_batch_operation(&self, name: &str) -> Result<()> {
+        let url = self.build_batch_url(name, None)?;
+        let response = self.http_client.delete(url).send().await?;
+
+        let status = response.status();
+        if !status.is_success() {
+            let error_text = response.text().await?;
+            return Err(Error::ApiError {
+                status_code: status.as_u16(),
+                message: error_text,
+            });
+        }
+
+        Ok(())
+    }
+
     /// Post JSON to an endpoint
     async fn post_json<T: serde::Serialize>(&self, request: T, endpoint: &str) -> Result<Value> {
         let url = self.build_url(endpoint)?;
@@ -157,6 +248,16 @@ impl GeminiClient {
         let url_str = format!(
             "{}{}:{}?key={}",
             self.base_url, self.model, endpoint, self.api_key
+        );
+        Url::parse(&url_str).map_err(|e| Error::RequestError(e.to_string()))
+    }
+
+    /// Build a URL for a batch operation
+    fn build_batch_url(&self, name: &str, action: Option<&str>) -> Result<Url> {
+        let action_suffix = action.map_or("".to_string(), |a| format!(":{}", a));
+        let url_str = format!(
+            "{}{}{}?key={}",
+            self.base_url, name, action_suffix, self.api_key
         );
         Url::parse(&url_str).map_err(|e| Error::RequestError(e.to_string()))
     }
@@ -195,7 +296,7 @@ impl Gemini {
         model: String,
         base_url: String,
     ) -> Self {
-        let client = GeminiClient::with_base_url(api_key, model, base_url);
+        let client = GeminiClient::with_base_url(api_key.into(), model, base_url);
         Self {
             client: Arc::new(client),
         }
@@ -214,5 +315,39 @@ impl Gemini {
     /// Start building a synchronous batch content generation request
     pub fn batch_generate_content_sync(&self) -> BatchBuilder {
         BatchBuilder::new(self.client.clone())
+    }
+
+    /// Get a handle to a batch operation by its name.
+    pub fn get_batch(&self, name: &str) -> Batch {
+        Batch::new(name.to_string(), self.client.clone())
+    }
+
+    /// Lists batch operations.
+    ///
+    /// This method returns a stream that handles pagination automatically.
+    pub fn list_batches(
+        &self,
+        page_size: impl Into<Option<u32>>,
+    ) -> impl Stream<Item = Result<BatchOperation>> + Send {
+        let client = self.client.clone();
+        let page_size = page_size.into();
+        async_stream::try_stream! {
+            let mut page_token: Option<String> = None;
+            loop {
+                let response = client
+                    .list_batch_operations(page_size, page_token.clone())
+                    .await?;
+
+                for operation in response.operations {
+                    yield operation;
+                }
+
+                if let Some(next_page_token) = response.next_page_token {
+                    page_token = Some(next_page_token);
+                } else {
+                    break;
+                }
+            }
+        }
     }
 }

@@ -39,14 +39,14 @@ use gemini_rust::Gemini;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY")?;
     let client = Gemini::new(api_key);
-    
+
     let response = client
         .generate_content()
         .with_system_prompt("You are a helpful assistant.")
         .with_user_message("Hello, how are you?")
         .execute()
         .await?;
-    
+
     println!("Response: {}", response.text());
     Ok(())
 }
@@ -61,7 +61,7 @@ use futures::StreamExt;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
-    
+
     let mut stream = client
         .generate_content()
         .with_user_message("Tell me a story about programming")
@@ -85,7 +85,7 @@ use gemini_rust::{Gemini, FunctionDeclaration, FunctionParameters, PropertyDetai
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
-    
+
     // Define a custom function
     let weather_function = FunctionDeclaration::new(
         "get_weather",
@@ -97,14 +97,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 true,
             )
     );
-    
+
     let response = client
         .generate_content()
         .with_user_message("What's the weather like in Tokyo?")
         .with_function(weather_function)
         .execute()
         .await?;
-    
+
     // Handle function calls
     if let Some(function_call) = response.function_calls().first() {
         println!("Function: {}", function_call.name);
@@ -122,7 +122,7 @@ use gemini_rust::{Gemini, Tool};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
-    
+
     let response = client
         .generate_content()
         .with_user_message("What's the latest news about Rust programming language?")
@@ -232,20 +232,20 @@ use gemini_rust::{Gemini, Blob};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
-    
+
     // Load and encode image as base64
     let image_data = std::fs::read("path/to/image.jpg")?;
     let base64_image = base64::encode(&image_data);
-    
+
     let blob = Blob::new("image/jpeg", base64_image);
-    
+
     let response = client
         .generate_content()
         .with_user_message("What's in this image?")
         .with_inline_data("image/jpeg", base64_image)
         .execute()
         .await?;
-    
+
     println!("Response: {}", response.text());
     Ok(())
 }
@@ -273,7 +273,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         })
         .execute()
         .await?;
-    
+
     println!("Response: {}", response.text());
     Ok(())
 }
@@ -322,14 +322,24 @@ The repository includes comprehensive examples:
 | Example | Description |
 |---------|-------------|
 | [`simple.rs`](examples/simple.rs) | Basic text generation and function calling |
+| [`advanced.rs`](examples/advanced.rs) | Advanced content generation with all parameters |
 | [`streaming.rs`](examples/streaming.rs) | Real-time streaming responses |
 | [`tools.rs`](examples/tools.rs) | Custom function declarations |
 | [`google_search.rs`](examples/google_search.rs) | Google Search integration |
-| [`thinking_basic.rs`](examples/thinking_basic.rs) | Gemini 2.5 thinking mode |
+| [`google_search_with_functions.rs`](examples/google_search_with_functions.rs) | Google Search with custom functions |
+| [`thinking_basic.rs`](examples/thinking_basic.rs) | Gemini 2.5 thinking mode (basic) |
+| [`thinking_advanced.rs`](examples/thinking_advanced.rs) | Gemini 2.5 thinking mode (advanced) |
 | [`batch_generate.rs`](examples/batch_generate.rs) | Batch content generation |
+| [`batch_cancel.rs`](examples/batch_cancel.rs) | Batch operation cancellation |
+| [`batch_delete.rs`](examples/batch_delete.rs) | Batch operation deletion |
+| [`batch_list.rs`](examples/batch_list.rs) | Batch operation listing with streaming |
+| [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |
 | [`structured_response.rs`](examples/structured_response.rs) | Structured JSON output |
+| [`generation_config.rs`](examples/generation_config.rs) | Custom generation parameters |
+| [`custom_base_url.rs`](examples/custom_base_url.rs) | Using a custom API endpoint |
+| [`curl_equivalent.rs`](examples/curl_equivalent.rs) | Equivalent cURL commands for API calls |
 
 Run an example:
 

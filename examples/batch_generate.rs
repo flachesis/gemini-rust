@@ -11,7 +11,8 @@
 //! cargo run --package gemini-rust --example batch_generate
 //! ```
 
-use gemini_rust::{Gemini, Message};
+use gemini_rust::{BatchResultItem, BatchStatus, Gemini, Message};
+use std::time::Duration;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,7 +35,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .build();
 
     // Create the batch request
-    let batch_response = gemini
+    let batch = gemini
         .batch_generate_content_sync()
         .with_request(request1)
         .with_request(request2)
@@ -43,16 +44,53 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Print the batch information
     println!("Batch created successfully!");
-    println!("Batch ID: {}", batch_response.name);
-    println!("State: {}", batch_response.metadata.state);
-    println!(
-        "Request count: {}",
-        batch_response.metadata.batch_stats.request_count
-    );
+    println!("Batch Name: {}", batch.name());
 
-    if batch_response.metadata.state == "BATCH_STATE_PENDING" {
-        println!("Batch is currently processing. You would need to poll the batch status to get results.");
-        println!("Note: This is an async operation that may take some time to complete.");
+    // Wait for the batch to complete
+    println!("Waiting for batch to complete...");
+    match batch.wait_for_completion(Duration::from_secs(5)).await {
+        Ok(final_status) => {
+            // Print the final status
+            match final_status {
+                BatchStatus::Succeeded { results } => {
+                    println!("Batch succeeded!");
+                    for item in results {
+                        match item {
+                            BatchResultItem::Success { key, response } => {
+                                println!("--- Response for Key {} ---", key);
+                                println!("{}", response.text());
+                            }
+                            BatchResultItem::Error { key, error } => {
+                                println!("--- Error for Key {} ---", key);
+                                println!("Code: {}, Message: {}", error.code, error.message);
+                                if let Some(details) = &error.details {
+                                    println!("Details: {}", details);
+                                }
+                            }
+                        }
+                    }
+                }
+                BatchStatus::Cancelled => {
+                    println!("Batch was cancelled.");
+                }
+                BatchStatus::Expired => {
+                    println!("Batch expired.");
+                }
+                _ => {
+                    println!(
+                        "Batch finished with an unexpected status: {:?}",
+                        final_status
+                    );
+                }
+            }
+        }
+        Err((_batch, e)) => {
+            println!(
+                "Batch failed: {}. You can retry with the returned batch.",
+                e
+            );
+            // Here you could retry: batch.wait_for_completion(Duration::from_secs(5)).await, etc.
+        }
     }
 
     Ok(())
