@@ -2,7 +2,6 @@ use gemini_rust::{
     Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Part,
     PropertyDetails,
 };
-use serde_json;
 use std::env;
 
 #[tokio::main]
@@ -10,7 +9,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY")?;
 
     // Create client
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to cheate Gemini API client");
 
     // Define a weather function
     let get_weather = FunctionDeclaration::new(
@@ -73,10 +72,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .with_user_message("What's the weather like in Tokyo right now?");
 
         // Add the function call from the model's response
-        let mut call_content = Content::default();
-        call_content.parts = Some(vec![Part::FunctionCall {
-            function_call: (*function_call).clone(),
-        }]);
+        let call_content = Content {
+            parts: Some(vec![Part::FunctionCall {
+                function_call: (*function_call).clone(),
+            }]),
+            ..Default::default()
+        };
         final_request.contents.push(call_content);
 
         // Now add the function response using the JSON value

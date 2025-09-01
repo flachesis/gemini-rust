@@ -2,12 +2,11 @@ use std::sync::Arc;
 
 use crate::{
     batch::Batch,
-    client::GeminiClient,
+    client::{Error as ClientError, GeminiClient},
     models::{
         BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
         InputConfig, RequestMetadata, RequestsContainer,
     },
-    Result,
 };
 
 /// A builder for creating and executing synchronous batch content generation requests.
@@ -78,7 +77,7 @@ impl BatchBuilder {
     /// Submits the batch request to the Gemini API and returns a `Batch` handle.
     ///
     /// This method consumes the builder and initiates the long-running batch operation.
-    pub async fn execute(self) -> Result<Batch> {
+    pub async fn execute(self) -> Result<Batch, ClientError> {
         let client = self.client.clone();
         let request = self.build();
         let response = client.batch_generate_content_sync(request).await?;

@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   }'
 
     // Create client - now using gemini-2.0-flash by default
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Method 1: Using the high-level API (simplest approach)
     println!("--- Method 1: Using the high-level API ---");

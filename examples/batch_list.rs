@@ -9,7 +9,7 @@
 //! cargo run --package gemini-rust --example batch_list
 //! ```
 
-use futures::stream::StreamExt;
+use futures::StreamExt;
 use gemini_rust::Gemini;
 
 #[tokio::main]
@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY not set");
 
     // Create a new Gemini client
-    let gemini = Gemini::new(api_key);
+    let gemini = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     println!("Listing all batch operations...");
 

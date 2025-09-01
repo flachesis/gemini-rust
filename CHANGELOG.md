@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - v1.4.0
+
+### 💥 Breaking Changes
+
+#### Constructor Changes
+- **All client constructors now return `Result<Gemini, Error>`** instead of `Gemini`
+  - `Gemini::new()` now returns `Result<Gemini, ClientError>`
+  - `Gemini::pro()` now returns `Result<Gemini, ClientError>`
+  - `Gemini::with_model()` now returns `Result<Gemini, ClientError>`
+  - `Gemini::with_base_url()` now returns `Result<Gemini, ClientError>`
+  - `Gemini::with_model_and_base_url()` now returns `Result<Gemini, ClientError>`
+  - **Migration**: Add `?` operator or `.expect()` calls: `let client = Gemini::new(api_key)?;`
+
+#### Model Enum Introduction
+- **New `Model` enum for type-safe model selection**
+  - `Model::Gemini25Flash` - Fast, efficient model (default)
+  - `Model::Gemini25FlashLite` - Lightweight model
+  - `Model::Gemini25Pro` - Advanced model with thinking capabilities
+  - `Model::TextEmbedding004` - Latest embedding model
+  - `Model::Custom(String)` - Custom model names
+  - **Migration**: Use `Model::TextEmbedding004` instead of `"models/text-embedding-004".to_string()`
+
+#### Streaming API Updates
+- **Updated streaming to use `TryStreamExt` for better error handling**
+  - Import changed from `futures::StreamExt` to `futures::TryStreamExt`
+  - Stream iteration changed from `stream.next().await` to `stream.try_next().await?`
+  - **Migration**: Update imports and use `try_next()` with proper error handling
+
+#### Error Handling Refactor
+- **Improved error types with separate error enums**
+  - `ClientError` for client-related errors
+  - `BatchError` for batch operation errors
+  - Removed single `Error` enum in favor of contextual error types
+  - **Migration**: Update error handling to use specific error types
+
+#### Batch API Changes
+- **Removed `wait_for_completion` method from `Batch` struct**
+  - Method moved to standalone helper functions in examples
+  - **Migration**: Copy the `wait_for_completion` function from examples if needed
+
+#### Import Changes
+- **Module reorganization and new exports**
+  - `BatchStatus` moved to batch module
+  - New exports: `ClientError`, `BatchError`, `Model`
+  - **Migration**: Update imports to use new module structure
+
+#### URL Handling
+- **Base URL parameter now requires `Url` type instead of `String`**
+  - Custom base URLs must be parsed: `"https://example.com/".parse()?`
+  - **Migration**: Add `.parse()?` when providing custom base URLs
+
+### 🔧 Technical Improvements
+- **Enhanced error handling with `snafu` library**
+- **Improved type safety across all APIs**
+- **Better async stream handling**
+- **Consolidated error types for better developer experience**
+
 ## [1.3.1] - 2025-09-01
 
 ### 🔧 Maintenance

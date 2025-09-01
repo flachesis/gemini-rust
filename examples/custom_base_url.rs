@@ -10,9 +10,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client_custom = Gemini::with_model_and_base_url(
         api_key,
         "models/gemini-2.5-flash-lite-preview-06-17".to_string(),
-        custom_base_url.to_string(),
-    );
+        custom_base_url.to_string().parse().unwrap(),
+    )
+    .expect("unable to create Gemini API client");
+
     println!("Custom base URL client created successfully");
+
     let response = client_custom
         .generate_content()
         .with_system_prompt("You are a helpful assistant.")

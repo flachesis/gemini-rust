@@ -30,7 +30,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   }'
 
     // Create client
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string());
+    let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string())
+        .expect("unable to create Gemini API client");
 
     println!("=== Thinking Curl Equivalent Example ===\n");
 

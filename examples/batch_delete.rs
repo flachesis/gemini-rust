@@ -28,7 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let batch_name = env::var("BATCH_NAME").expect("BATCH_NAME not set");
 
     // Create a new Gemini client
-    let gemini = Gemini::new(api_key);
+    let gemini = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Get the batch operation
     let batch = gemini.get_batch(&batch_name);

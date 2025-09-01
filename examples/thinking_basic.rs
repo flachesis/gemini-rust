@@ -7,7 +7,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string());
+    let client = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
     println!("=== Gemini 2.5 Thinking Basic Example ===\n");
 

@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //   }'
 
     // Create client
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Create a content part that matches the JSON in the curl example
     let text_part = Part::Text {

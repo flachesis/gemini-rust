@@ -17,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get API key
     let api_key = env::var("GEMINI_API_KEY")?;
-    let gemini = Gemini::pro(api_key);
+    let gemini = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
     // Example 1: Add mp4 blob using Message struct
     let video_content = Content::inline_data("video/mp4", b64.clone());

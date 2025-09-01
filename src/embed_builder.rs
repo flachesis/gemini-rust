@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use crate::{
-    client::GeminiClient,
+    client::{Error as ClientError, GeminiClient},
     models::{
         BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
         EmbedContentRequest, TaskType,
     },
-    Content, Message, Result,
+    Content, Message,
 };
 
 /// Builder for embed generation requests
@@ -68,9 +68,9 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
-    pub async fn execute(self) -> Result<ContentEmbeddingResponse> {
+    pub async fn execute(self) -> Result<ContentEmbeddingResponse, ClientError> {
         let request = EmbedContentRequest {
-            model: self.client.model.clone(),
+            model: self.client.model.to_string(),
             content: self.contents.first().expect("No content set").clone(),
             task_type: self.task_type,
             title: self.title,
@@ -81,14 +81,14 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
-    pub async fn execute_batch(self) -> Result<BatchContentEmbeddingResponse> {
+    pub async fn execute_batch(self) -> Result<BatchContentEmbeddingResponse, ClientError> {
         let mut batch_request = BatchEmbedContentsRequest {
             requests: Vec::new(),
         };
 
         for content in self.contents {
             let request = EmbedContentRequest {
-                model: self.client.model.clone(),
+                model: self.client.model.to_string(),
                 content: content.clone(),
                 task_type: self.task_type.clone(),
                 title: self.title.clone(),

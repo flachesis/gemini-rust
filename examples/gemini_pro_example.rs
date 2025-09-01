@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create a Gemini client
-    let gemini = Gemini::pro(api_key);
+    let gemini = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
     // This example matches the exact curl request format:
     // curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
