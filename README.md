@@ -13,6 +13,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **📦 Batch Processing** - Efficient batch content generation and embedding
 - **🔄 Streaming Responses** - Real-time streaming of generated content
 - **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
+- **🎨 Image Generation** - Text-to-image generation and image editing capabilities
 - **🖼️ Multimodal Support** - Images and binary data processing
 - **📊 Text Embeddings** - Advanced embedding generation with multiple task types
 - **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters
@@ -109,6 +110,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(function_call) = response.function_calls().first() {
         println!("Function: {}", function_call.name);
         println!("Args: {}", function_call.args);
+    }
+    Ok(())
+}
+```
+
+### Image Generation
+
+```rust
+use gemini_rust::Gemini;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use std::fs;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::with_model(
+        std::env::var("GEMINI_API_KEY")?,
+        "models/gemini-2.5-flash-image-preview".to_string()
+    );
+
+    let response = client
+        .generate_content()
+        .with_user_message(
+            "Create a photorealistic image of a cute robot sitting in a garden, \
+             surrounded by colorful flowers. The robot should have a friendly \
+             expression and be made of polished metal."
+        )
+        .execute()
+        .await?;
+
+    // Save generated images
+    for candidate in response.candidates.iter() {
+        if let Some(parts) = &candidate.content.parts {
+            for part in parts.iter() {
+                if let gemini_rust::Part::InlineData { inline_data } = part {
+                    let image_bytes = BASE64.decode(&inline_data.data)?;
+                    fs::write("generated_image.png", image_bytes)?;
+                    println!("Image saved as generated_image.png");
+                }
+            }
+        }
     }
     Ok(())
 }
@@ -336,6 +377,9 @@ The repository includes comprehensive examples:
 | [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |
+| [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
+| [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
+| [`image_editing.rs`](examples/image_editing.rs) | Image editing with text prompts |
 | [`structured_response.rs`](examples/structured_response.rs) | Structured JSON output |
 | [`generation_config.rs`](examples/generation_config.rs) | Custom generation parameters |
 | [`custom_base_url.rs`](examples/custom_base_url.rs) | Using a custom API endpoint |
