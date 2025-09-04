@@ -1,11 +1,12 @@
-use gemini_rust::{Gemini, TaskType};
+use gemini_rust::{Gemini, Model, TaskType};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY")?;
 
     // Create client with the default model (gemini-2.0-flash)
-    let client = Gemini::with_model(api_key, "models/text-embedding-004".to_string());
+    let client = Gemini::with_model(api_key, Model::TextEmbedding004)
+        .expect("unable to create Gemini API client");
 
     println!("Sending batch embedding request to Gemini API...");
 

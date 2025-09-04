@@ -27,7 +27,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Image loaded: {}", image_path.display());
 
     // Create client
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     println!("--- Describe Image ---");
     let response = client

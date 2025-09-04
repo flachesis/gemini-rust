@@ -40,7 +40,7 @@ use gemini_rust::Gemini;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY")?;
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key)?;
 
     let response = client
         .generate_content()
@@ -58,11 +58,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use gemini_rust::Gemini;
-use futures::StreamExt;
+use futures::TryStreamExt;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     let mut stream = client
         .generate_content()
@@ -70,8 +70,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute_stream()
         .await?;
 
-    while let Some(chunk) = stream.next().await {
-        print!("{}", chunk?.text());
+    while let Some(chunk) = stream.try_next().await? {
+        print!("{}", chunk.text());
     }
     Ok(())
 }
@@ -86,7 +86,7 @@ use gemini_rust::{Gemini, FunctionDeclaration, FunctionParameters, PropertyDetai
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     // Define a custom function
     let weather_function = FunctionDeclaration::new(
@@ -128,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(
         std::env::var("GEMINI_API_KEY")?,
         "models/gemini-2.5-flash-image-preview".to_string()
-    );
+    )?;
 
     let response = client
         .generate_content()
@@ -169,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(
         std::env::var("GEMINI_API_KEY")?,
         "models/gemini-2.5-flash-preview-tts".to_string()
-    );
+    )?;
 
     let generation_config = GenerationConfig {
         response_modalities: Some(vec!["AUDIO".to_string()]),
@@ -218,7 +218,7 @@ use gemini_rust::{Gemini, Tool};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     let response = client
         .generate_content()
@@ -240,10 +240,7 @@ use gemini_rust::Gemini;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Use Gemini 2.5 Pro for advanced thinking capabilities
-    let client = Gemini::with_model(
-        std::env::var("GEMINI_API_KEY")?,
-        "models/gemini-2.5-pro".to_string()
-    );
+    let client = Gemini::pro(std::env::var("GEMINI_API_KEY")?)?;
 
     let response = client
         .generate_content()
@@ -266,14 +263,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Text Embeddings
 
 ```rust
-use gemini_rust::{Gemini, TaskType};
+use gemini_rust::{Gemini, Model, TaskType};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(
         std::env::var("GEMINI_API_KEY")?,
-        "models/text-embedding-004".to_string()
-    );
+        Model::TextEmbedding004
+    )?;
 
     let response = client
         .embed_content()
@@ -294,7 +291,7 @@ use gemini_rust::{Gemini, Message};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     // Create multiple requests
     let request1 = client
@@ -328,7 +325,7 @@ use gemini_rust::{Gemini, Blob};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     // Load and encode image as base64
     let image_data = std::fs::read("path/to/image.jpg")?;
@@ -355,7 +352,7 @@ use gemini_rust::{Gemini, GenerationConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 
     let response = client
         .generate_content()
@@ -384,13 +381,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 use gemini_rust::Gemini;
 
 // Use Gemini 2.5 Flash (default)
-let client = Gemini::new(api_key);
+let client = Gemini::new(api_key)?;
 
 // Use Gemini 2.5 Pro for advanced tasks
-let client = Gemini::pro(api_key);
+let client = Gemini::pro(api_key)?;
 
 // Use specific model
-let client = Gemini::with_model(api_key, "models/gemini-1.5-pro".to_string());
+let client = Gemini::with_model(api_key, "models/gemini-1.5-pro".to_string())?;
 ```
 
 ### Custom Base URL
@@ -401,15 +398,15 @@ use gemini_rust::Gemini;
 // Custom endpoint
 let client = Gemini::with_base_url(
     api_key,
-    "https://custom-api.example.com/v1/".to_string()
-);
+    "https://custom-api.example.com/v1/".parse()?
+)?;
 
 // Custom model and endpoint
 let client = Gemini::with_model_and_base_url(
     api_key,
     "models/gemini-pro".to_string(),
-    "https://custom-api.example.com/v1/".to_string()
-);
+    "https://custom-api.example.com/v1/".parse()?
+)?;
 ```
 
 ## 📚 Examples
@@ -432,6 +429,7 @@ The repository includes comprehensive examples:
 | [`batch_list.rs`](examples/batch_list.rs) | Batch operation listing with streaming |
 | [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
+| [`error_handling.rs`](examples/error_handling.rs) | Error handling examples |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |
 | [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
 | [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
@@ -459,11 +457,11 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ## 🚦 Supported Models
 
-- **Gemini 2.5 Flash** - Fast, efficient model (default)
-- **Gemini 2.5 Pro** - Advanced model with thinking capabilities
-- **Gemini 1.5 Flash** - Previous generation fast model
-- **Gemini 1.5 Pro** - Previous generation advanced model
-- **Text Embedding 004** - Latest embedding model
+- **Gemini 2.5 Flash** - Fast, efficient model (default) - `Model::Gemini25Flash`
+- **Gemini 2.5 Flash Lite** - Lightweight model - `Model::Gemini25FlashLite`
+- **Gemini 2.5 Pro** - Advanced model with thinking capabilities - `Model::Gemini25Pro`
+- **Text Embedding 004** - Latest embedding model - `Model::TextEmbedding004`
+- **Custom models** - Use `Model::Custom(String)` or string literals for other models
 
 ## 🤝 Contributing
 

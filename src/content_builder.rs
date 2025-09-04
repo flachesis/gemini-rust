@@ -1,15 +1,14 @@
-use std::{pin::Pin, sync::Arc};
-
-use futures::Stream;
+use futures::TryStream;
+use std::sync::Arc;
 
 use crate::{
-    client::GeminiClient,
+    client::{Error as ClientError, GeminiClient},
     models::{
         FunctionCallingConfig, GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ToolConfig,
     },
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Result, Role, Tool,
+    Message, Role, Tool,
 };
 
 /// Builder for content generation requests
@@ -341,7 +340,7 @@ impl ContentBuilder {
     }
 
     /// Execute the request
-    pub async fn execute(self) -> Result<GenerationResponse> {
+    pub async fn execute(self) -> Result<GenerationResponse, ClientError> {
         let client = self.client.clone();
         let request = self.build();
         client.generate_content_raw(request).await
@@ -350,7 +349,8 @@ impl ContentBuilder {
     /// Execute the request with streaming
     pub async fn execute_stream(
         self,
-    ) -> Result<Pin<Box<dyn Stream<Item = Result<GenerationResponse>> + Send>>> {
+    ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>
+    {
         let request = GenerateContentRequest {
             contents: self.contents,
             generation_config: self.generation_config,

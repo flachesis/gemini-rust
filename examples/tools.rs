@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     println!("--- Tools example with multiple functions ---");
 

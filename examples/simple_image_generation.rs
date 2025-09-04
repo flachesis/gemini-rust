@@ -12,7 +12,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create client with the image generation model
     // Use Gemini 2.5 Flash Image Preview for image generation
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string());
+    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
+        .expect("unable to create Gemini API client");
 
     println!("🎨 Generating image with Gemini...");
 

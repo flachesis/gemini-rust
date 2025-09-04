@@ -7,17 +7,46 @@
 //! 4. Canceling the batch when CTRL-C is pressed
 //! 5. Properly handling the result
 
-use gemini_rust::{Gemini, Message, Result};
+use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
 use std::{env, sync::Arc, time::Duration};
 use tokio::{signal, sync::Mutex};
 
+/// Waits for the batch operation to complete by periodically polling its status.
+///
+/// This method polls the batch status with a specified delay until the operation
+/// reaches a terminal state (Succeeded, Failed, Cancelled, or Expired).
+///
+/// Consumes the batch and returns the final status. If there's an error during polling,
+/// the batch is returned in the error variant so it can be retried.
+pub async fn wait_for_completion(
+    batch: Batch,
+    delay: Duration,
+) -> Result<BatchStatus, (Batch, BatchError)> {
+    let batch_name = batch.name.clone();
+    loop {
+        match batch.status().await {
+            Ok(status) => match status {
+                BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
+                BatchStatus::Expired => {
+                    return Err((batch, BatchError::BatchExpired { name: batch_name }))
+                }
+                _ => tokio::time::sleep(delay).await,
+            },
+            Err(e) => match e {
+                BatchError::BatchFailed { .. } => return Err((batch, e)),
+                _ => return Err((batch, e)), // Return the batch and error for retry
+            },
+        }
+    }
+}
+
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get the API key from the environment
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
 
     // Create the Gemini client
-    let gemini = Gemini::new(api_key);
+    let gemini = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Create a batch with multiple requests
     let mut batch_generate_content = gemini
@@ -87,7 +116,7 @@ async fn main() -> Result<()> {
     // Wait for the batch to complete or be canceled
     if let Some(batch) = batch.lock().await.take() {
         println!("Waiting for batch to complete or be canceled...");
-        match batch.wait_for_completion(Duration::from_secs(5)).await {
+        match wait_for_completion(batch, Duration::from_secs(5)).await {
             Ok(final_status) => {
                 // Cancel task is no longer needed since batch completed
                 cancel_task.abort();

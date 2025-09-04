@@ -11,7 +11,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client with the image generation model
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string());
+    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
+        .expect("unable to create Gemini API client");
 
     println!("🎨 Image Editing with Gemini");
     println!("This example shows how to edit images using text descriptions.");

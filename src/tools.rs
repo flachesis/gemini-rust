@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 
 /// Tool that can be used by the model
@@ -203,6 +204,24 @@ pub struct FunctionCall {
     pub args: serde_json::Value,
 }
 
+#[derive(Debug, Snafu)]
+pub enum FunctionCallError {
+    #[snafu(display("failed to deserialize parameter '{key}'"))]
+    Deserialization {
+        source: serde_json::Error,
+        key: String,
+    },
+
+    #[snafu(display("parameter '{key}' is missing in arguments '{args}'"))]
+    MissingParameter {
+        key: String,
+        args: serde_json::Value,
+    },
+
+    #[snafu(display("arguments should be an object; actual: {actual}"))]
+    ArgumentTypeMismatch { actual: String },
+}
+
 impl FunctionCall {
     /// Create a new function call
     pub fn new(name: impl Into<String>, args: serde_json::Value) -> Self {
@@ -213,24 +232,25 @@ impl FunctionCall {
     }
 
     /// Get a parameter from the arguments
-    pub fn get<T: serde::de::DeserializeOwned>(&self, key: &str) -> crate::Result<T> {
+    pub fn get<T: serde::de::DeserializeOwned>(&self, key: &str) -> Result<T, FunctionCallError> {
         match &self.args {
             serde_json::Value::Object(obj) => {
                 if let Some(value) = obj.get(key) {
-                    serde_json::from_value(value.clone()).map_err(|e| {
-                        crate::Error::FunctionCallError(format!(
-                            "Error deserializing parameter {key}: {e}"
-                        ))
+                    serde_json::from_value(value.clone()).with_context(|_| DeserializationSnafu {
+                        key: key.to_string(),
                     })
                 } else {
-                    Err(crate::Error::FunctionCallError(format!(
-                        "Missing parameter: {key}"
-                    )))
+                    Err(MissingParameterSnafu {
+                        key: key.to_string(),
+                        args: self.args.clone(),
+                    }
+                    .build())
                 }
             }
-            _ => Err(crate::Error::FunctionCallError(
-                "Arguments are not an object".to_string(),
-            )),
+            _ => Err(ArgumentTypeMismatchSnafu {
+                actual: self.args.to_string(),
+            }
+            .build()),
         }
     }
 }

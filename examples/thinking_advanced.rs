@@ -1,4 +1,4 @@
-use futures_util::StreamExt;
+use futures::TryStreamExt;
 use gemini_rust::{
     FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails, ThinkingConfig,
 };
@@ -10,7 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string());
+    let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string())
+        .expect("unable to create Gemini API client");
 
     println!("=== Gemini 2.5 Thinking Advanced Example ===\n");
 
@@ -27,26 +28,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Streaming response:");
     let mut thoughts_shown = false;
-    while let Some(chunk_result) = stream.next().await {
-        match chunk_result {
-            Ok(chunk) => {
-                // Check if there's thinking content
-                let thoughts = chunk.thoughts();
-                if !thoughts.is_empty() && !thoughts_shown {
-                    println!("\nThinking process:");
-                    for (i, thought) in thoughts.iter().enumerate() {
-                        println!("Thought {}: {}", i + 1, thought);
-                    }
-                    println!("\nAnswer:");
-                    thoughts_shown = true;
-                }
-
-                // Display general text content
-                print!("{}", chunk.text());
-                std::io::Write::flush(&mut std::io::stdout())?;
+    while let Some(chunk) = stream.try_next().await? {
+        // Check if there's thinking content
+        let thoughts = chunk.thoughts();
+        if !thoughts.is_empty() && !thoughts_shown {
+            println!("\nThinking process:");
+            for (i, thought) in thoughts.iter().enumerate() {
+                println!("Thought {}: {}", i + 1, thought);
             }
-            Err(e) => eprintln!("Streaming error: {}", e),
+            println!("\nAnswer:");
+            thoughts_shown = true;
         }
+
+        // Display general text content
+        print!("{}", chunk.text());
+        std::io::Write::flush(&mut std::io::stdout())?;
     }
     println!("\n");
 

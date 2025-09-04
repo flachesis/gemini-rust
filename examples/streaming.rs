@@ -1,4 +1,4 @@
-use futures_util::StreamExt;
+use futures_util::TryStreamExt;
 use gemini_rust::Gemini;
 use std::env;
 
@@ -8,7 +8,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
-    let client = Gemini::new(api_key);
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Simple streaming generation
     println!("--- Streaming generation ---");
@@ -20,15 +20,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute_stream()
         .await?;
 
+    // pin!(stream);
+
     print!("Streaming response: ");
-    while let Some(chunk_result) = stream.next().await {
-        match chunk_result {
-            Ok(chunk) => {
-                print!("{}", chunk.text());
-                std::io::Write::flush(&mut std::io::stdout())?;
-            }
-            Err(e) => eprintln!("Error in stream: {}", e),
-        }
+    while let Some(chunk) = stream.try_next().await? {
+        print!("{}", chunk.text());
+        std::io::Write::flush(&mut std::io::stdout())?;
     }
     println!("\n");
 

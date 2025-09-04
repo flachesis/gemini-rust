@@ -1,4 +1,5 @@
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Deserializer, Serialize};
+use snafu::Snafu;
 
 /// Role of a message in a conversation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -576,20 +577,20 @@ pub struct BatchStats {
 
 fn from_str_to_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
-    let s: String = serde::Deserialize::deserialize(deserializer)?;
-    s.parse::<i64>().map_err(serde::de::Error::custom)
+    String::deserialize(deserializer)?
+        .parse()
+        .map_err(de::Error::custom)
 }
 
 fn from_str_to_i64_optional<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
 where
-    D: serde::Deserializer<'de>,
+    D: Deserializer<'de>,
 {
-    match Option::<String>::deserialize(deserializer)? {
-        Some(s) => s.parse::<i64>().map(Some).map_err(serde::de::Error::custom),
-        None => Ok(None),
-    }
+    Option::<String>::deserialize(deserializer)?
+        .map(|s| s.parse::<i64>().map_err(de::Error::custom))
+        .transpose()
 }
 
 /// Configuration for thinking (Gemini 2.5 series only)
@@ -913,124 +914,6 @@ pub enum TaskType {
     CodeRetrievalQuery,
 }
 
-/// Represents the overall status of a batch operation.
-#[derive(Debug, Clone, PartialEq)]
-pub enum BatchStatus {
-    /// The operation is waiting to be processed.
-    Pending,
-    /// The operation is currently being processed.
-    Running {
-        pending_count: i64,
-        completed_count: i64,
-        failed_count: i64,
-        total_count: i64,
-    },
-    /// The operation has completed successfully.
-    Succeeded { results: Vec<BatchResultItem> },
-    /// The operation was cancelled by the user.
-    Cancelled,
-    /// The operation has expired.
-    Expired,
-}
-
-impl BatchStatus {
-    /// Creates a `BatchStatus` from a `BatchOperation` response.
-    pub(crate) fn from_operation(operation: BatchOperation) -> crate::Result<Self> {
-        if operation.done {
-            // The operation is complete. Determine the final state.
-            match operation.result {
-                Some(OperationResult::Failure { error }) => {
-                    Err(crate::Error::BatchFailed {
-                        name: operation.name,
-                        error,
-                    })
-                }
-                Some(OperationResult::Success { response }) => {
-                    let mut results: Vec<BatchResultItem> = response
-                        .inlined_responses
-                        .inlined_responses
-                        .into_iter()
-                        .map(|item| match item {
-                            BatchGenerateContentResponseItem::Success { response, metadata } => {
-                                BatchResultItem::Success {
-                                    key: metadata.key,
-                                    response,
-                                }
-                            }
-                            BatchGenerateContentResponseItem::Error { error, metadata } => {
-                                BatchResultItem::Error {
-                                    key: metadata.key,
-                                    error,
-                                }
-                            }
-                        })
-                        .collect();
-
-                    // Sort results by key to ensure a consistent order.
-                    results.sort_by_key(|item| {
-                        let key_str = match item {
-                            BatchResultItem::Success { key, .. } => key,
-                            BatchResultItem::Error { key, .. } => key,
-                        };
-                        key_str.parse::<usize>().unwrap_or(usize::MAX)
-                    });
-
-                    Ok(BatchStatus::Succeeded { results })
-                }
-                // If `done` is true with no error, a response is expected for success.
-                // If not, it might be a successful cancellation or an inconsistent state.
-                None => match operation.metadata.state {
-                    BatchState::BatchStateCancelled => Ok(BatchStatus::Cancelled),
-                    BatchState::BatchStateExpired => Ok(BatchStatus::Expired),
-                    BatchState::BatchStateSucceeded => Ok(BatchStatus::Succeeded { results: vec![] }), // Succeeded but with no data
-                    _ => Err(crate::Error::InconsistentBatchState {
-                        description: format!(
-                            "Operation is done but has no response or error. Final state is ambiguous: {:?}.",
-                            operation.metadata.state
-                        ),
-                    }),
-                },
-            }
-        } else {
-            // The operation is still in progress.
-            match operation.metadata.state {
-                BatchState::BatchStatePending => Ok(BatchStatus::Pending),
-                BatchState::BatchStateRunning => {
-                    let total_count = operation.metadata.batch_stats.request_count;
-                    let pending_count = operation
-                        .metadata
-                        .batch_stats
-                        .pending_request_count
-                        .unwrap_or(total_count); // Assume all are pending if not specified
-                    let completed_count = operation
-                        .metadata
-                        .batch_stats
-                        .completed_request_count
-                        .unwrap_or(0);
-                    let failed_count = operation
-                        .metadata
-                        .batch_stats
-                        .failed_request_count
-                        .unwrap_or(0);
-                    Ok(BatchStatus::Running {
-                        pending_count,
-                        completed_count,
-                        failed_count,
-                        total_count,
-                    })
-                }
-                // Any other state is inconsistent with `done: false`.
-                terminal_state => Err(crate::Error::InconsistentBatchState {
-                    description: format!(
-                        "Operation is not done, but API reported a terminal state: {:?}.",
-                        terminal_state
-                    ),
-                }),
-            }
-        }
-    }
-}
-
 /// Represents a long-running operation from the Gemini API.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BatchOperation {
@@ -1042,12 +925,20 @@ pub struct BatchOperation {
     pub result: Option<OperationResult>,
 }
 
+/// Represents an error within a long-running operation.
+#[derive(Debug, Snafu, serde::Deserialize, serde::Serialize)]
+pub struct OperationError {
+    pub code: i32,
+    pub message: String,
+    // details are not included as they are not consistently typed in the API
+}
+
 /// Represents the result of a completed batch operation, which is either a response or an error.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum OperationResult {
     Success { response: BatchOperationResponse },
-    Failure { error: crate::error::OperationError },
+    Failure { error: OperationError },
 }
 
 /// Represents the response of a batch operation.

@@ -38,14 +38,152 @@
 //! }
 //! ```
 
-use std::{sync::Arc, time::Duration};
-use tokio::time::sleep;
+use snafu::{OptionExt, ResultExt, Snafu};
+use std::{result::Result, sync::Arc};
 
 use crate::{
-    client::GeminiClient,
-    models::{BatchOperation, BatchStatus},
-    Error, Result,
+    client::{Error as ClientError, GeminiClient},
+    models::OperationError,
+    models::{BatchOperation, OperationResult},
+    BatchGenerateContentResponseItem, BatchResultItem, BatchState,
 };
+
+#[derive(Debug, Snafu)]
+pub enum Error {
+    #[snafu(display("batch '{name}' expired before finishing"))]
+    BatchExpired {
+        /// Batch name.
+        name: String,
+    },
+
+    #[snafu(display("batch '{name}' failed"))]
+    BatchFailed {
+        source: OperationError,
+        /// Batch name.
+        name: String,
+    },
+
+    #[snafu(display("client invocation error"))]
+    Client { source: Box<ClientError> },
+
+    /// This error should never occur, as the Google API contract
+    /// guarantees that a result will always be provided.
+    ///
+    /// I put it here anyway to avoid potential panic in case of
+    /// Google's dishonesty or GCP internal errors.
+    #[snafu(display("batch '{name}' completed but no result provided - API contract violation"))]
+    MissingResult {
+        /// Batch name.
+        name: String,
+    },
+}
+
+/// Represents the overall status of a batch operation.
+#[derive(Debug, Clone, PartialEq)]
+pub enum BatchStatus {
+    /// The operation is waiting to be processed.
+    Pending,
+    /// The operation is currently being processed.
+    Running {
+        pending_count: i64,
+        completed_count: i64,
+        failed_count: i64,
+        total_count: i64,
+    },
+    /// The operation has completed successfully.
+    Succeeded { results: Vec<BatchResultItem> },
+    /// The operation was cancelled by the user.
+    Cancelled,
+    /// The operation has expired.
+    Expired,
+}
+
+impl TryFrom<BatchOperation> for BatchStatus {
+    type Error = Error;
+
+    fn try_from(operation: BatchOperation) -> Result<Self, Self::Error> {
+        if operation.done {
+            // According to Google API documentation, when done=true, result must be present
+            let result = operation.result.context(MissingResultSnafu {
+                name: operation.name.clone(),
+            })?;
+
+            match result {
+                OperationResult::Failure { error } => Err(error).context(BatchFailedSnafu {
+                    name: operation.name,
+                }),
+                OperationResult::Success { response } => {
+                    let mut results: Vec<BatchResultItem> = response
+                        .inlined_responses
+                        .inlined_responses
+                        .into_iter()
+                        .map(|item| match item {
+                            BatchGenerateContentResponseItem::Success { response, metadata } => {
+                                BatchResultItem::Success {
+                                    key: metadata.key,
+                                    response,
+                                }
+                            }
+                            BatchGenerateContentResponseItem::Error { error, metadata } => {
+                                BatchResultItem::Error {
+                                    key: metadata.key,
+                                    error,
+                                }
+                            }
+                        })
+                        .collect();
+
+                    // Sort results by key to ensure a consistent order.
+                    results.sort_by_key(|item| {
+                        let key_str = match item {
+                            BatchResultItem::Success { key, .. } => key,
+                            BatchResultItem::Error { key, .. } => key,
+                        };
+                        key_str.parse::<usize>().unwrap_or(usize::MAX)
+                    });
+
+                    // Handle terminal states based on metadata for edge cases
+                    match operation.metadata.state {
+                        BatchState::BatchStateCancelled => Ok(BatchStatus::Cancelled),
+                        BatchState::BatchStateExpired => Ok(BatchStatus::Expired),
+                        _ => Ok(BatchStatus::Succeeded { results }),
+                    }
+                }
+            }
+        } else {
+            // The operation is still in progress.
+            match operation.metadata.state {
+                BatchState::BatchStatePending => Ok(BatchStatus::Pending),
+                BatchState::BatchStateRunning => {
+                    let total_count = operation.metadata.batch_stats.request_count;
+                    let pending_count = operation
+                        .metadata
+                        .batch_stats
+                        .pending_request_count
+                        .unwrap_or(total_count);
+                    let completed_count = operation
+                        .metadata
+                        .batch_stats
+                        .completed_request_count
+                        .unwrap_or(0);
+                    let failed_count = operation
+                        .metadata
+                        .batch_stats
+                        .failed_request_count
+                        .unwrap_or(0);
+                    Ok(BatchStatus::Running {
+                        pending_count,
+                        completed_count,
+                        failed_count,
+                        total_count,
+                    })
+                }
+                // For non-running states when done=false, treat as pending
+                _ => Ok(BatchStatus::Pending),
+            }
+        }
+    }
+}
 
 /// Represents a long-running batch operation, providing methods to manage its lifecycle.
 ///
@@ -71,9 +209,15 @@ impl Batch {
     /// Retrieves the current status of the batch operation by making an API call.
     ///
     /// This method provides a snapshot of the batch's state at a single point in time.
-    pub async fn status(&self) -> Result<BatchStatus> {
-        let operation: BatchOperation = self.client.get_batch_operation(&self.name).await?;
-        BatchStatus::from_operation(operation)
+    pub async fn status(&self) -> Result<BatchStatus, Error> {
+        let operation: BatchOperation = self
+            .client
+            .get_batch_operation(&self.name)
+            .await
+            .map_err(Box::new)
+            .context(ClientSnafu)?;
+
+        BatchStatus::try_from(operation)
     }
 
     /// Sends a request to the API to cancel the batch operation.
@@ -83,7 +227,7 @@ impl Batch {
     ///
     /// Consumes the batch. If cancellation fails, returns the batch and error information
     /// so it can be retried.
-    pub async fn cancel(self) -> std::result::Result<(), (Self, crate::Error)> {
+    pub async fn cancel(self) -> Result<(), (Self, ClientError)> {
         match self.client.cancel_batch_operation(&self.name).await {
             Ok(()) => Ok(()),
             Err(e) => Err((self, e)),
@@ -98,39 +242,10 @@ impl Batch {
     ///
     /// Consumes the batch. If deletion fails, returns the batch and error information
     /// so it can be retried.
-    pub async fn delete(self) -> std::result::Result<(), (Self, crate::Error)> {
+    pub async fn delete(self) -> Result<(), (Self, ClientError)> {
         match self.client.delete_batch_operation(&self.name).await {
             Ok(()) => Ok(()),
             Err(e) => Err((self, e)),
-        }
-    }
-
-    /// Waits for the batch operation to complete by periodically polling its status.
-    ///
-    /// This method polls the batch status with a specified delay until the operation
-    /// reaches a terminal state (Succeeded, Failed, Cancelled, or Expired).
-    ///
-    /// Consumes the batch and returns the final status. If there's an error during polling,
-    /// the batch is returned in the error variant so it can be retried.
-    pub async fn wait_for_completion(
-        self,
-        delay: Duration,
-    ) -> std::result::Result<BatchStatus, (Self, crate::Error)> {
-        let batch_name = self.name.clone();
-        loop {
-            match self.status().await {
-                Ok(status) => match status {
-                    BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
-                    BatchStatus::Expired => {
-                        return Err((self, Error::BatchExpired { name: batch_name }))
-                    }
-                    _ => sleep(delay).await,
-                },
-                Err(e) => match e {
-                    Error::BatchFailed { .. } => return Err((self, e)),
-                    _ => return Err((self, e)), // Return the batch and error for retry
-                },
-            }
         }
     }
 }

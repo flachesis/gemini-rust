@@ -11,8 +11,37 @@
 //! cargo run --package gemini-rust --example batch_generate
 //! ```
 
-use gemini_rust::{BatchResultItem, BatchStatus, Gemini, Message};
+use gemini_rust::{Batch, BatchError, BatchResultItem, BatchStatus, Gemini, Message};
 use std::time::Duration;
+
+/// Waits for the batch operation to complete by periodically polling its status.
+///
+/// This method polls the batch status with a specified delay until the operation
+/// reaches a terminal state (Succeeded, Failed, Cancelled, or Expired).
+///
+/// Consumes the batch and returns the final status. If there's an error during polling,
+/// the batch is returned in the error variant so it can be retried.
+pub async fn wait_for_completion(
+    batch: Batch,
+    delay: Duration,
+) -> Result<BatchStatus, (Batch, BatchError)> {
+    let batch_name = batch.name.clone();
+    loop {
+        match batch.status().await {
+            Ok(status) => match status {
+                BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
+                BatchStatus::Expired => {
+                    return Err((batch, BatchError::BatchExpired { name: batch_name }))
+                }
+                _ => tokio::time::sleep(delay).await,
+            },
+            Err(e) => match e {
+                BatchError::BatchFailed { .. } => return Err((batch, e)),
+                _ => return Err((batch, e)), // Return the batch and error for retry
+            },
+        }
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY not set");
 
     // Create a new Gemini client
-    let gemini = Gemini::new(api_key);
+    let gemini = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Create the first request
     let request1 = gemini
@@ -48,7 +77,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Wait for the batch to complete
     println!("Waiting for batch to complete...");
-    match batch.wait_for_completion(Duration::from_secs(5)).await {
+    match wait_for_completion(batch, Duration::from_secs(5)).await {
         Ok(final_status) => {
             // Print the final status
             match final_status {
