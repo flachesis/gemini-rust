@@ -431,6 +431,8 @@ The repository includes comprehensive examples:
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
 | [`error_handling.rs`](examples/error_handling.rs) | Error handling examples |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |
+| [`files_delete_all.rs`](examples/files_delete_all.rs) | Delete all files |
+| [`files_lifecycle.rs`](examples/files_lifecycle.rs) | Full file lifecycle |
 | [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
 | [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
 | [`image_editing.rs`](examples/image_editing.rs) | Image editing with text prompts |
