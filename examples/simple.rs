@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_user_message("Hello, can you tell me a joke about programming?")
         .with_generation_config(GenerationConfig {
             temperature: Some(0.7),
-            max_output_tokens: Some(1000),
+            max_output_tokens: Some(5000),
             ..Default::default()
         })
         .execute()
