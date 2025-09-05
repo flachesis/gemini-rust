@@ -526,9 +526,12 @@ pub struct BatchConfig {
 /// Input configuration for batch requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InputConfig {
-    /// The requests container
-    pub requests: RequestsContainer,
+#[serde(untagged)]
+pub enum InputConfig {
+    /// The requests to be processed in the batch.
+    Requests { requests: RequestsContainer },
+    /// The name of the File containing the input requests.
+    FileName { file_name: String },
 }
 
 /// Container for requests
@@ -1044,17 +1047,19 @@ pub enum OperationResult {
 /// Represents the response of a batch operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BatchOperationResponse {
-    #[serde(rename = "@type")]
-    pub type_annotation: String,
-    pub inlined_responses: InlinedResponses,
+#[serde(untagged)]
+pub enum BatchOperationResponse {
+    InlinedResponses { inlined_responses: InlinedResponses },
+    ResponseFile { response_file: Box<File> },
 }
 
 /// Represents the output configuration of a batch operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OutputConfig {
-    pub inlined_responses: InlinedResponses,
+#[serde(untagged)]
+pub enum OutputConfig {
+    InlinedResponses { inlined_responses: InlinedResponses },
+    ResponseFile { response_file: Box<File> },
 }
 
 /// A container for inlined responses.

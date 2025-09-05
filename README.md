@@ -286,6 +286,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Batch Processing
 
+The library supports batching multiple content generation requests into a single operation. You can execute the batch directly for a small number of requests. For larger jobs, you should use the `execute_as_file()` method, which serializes the requests to a JSONL file, uploads it, and initiates the batch job.
+
 ```rust
 use gemini_rust::{Gemini, Message};
 
@@ -304,16 +306,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_user_message("What is the best programming language?")
         .build();
 
-    // Submit batch request
-    let batch_response = client
-        .batch_generate_content_sync()
+    // For smaller jobs, execute directly:
+    let batch = client
+        .batch_generate_content()
         .with_request(request1)
         .with_request(request2)
         .execute()
         .await?;
 
-    println!("Batch ID: {}", batch_response.name);
-    println!("State: {}", batch_response.metadata.state);
+    // For a large number of requests, use execute_as_file():
+    // let batch = client
+    //     .batch_generate_content()
+    //     .with_requests(many_requests)
+    //     .execute_as_file()
+    //     .await?;
+
+    println!("Batch Name: {}", batch.name());
+
+    // The `execute()` method polls for completion.
+    // You can then immediately check the final status.
+    match batch.status().await? {
+        gemini_rust::BatchStatus::Succeeded { results } => {
+            for item in results {
+                if let gemini_rust::BatchResultItem::Success { key, response } = item {
+                    println!("Result for key {}: {}", key, response.text());
+                }
+            }
+        }
+        status => println!("Batch finished with status: {:?}", status),
+    }
+
     Ok(())
 }
 ```
