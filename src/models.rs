@@ -653,7 +653,7 @@ impl Default for ThinkingConfig {
 }
 
 /// Configuration for generation
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationConfig {
     /// The temperature for the model (0.0 to 1.0)
@@ -720,24 +720,6 @@ pub struct GenerationConfig {
     /// Configuration for the model's thinking process (Gemini 2.5 series only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_config: Option<ThinkingConfig>,
-}
-
-impl Default for GenerationConfig {
-    fn default() -> Self {
-        Self {
-            temperature: Some(0.7),
-            top_p: Some(0.95),
-            top_k: Some(40),
-            max_output_tokens: Some(1024),
-            candidate_count: Some(1),
-            stop_sequences: None,
-            response_mime_type: None,
-            response_schema: None,
-            response_modalities: None,
-            speech_config: None,
-            thinking_config: None,
-        }
-    }
 }
 
 /// Configuration for speech generation (text-to-speech)
