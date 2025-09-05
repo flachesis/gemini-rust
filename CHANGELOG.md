@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased] - v1.4.0
 
+### ✨ Features
+
+#### File-Based Batch Processing for Large Jobs
+- **New `execute_as_file()` method**: Added a new method to the `BatchBuilder` for submitting a large number of requests, ideal for jobs that might exceed API size limits.
+- **Automatic Result Handling**: The library now automatically downloads and parses result files for batches processed via the file-based method, delivering results seamlessly.
+
 ### 💥 Breaking Changes
 
 #### Constructor Changes
