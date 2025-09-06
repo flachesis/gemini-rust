@@ -1,5 +1,6 @@
 use serde::{de, Deserialize, Deserializer, Serialize};
 use snafu::Snafu;
+use url::Url;
 
 /// Role of a message in a conversation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -525,9 +526,12 @@ pub struct BatchConfig {
 /// Input configuration for batch requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InputConfig {
-    /// The requests container
-    pub requests: RequestsContainer,
+#[serde(untagged)]
+pub enum InputConfig {
+    /// The requests to be processed in the batch.
+    Requests { requests: RequestsContainer },
+    /// The name of the File containing the input requests.
+    FileName { file_name: String },
 }
 
 /// Container for requests
@@ -964,6 +968,55 @@ pub enum TaskType {
     CodeRetrievalQuery,
 }
 
+/// Represents a file resource in the Gemini API.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct File {
+    /// The unique identifier for the file.
+    pub name: String,
+    /// The URI of the file.
+    pub uri: Url,
+    /// The download URI of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub download_uri: Option<Url>,
+    /// The display name of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+    /// The MIME type of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mime_type: Option<String>,
+    /// The size of the file in bytes.
+    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub size_bytes: Option<i64>,
+    /// The creation time of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub create_time: Option<String>,
+    /// The expiration time of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiration_time: Option<String>,
+    /// The last update time of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub update_time: Option<String>,
+    /// The SHA-256 hash of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sha256_hash: Option<String>,
+    /// The current state of the file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub state: Option<FileState>,
+}
+
+/// The state of a file.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FileState {
+    StateUnspecified,
+    Processing,
+    Active,
+    Failed,
+    Deleted,
+}
+
 /// Represents a long-running operation from the Gemini API.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BatchOperation {
@@ -994,17 +1047,19 @@ pub enum OperationResult {
 /// Represents the response of a batch operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct BatchOperationResponse {
-    #[serde(rename = "@type")]
-    pub type_annotation: String,
-    pub inlined_responses: InlinedResponses,
+#[serde(untagged)]
+pub enum BatchOperationResponse {
+    InlinedResponses { inlined_responses: InlinedResponses },
+    ResponseFile { response_file: Box<File> },
 }
 
 /// Represents the output configuration of a batch operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OutputConfig {
-    pub inlined_responses: InlinedResponses,
+#[serde(untagged)]
+pub enum OutputConfig {
+    InlinedResponses { inlined_responses: InlinedResponses },
+    ResponseFile { response_file: Box<File> },
 }
 
 /// A container for inlined responses.
@@ -1058,6 +1113,17 @@ pub enum BatchResultItem {
 pub struct ListBatchesResponse {
     /// A list of batch operations.
     pub operations: Vec<BatchOperation>,
+    /// A token to retrieve the next page of results.
+    pub next_page_token: Option<String>,
+}
+
+/// Response from the Gemini API for listing files.
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListFilesResponse {
+    /// A list of files.
+    #[serde(default)]
+    pub files: Vec<File>,
     /// A token to retrieve the next page of results.
     pub next_page_token: Option<String>,
 }

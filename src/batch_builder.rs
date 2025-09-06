@@ -1,3 +1,4 @@
+use snafu::ResultExt;
 use std::sync::Arc;
 
 use crate::{
@@ -65,7 +66,7 @@ impl BatchBuilder {
         BatchGenerateContentRequest {
             batch: BatchConfig {
                 display_name: self.display_name,
-                input_config: InputConfig {
+                input_config: InputConfig::Requests {
                     requests: RequestsContainer {
                         requests: batch_requests,
                     },
@@ -80,6 +81,51 @@ impl BatchBuilder {
     pub async fn execute(self) -> Result<Batch, ClientError> {
         let client = self.client.clone();
         let request = self.build();
+        let response = client.batch_generate_content_sync(request).await?;
+        Ok(Batch::new(response.name, client))
+    }
+
+    /// Executes the batch request by first uploading the requests as a JSON file.
+    ///
+    /// This method is ideal for large batch jobs that might exceed inline request limits.
+    /// It consumes the builder, serializes the requests to the JSON Lines format,
+    /// uploads the content as a file, and then starts the batch operation using that file.
+    pub async fn execute_as_file(self) -> Result<Batch, ClientError> {
+        let batch_requests: Vec<BatchRequestItem> = self
+            .requests
+            .into_iter()
+            .enumerate()
+            .map(|(i, request)| BatchRequestItem {
+                request,
+                metadata: Some(RequestMetadata { key: i.to_string() }),
+            })
+            .collect();
+
+        let mut json_lines = String::new();
+        for item in batch_requests {
+            let line = serde_json::to_string(&item).context(crate::client::DeserializeSnafu)?;
+            json_lines.push_str(&line);
+            json_lines.push('\n');
+        }
+        let json_bytes = json_lines.as_bytes().to_vec();
+
+        let file_display_name = format!("{}-input.jsonl", self.display_name);
+        let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
+            .display_name(file_display_name)
+            .with_mime_type("application/jsonl".parse().unwrap())
+            .upload()
+            .await?;
+
+        let request = BatchGenerateContentRequest {
+            batch: BatchConfig {
+                display_name: self.display_name,
+                input_config: InputConfig::FileName {
+                    file_name: file.name().to_string(),
+                },
+            },
+        };
+
+        let client = self.client.clone();
         let response = client.batch_generate_content_sync(request).await?;
         Ok(Batch::new(response.name, client))
     }

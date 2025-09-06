@@ -7,6 +7,7 @@ mod batch_builder;
 mod client;
 mod content_builder;
 mod embed_builder;
+mod files;
 mod models;
 mod tools;
 
@@ -17,14 +18,15 @@ pub use batch::{Batch, BatchStatus, Error as BatchError};
 pub use batch_builder::BatchBuilder;
 pub use client::{Error as ClientError, Gemini, Model};
 pub use content_builder::ContentBuilder;
+pub use files::{FileBuilder, GeminiFile};
 pub use models::{
     BatchConfig, BatchGenerateContentResponseItem, BatchMetadata, BatchOperationResponse,
     BatchRequestItem, BatchResultItem, BatchState, BatchStats, Blob, Candidate, CitationMetadata,
-    Content, FunctionCallingConfig, FunctionCallingMode, GenerateContentRequest, GenerationConfig,
-    GenerationResponse, InlinedResponses, InputConfig, Message, MultiSpeakerVoiceConfig,
-    OutputConfig, Part, PrebuiltVoiceConfig, PromptTokenDetails, RequestMetadata,
-    RequestsContainer, Role, SafetyRating, SpeakerVoiceConfig, SpeechConfig, TaskType,
-    ThinkingConfig, ToolConfig, UsageMetadata, VoiceConfig,
+    Content, File, FileState, FunctionCallingConfig, FunctionCallingMode, GenerateContentRequest,
+    GenerationConfig, GenerationResponse, InlinedResponses, InputConfig, Message,
+    MultiSpeakerVoiceConfig, OutputConfig, Part, PrebuiltVoiceConfig, PromptTokenDetails,
+    RequestMetadata, RequestsContainer, Role, SafetyRating, SpeakerVoiceConfig, SpeechConfig,
+    TaskType, ThinkingConfig, ToolConfig, UsageMetadata, VoiceConfig,
 };
 
 pub use tools::{
