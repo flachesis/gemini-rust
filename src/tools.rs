@@ -3,7 +3,7 @@ use snafu::{ResultExt, Snafu};
 use std::collections::HashMap;
 
 /// Tool that can be used by the model
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Tool {
     /// Function-based tool
@@ -19,7 +19,7 @@ pub enum Tool {
 }
 
 /// Empty configuration for Google Search tool
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GoogleSearchConfig {}
 
 impl Tool {
@@ -46,7 +46,7 @@ impl Tool {
 }
 
 /// Declaration of a function that can be called by the model
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionDeclaration {
     /// The name of the function
     pub name: String,
@@ -72,7 +72,7 @@ impl FunctionDeclaration {
 }
 
 /// Parameters for a function
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionParameters {
     /// The type of the parameters
     #[serde(rename = "type")]
@@ -116,7 +116,7 @@ impl FunctionParameters {
 }
 
 /// Details about a property
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PropertyDetails {
     /// The type of the property
     #[serde(rename = "type")]

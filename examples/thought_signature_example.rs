@@ -113,10 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(usage) = &final_response.usage_metadata {
                 println!("\nToken usage:");
                 println!("  Prompt tokens: {}", usage.prompt_token_count);
-                println!(
-                    "  Response tokens: {}",
-                    usage.candidates_token_count.unwrap_or(0)
-                );
+                println!("  Response tokens: {}", usage.candidates_token_count);
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
                     println!("  Thinking tokens: {}", thinking_tokens);
                 }
@@ -230,10 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(usage) = &followup_response.usage_metadata {
                 println!("\nFollow-up token usage:");
                 println!("  Prompt tokens: {}", usage.prompt_token_count);
-                println!(
-                    "  Response tokens: {}",
-                    usage.candidates_token_count.unwrap_or(0)
-                );
+                println!("  Response tokens: {}", usage.candidates_token_count);
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
                     println!("  Thinking tokens: {}", thinking_tokens);
                 }
