@@ -202,6 +202,9 @@ pub struct FunctionCall {
     pub name: String,
     /// The arguments for the function
     pub args: serde_json::Value,
+    /// The thought signature for the function call (Gemini 2.5 series only)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thought_signature: Option<String>,
 }
 
 #[derive(Debug, Snafu)]
@@ -228,6 +231,20 @@ impl FunctionCall {
         Self {
             name: name.into(),
             args,
+            thought_signature: None,
+        }
+    }
+
+    /// Create a new function call with thought signature
+    pub fn with_thought_signature(
+        name: impl Into<String>,
+        args: serde_json::Value,
+        thought_signature: impl Into<String>,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            args,
+            thought_signature: Some(thought_signature.into()),
         }
     }
 
