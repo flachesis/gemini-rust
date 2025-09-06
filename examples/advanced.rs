@@ -75,6 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let call_content = Content {
             parts: Some(vec![Part::FunctionCall {
                 function_call: (*function_call).clone(),
+                thought_signature: None,
             }]),
             ..Default::default()
         };

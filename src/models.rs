@@ -33,6 +33,9 @@ pub enum Part {
         /// The function call details
         #[serde(rename = "functionCall")]
         function_call: super::tools::FunctionCall,
+        /// The thought signature for the function call (Gemini 2.5 series only)
+        #[serde(rename = "thoughtSignature", skip_serializing_if = "Option::is_none")]
+        thought_signature: Option<String>,
     },
     /// Function response (results from executing a function call)
     FunctionResponse {
@@ -87,7 +90,24 @@ impl Content {
     /// Create a new content with a function call
     pub fn function_call(function_call: super::tools::FunctionCall) -> Self {
         Self {
-            parts: Some(vec![Part::FunctionCall { function_call }]),
+            parts: Some(vec![Part::FunctionCall {
+                function_call,
+                thought_signature: None,
+            }]),
+            role: None,
+        }
+    }
+
+    /// Create a new content with a function call and thought signature
+    pub fn function_call_with_thought(
+        function_call: super::tools::FunctionCall,
+        thought_signature: impl Into<String>,
+    ) -> Self {
+        Self {
+            parts: Some(vec![Part::FunctionCall {
+                function_call,
+                thought_signature: Some(thought_signature.into()),
+            }]),
             role: None,
         }
     }
@@ -346,7 +366,37 @@ impl GenerationResponse {
                         parts
                             .iter()
                             .filter_map(|p| match p {
-                                Part::FunctionCall { function_call } => Some(function_call),
+                                Part::FunctionCall {
+                                    function_call,
+                                    thought_signature: _,
+                                } => Some(function_call),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+
+    /// Get function calls with their thought signatures from the response
+    pub fn function_calls_with_thoughts(
+        &self,
+    ) -> Vec<(&super::tools::FunctionCall, Option<&String>)> {
+        self.candidates
+            .iter()
+            .flat_map(|c| {
+                c.content
+                    .parts
+                    .as_ref()
+                    .map(|parts| {
+                        parts
+                            .iter()
+                            .filter_map(|p| match p {
+                                Part::FunctionCall {
+                                    function_call,
+                                    thought_signature,
+                                } => Some((function_call, thought_signature.as_ref())),
                                 _ => None,
                             })
                             .collect::<Vec<_>>()
