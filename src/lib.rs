@@ -21,12 +21,13 @@ pub use content_builder::ContentBuilder;
 pub use files::{FileBuilder, GeminiFile};
 pub use models::{
     BatchConfig, BatchGenerateContentResponseItem, BatchMetadata, BatchOperationResponse,
-    BatchRequestItem, BatchResultItem, BatchState, BatchStats, Blob, Candidate, CitationMetadata,
-    Content, File, FileState, FunctionCallingConfig, FunctionCallingMode, GenerateContentRequest,
-    GenerationConfig, GenerationResponse, InlinedResponses, InputConfig, Message,
-    MultiSpeakerVoiceConfig, OutputConfig, Part, PrebuiltVoiceConfig, PromptTokenDetails,
-    RequestMetadata, RequestsContainer, Role, SafetyRating, SpeakerVoiceConfig, SpeechConfig,
-    TaskType, ThinkingConfig, ToolConfig, UsageMetadata, VoiceConfig,
+    BatchRequestItem, BatchResultItem, BatchState, BatchStats, Blob, BlockReason, Candidate,
+    CitationMetadata, Content, File, FileState, FinishReason, FunctionCallingConfig,
+    FunctionCallingMode, GenerateContentRequest, GenerationConfig, GenerationResponse,
+    HarmBlockThreshold, HarmCategory, HarmProbability, InlinedResponses, InputConfig, Message,
+    Modality, MultiSpeakerVoiceConfig, OperationResult, OutputConfig, Part, PrebuiltVoiceConfig,
+    PromptTokenDetails, RequestMetadata, RequestsContainer, Role, SafetyRating, SpeakerVoiceConfig,
+    SpeechConfig, TaskType, ThinkingConfig, ToolConfig, UsageMetadata, VoiceConfig,
 };
 
 pub use tools::{

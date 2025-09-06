@@ -1,4 +1,4 @@
-use crate::{FunctionCall, GenerationResponse, Part};
+use crate::{FinishReason, FunctionCall, GenerationResponse, Part};
 use serde_json::json;
 
 #[test]
@@ -41,7 +41,7 @@ fn test_thought_signature_deserialization() {
     // Verify basic structure
     assert_eq!(response.candidates.len(), 1);
     let candidate = &response.candidates[0];
-    assert_eq!(candidate.finish_reason, Some("STOP".to_string()));
+    assert_eq!(candidate.finish_reason, Some(FinishReason::Stop));
 
     // Check content parts
     let parts = candidate.content.parts.as_ref().unwrap();
