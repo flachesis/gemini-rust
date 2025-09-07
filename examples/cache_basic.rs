@@ -16,7 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create cached content with the full story for analysis
     let cache = client
         .create_cache()
-        .with_display_name("Grief Eater Story Analysis Cache")
+        .with_display_name("Grief Eater Story Analysis Cache")?
         .with_system_instruction("You are a literary analyst specialized in horror and supernatural fiction. Analyze stories for themes, character development, narrative techniques, and psychological elements.")
         .with_user_message("Please read and analyze this story:")
         .with_user_message(GRIEF_EATER_STORY)

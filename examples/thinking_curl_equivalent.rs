@@ -95,12 +95,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Show token usage
     if let Some(usage) = &response2.usage_metadata {
         println!("Token usage:");
-        println!("  Prompt tokens: {}", usage.prompt_token_count);
-        println!("  Response tokens: {}", usage.candidates_token_count);
+        if let Some(prompt_tokens) = usage.prompt_token_count {
+            println!("  Prompt tokens: {}", prompt_tokens);
+        }
+        if let Some(response_tokens) = usage.candidates_token_count {
+            println!("  Response tokens: {}", response_tokens);
+        }
         if let Some(thinking_tokens) = usage.thoughts_token_count {
             println!("  Thinking tokens: {}", thinking_tokens);
         }
-        println!("  Total tokens: {}", usage.total_token_count);
+        if let Some(total_tokens) = usage.total_token_count {
+            println!("  Total tokens: {}", total_tokens);
+        }
     }
 
     // Method 3: Demonstrate different thinking budget settings

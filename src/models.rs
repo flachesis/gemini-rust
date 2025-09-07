@@ -333,18 +333,27 @@ pub struct Candidate {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct UsageMetadata {
-    /// The number of prompt tokens
-    pub prompt_token_count: i32,
-    /// The number of response tokens
-    pub candidates_token_count: i32,
-    /// The total number of tokens
-    pub total_token_count: i32,
+    /// The number of prompt tokens (null if request processing failed)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt_token_count: Option<i32>,
+    /// The number of response tokens (null if generation failed)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub candidates_token_count: Option<i32>,
+    /// The total number of tokens (null if individual counts unavailable)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_token_count: Option<i32>,
     /// The number of thinking tokens (Gemini 2.5 series only)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thoughts_token_count: Option<i32>,
     /// Detailed prompt token information
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt_tokens_details: Option<Vec<PromptTokenDetails>>,
+    /// The number of cached content tokens (batch API)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cached_content_token_count: Option<i32>,
+    /// Detailed cache token information (batch API)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_tokens_details: Option<Vec<PromptTokenDetails>>,
 }
 
 /// Details about prompt tokens by modality

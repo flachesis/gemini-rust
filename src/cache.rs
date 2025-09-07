@@ -18,7 +18,7 @@
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //!     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-//!     
+//!
 //!     // Create a cache with system instruction and TTL
 //!     let cache = client
 //!         .create_cache()
@@ -59,6 +59,11 @@ use crate::{
 pub enum Error {
     #[snafu(display("client invocation error"))]
     Client { source: Box<ClientError> },
+
+    #[snafu(display(
+        "cache display name ('{display_name}') too long ({chars}), must be under 128 characters"
+    ))]
+    LongDisplayName { display_name: String, chars: usize },
 
     #[snafu(display("expiration (TTL or expire time) is required for cache creation"))]
     MissingExpiration,
@@ -139,9 +144,18 @@ impl CacheBuilder {
 
     /// Set a display name for the cached content.
     /// Maximum 128 Unicode characters.
-    pub fn with_display_name<S: Into<String>>(mut self, display_name: S) -> Self {
-        self.display_name = Some(display_name.into());
-        self
+    pub fn with_display_name<S: Into<String>>(mut self, display_name: S) -> Result<Self, Error> {
+        let display_name = display_name.into();
+        let chars = display_name.chars().count();
+        snafu::ensure!(
+            chars <= 128,
+            LongDisplayNameSnafu {
+                display_name,
+                chars
+            }
+        );
+        self.display_name = Some(display_name);
+        Ok(self)
     }
 
     /// Set the system instruction for the cached content.
