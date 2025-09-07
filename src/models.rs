@@ -591,8 +591,6 @@ pub struct BatchMetadata {
     pub state: BatchState,
     /// Name of the batch (duplicate)
     pub name: String,
-    /// The output configuration for the batch.
-    pub output: Option<OutputConfig>,
 }
 
 /// The state of a batch operation.
@@ -1044,22 +1042,31 @@ pub enum OperationResult {
     Failure { error: OperationError },
 }
 
-/// Represents the response of a batch operation.
+/// Batch file line JSON representation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[serde(untagged)]
-pub enum BatchOperationResponse {
-    InlinedResponses { inlined_responses: InlinedResponses },
-    ResponseFile { response_file: Box<File> },
+pub struct BatchFileItem {
+    /// Batch generatin request
+    pub request: GenerateContentRequest,
+    /// Batch request unique identifier
+    pub key: String,
 }
 
-/// Represents the output configuration of a batch operation.
+/// Represents the response of a batch operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 #[serde(untagged)]
-pub enum OutputConfig {
-    InlinedResponses { inlined_responses: InlinedResponses },
-    ResponseFile { response_file: Box<File> },
+pub enum BatchOperationResponse {
+    /// Response with inlined responses
+    InlinedResponses {
+        /// The inlined responses
+        #[serde(rename = "inlinedResponses")]
+        inlined_responses: InlinedResponses,
+    },
+    /// Response with a file containing results
+    ResponseFile {
+        /// The file containing the batch results
+        #[serde(rename = "responseFile")]
+        response_file: Box<File>,
+    },
 }
 
 /// A container for inlined responses.

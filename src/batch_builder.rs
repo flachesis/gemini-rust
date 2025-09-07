@@ -8,6 +8,7 @@ use crate::{
         BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
         InputConfig, RequestMetadata, RequestsContainer,
     },
+    BatchFileItem,
 };
 
 /// A builder for creating and executing synchronous batch content generation requests.
@@ -91,13 +92,13 @@ impl BatchBuilder {
     /// It consumes the builder, serializes the requests to the JSON Lines format,
     /// uploads the content as a file, and then starts the batch operation using that file.
     pub async fn execute_as_file(self) -> Result<Batch, ClientError> {
-        let batch_requests: Vec<BatchRequestItem> = self
+        let batch_requests: Vec<BatchFileItem> = self
             .requests
             .into_iter()
             .enumerate()
-            .map(|(i, request)| BatchRequestItem {
+            .map(|(i, request)| BatchFileItem {
                 request,
-                metadata: Some(RequestMetadata { key: i.to_string() }),
+                key: i.to_string(),
             })
             .collect();
 
@@ -107,7 +108,7 @@ impl BatchBuilder {
             json_lines.push_str(&line);
             json_lines.push('\n');
         }
-        let json_bytes = json_lines.as_bytes().to_vec();
+        let json_bytes = json_lines.into_bytes();
 
         let file_display_name = format!("{}-input.jsonl", self.display_name);
         let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
