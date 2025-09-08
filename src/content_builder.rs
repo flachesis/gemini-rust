@@ -7,8 +7,8 @@ use crate::{
         FunctionCallingConfig, GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ToolConfig,
     },
-    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Role, Tool,
+    CachedContentHandle, Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
+    GenerationResponse, Message, Role, Tool,
 };
 
 /// Builder for content generation requests
@@ -19,6 +19,7 @@ pub struct ContentBuilder {
     tools: Option<Vec<Tool>>,
     tool_config: Option<ToolConfig>,
     system_instruction: Option<Content>,
+    cached_content: Option<String>,
 }
 
 impl ContentBuilder {
@@ -31,6 +32,7 @@ impl ContentBuilder {
             tools: None,
             tool_config: None,
             system_instruction: None,
+            cached_content: None,
         }
     }
 
@@ -111,6 +113,13 @@ impl ContentBuilder {
                 self.contents.push(content.with_role(message.role));
             }
         }
+        self
+    }
+
+    /// Use cached content for this request.
+    /// This allows reusing previously cached system instructions and conversation history.
+    pub fn with_cached_content(mut self, cached_content: &CachedContentHandle) -> Self {
+        self.cached_content = Some(cached_content.name().to_string());
         self
     }
 
@@ -336,6 +345,7 @@ impl ContentBuilder {
             tools: self.tools,
             tool_config: self.tool_config,
             system_instruction: self.system_instruction,
+            cached_content: self.cached_content,
         }
     }
 
@@ -358,6 +368,7 @@ impl ContentBuilder {
             tools: self.tools,
             tool_config: self.tool_config,
             system_instruction: self.system_instruction,
+            cached_content: self.cached_content,
         };
 
         self.client.generate_content_stream(request).await
