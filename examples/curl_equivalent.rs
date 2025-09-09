@@ -43,6 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text_part = Part::Text {
         text: "Explain how AI works in a few words".to_string(),
         thought: None,
+        thought_signature: None,
     };
 
     let content = Content {

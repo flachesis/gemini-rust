@@ -20,6 +20,18 @@ pub struct FunctionCall {
 }
 ```
 
+### 1a. Part::Text Structure Update
+
+The `Part::Text` variant now includes an optional `thought_signature` field to support text responses with thought signatures:
+
+```rust
+Text {
+    text: String,
+    thought: Option<bool>,
+    thought_signature: Option<String>,  // New field
+}
+```
+
 ### 2. New Constructor Methods
 
 - `FunctionCall::new()` - Creates function call without thought signature (maintains backward compatibility)
@@ -50,7 +62,7 @@ FunctionCall {
 
 ### 4. New API Methods
 
-`GenerationResponse` adds methods to retrieve function calls with their thought signatures:
+`GenerationResponse` adds methods to retrieve function calls and text with their thought signatures:
 
 ```rust
 // Get function calls and their corresponding thought signatures
@@ -61,6 +73,28 @@ for (function_call, thought_signature) in function_calls_with_thoughts {
         println!("Thought Signature: {}", signature);
     }
 }
+
+// Get text parts with their thought signatures
+let text_with_thoughts = response.text_with_thoughts();
+for (text, is_thought, thought_signature) in text_with_thoughts {
+    println!("Text: {}", text);
+    println!("Is thought: {}", is_thought);
+    if let Some(signature) = thought_signature {
+        println!("Thought Signature: {}", signature);
+    }
+}
+```
+
+### 5. New Content Creation Methods
+
+`Content` adds methods to create content with thought signatures:
+
+```rust
+// Create text content with thought signature
+let content = Content::text_with_thought_signature("Response text", "signature123");
+
+// Create thought content with thought signature
+let thought_content = Content::thought_with_signature("Thinking process", "signature456");
 ```
 
 ## Usage Examples
@@ -115,7 +149,9 @@ conversation.contents.push(model_content);
 // Continue conversation...
 ```
 
-## API Response Example
+## API Response Examples
+
+### Function Call with thoughtSignature
 
 When Gemini 2.5 Pro makes function calls, the response will include `thoughtSignature`:
 
@@ -139,6 +175,38 @@ When Gemini 2.5 Pro makes function calls, the response will include `thoughtSign
       }
     }
   ]
+}
+```
+
+### Text Response with thoughtSignature
+
+Text responses can also include `thoughtSignature` fields:
+
+```json
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "**Okay, here's what I'm thinking:**\n\nThe user wants me to show them the functions available...",
+            "thought": true
+          },
+          {
+            "text": "The following functions are available in the environment: `chat.get_message_count()`",
+            "thoughtSignature": "Cs4BA.../Yw="
+          }
+        ],
+        "role": "model"
+      }
+    }
+  ],
+  "usageMetadata": {
+    "promptTokenCount": 36,
+    "candidatesTokenCount": 18,
+    "totalTokenCount": 96,
+    "thoughtsTokenCount": 42
+  }
 }
 ```
 
