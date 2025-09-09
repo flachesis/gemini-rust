@@ -22,6 +22,9 @@ pub enum Part {
         /// Whether this is a thought summary (Gemini 2.5 series only)
         #[serde(skip_serializing_if = "Option::is_none")]
         thought: Option<bool>,
+        /// The thought signature for the text (Gemini 2.5 series only)
+        #[serde(rename = "thoughtSignature", skip_serializing_if = "Option::is_none")]
+        thought_signature: Option<String>,
     },
     InlineData {
         /// The blob data
@@ -82,6 +85,7 @@ impl Content {
             parts: Some(vec![Part::Text {
                 text: text.into(),
                 thought: None,
+                thought_signature: None,
             }]),
             role: None,
         }
@@ -106,6 +110,36 @@ impl Content {
         Self {
             parts: Some(vec![Part::FunctionCall {
                 function_call,
+                thought_signature: Some(thought_signature.into()),
+            }]),
+            role: None,
+        }
+    }
+
+    /// Create a new text content with thought signature
+    pub fn text_with_thought_signature(
+        text: impl Into<String>,
+        thought_signature: impl Into<String>,
+    ) -> Self {
+        Self {
+            parts: Some(vec![Part::Text {
+                text: text.into(),
+                thought: None,
+                thought_signature: Some(thought_signature.into()),
+            }]),
+            role: None,
+        }
+    }
+
+    /// Create a new thought content with thought signature
+    pub fn thought_with_signature(
+        text: impl Into<String>,
+        thought_signature: impl Into<String>,
+    ) -> Self {
+        Self {
+            parts: Some(vec![Part::Text {
+                text: text.into(),
+                thought: Some(true),
                 thought_signature: Some(thought_signature.into()),
             }]),
             role: None,
@@ -346,7 +380,11 @@ impl GenerationResponse {
             .and_then(|c| {
                 c.content.parts.as_ref().and_then(|parts| {
                     parts.first().and_then(|p| match p {
-                        Part::Text { text, thought: _ } => Some(text.clone()),
+                        Part::Text {
+                            text,
+                            thought: _,
+                            thought_signature: _,
+                        } => Some(text.clone()),
                         _ => None,
                     })
                 })
@@ -421,6 +459,7 @@ impl GenerationResponse {
                                 Part::Text {
                                     text,
                                     thought: Some(true),
+                                    thought_signature: _,
                                 } => Some(text.clone()),
                                 _ => None,
                             })
@@ -443,9 +482,41 @@ impl GenerationResponse {
                         parts
                             .iter()
                             .filter_map(|p| match p {
-                                Part::Text { text, thought } => {
-                                    Some((text.clone(), thought.unwrap_or(false)))
-                                }
+                                Part::Text {
+                                    text,
+                                    thought,
+                                    thought_signature: _,
+                                } => Some((text.clone(), thought.unwrap_or(false))),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default()
+            })
+            .collect()
+    }
+
+    /// Get text parts with their thought signatures from the response
+    pub fn text_with_thoughts(&self) -> Vec<(String, bool, Option<&String>)> {
+        self.candidates
+            .iter()
+            .flat_map(|c| {
+                c.content
+                    .parts
+                    .as_ref()
+                    .map(|parts| {
+                        parts
+                            .iter()
+                            .filter_map(|p| match p {
+                                Part::Text {
+                                    text,
+                                    thought,
+                                    thought_signature,
+                                } => Some((
+                                    text.clone(),
+                                    thought.unwrap_or(false),
+                                    thought_signature.as_ref(),
+                                )),
                                 _ => None,
                             })
                             .collect::<Vec<_>>()
