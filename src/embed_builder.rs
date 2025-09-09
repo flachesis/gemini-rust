@@ -61,9 +61,8 @@ impl EmbedBuilder {
     }
 
     /// Specify output_dimensionality. If set, excessive values in the output embedding are truncated from the end
-    /// Supported by newer models since 2024 only !!
-    pub fn with_output_dimensionality(mut self, title: String) -> Self {
-        self.title = Some(title);
+    pub fn with_output_dimensionality(mut self, output_dimensionality: i32) -> Self {
+        self.output_dimensionality = Some(output_dimensionality);
         self
     }
 
