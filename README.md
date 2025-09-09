@@ -11,6 +11,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
 - **🛠️ Function Calling & Tools** - Custom functions and Google Search integration
 - **📦 Batch Processing** - Efficient batch content generation and embedding
+- **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
 - **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
 - **🎨 Image Generation** - Text-to-image generation and image editing capabilities
@@ -284,6 +285,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Cached Content
+
+Cache large context (system instructions, conversation history) to reduce costs and improve performance for repeated API calls:
+
+```rust
+use gemini_rust::{Gemini, Model};
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
+
+    // Create cached content with system instruction and conversation history
+    let cache = client
+        .create_cache()
+        .with_model(Model::Gemini25Flash)
+        .with_display_name("My Programming Assistant")
+        .with_system_instruction("You are a helpful programming assistant.")
+        .with_user_message("Hello! I'm learning Rust.")
+        .with_model_message("Great! I'm here to help you learn Rust programming.")
+        .with_ttl(Duration::from_secs(3600)) // Cache for 1 hour
+        .execute()
+        .await?;
+
+    // Use the cached content for subsequent requests
+    let response = client
+        .generate_content()
+        .with_cached_content(&cache)
+        .with_user_message("Can you explain ownership?")
+        .execute()
+        .await?;
+
+    println!("Response: {}", response.text());
+
+    // Clean up when done
+    cache.delete().await.map_err(|(_, e)| e)?;
+    Ok(())
+}
+```
+
 ### Batch Processing
 
 The library supports batching multiple content generation requests into a single operation. You can execute the batch directly for a small number of requests. For larger jobs, you should use the `execute_as_file()` method, which serializes the requests to a JSONL file, uploads it, and initiates the batch job.
@@ -450,6 +491,7 @@ The repository includes comprehensive examples:
 | [`batch_delete.rs`](examples/batch_delete.rs) | Batch operation deletion |
 | [`batch_list.rs`](examples/batch_list.rs) | Batch operation listing with streaming |
 | [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
+| [`cache_basic.rs`](examples/cache_basic.rs) | Cached content creation and usage |
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
 | [`error_handling.rs`](examples/error_handling.rs) | Error handling examples |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |

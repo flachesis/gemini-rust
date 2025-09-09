@@ -1,15 +1,17 @@
 use crate::{
     batch_builder::BatchBuilder,
+    cache::CacheBuilder,
     content_builder::ContentBuilder,
     embed_builder::EmbedBuilder,
     files::GeminiFile,
     models::{
         BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
-        BatchGenerateContentResponse, BatchOperation, ContentEmbeddingResponse,
-        EmbedContentRequest, File, GenerateContentRequest, GenerationResponse, ListBatchesResponse,
-        ListFilesResponse,
+        BatchGenerateContentResponse, BatchOperation, CacheExpirationRequest, CachedContent,
+        CachedContentSummary, ContentEmbeddingResponse, CreateCachedContentRequest,
+        DeleteCachedContentResponse, EmbedContentRequest, File, GenerateContentRequest,
+        GenerationResponse, ListBatchesResponse, ListCachedContentsResponse, ListFilesResponse,
     },
-    Batch,
+    Batch, CachedContentHandle,
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
@@ -497,6 +499,132 @@ impl GeminiClient {
             .context(DecodeResponseSnafu)
     }
 
+    /// Create cached content
+    pub(crate) async fn create_cached_content(
+        &self,
+        cached_content: CreateCachedContentRequest,
+    ) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(None)?;
+        let response = self
+            .http_client
+            .post(url.clone())
+            .json(&cached_content)
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Get cached content
+    pub(crate) async fn get_cached_content(&self, name: &str) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(Some(name))?;
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Update cached content (typically to update TTL)
+    pub(crate) async fn update_cached_content(
+        &self,
+        name: &str,
+        expiration: CacheExpirationRequest,
+    ) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(Some(name))?;
+
+        // Create a minimal update payload with just the expiration
+        let update_payload = match expiration {
+            CacheExpirationRequest::Ttl { ttl } => json!({ "ttl": ttl }),
+            CacheExpirationRequest::ExpireTime { expire_time } => {
+                json!({ "expireTime": expire_time.format(&time::format_description::well_known::Rfc3339).unwrap() })
+            }
+        };
+
+        let response = self
+            .http_client
+            .patch(url.clone())
+            .json(&update_payload)
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Delete cached content
+    pub(crate) async fn delete_cached_content(
+        &self,
+        name: &str,
+    ) -> Result<DeleteCachedContentResponse, Error> {
+        let url = self.build_cache_url(Some(name))?;
+        let response = self
+            .http_client
+            .delete(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        // For DELETE operations, we might get an empty response, so handle that case
+        if response.status().is_success() {
+            Ok(DeleteCachedContentResponse {
+                success: Some(true),
+            })
+        } else {
+            Self::check_response(response)
+                .await?
+                .json::<DeleteCachedContentResponse>()
+                .await
+                .context(DecodeResponseSnafu)
+        }
+    }
+
+    /// List cached contents
+    pub(crate) async fn list_cached_contents(
+        &self,
+        page_size: Option<i32>,
+        page_token: Option<String>,
+    ) -> Result<ListCachedContentsResponse, Error> {
+        let mut url = self.build_cache_url(None)?;
+
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", &token);
+        }
+
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<ListCachedContentsResponse>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
     /// Build a URL for the API
     fn build_url(&self, endpoint: &str) -> Result<Url, Error> {
         let url = self.base_url.clone();
@@ -519,6 +647,23 @@ impl GeminiClient {
         let suffix = name
             .map(|n| format!("files/{}", n.strip_prefix("files/").unwrap_or(n)))
             .unwrap_or_else(|| "files".to_string());
+
+        self.base_url
+            .join(&suffix)
+            .context(ConstructUrlSnafu { suffix })
+    }
+
+    /// Build a URL for cache operations
+    fn build_cache_url(&self, name: Option<&str>) -> Result<Url, Error> {
+        let suffix = name
+            .map(|n| {
+                if n.starts_with("cachedContents/") {
+                    n.to_string()
+                } else {
+                    format!("cachedContents/{}", n)
+                }
+            })
+            .unwrap_or_else(|| "cachedContents".to_string());
 
         self.base_url
             .join(&suffix)
@@ -603,6 +748,45 @@ impl Gemini {
 
                 for operation in response.operations {
                     yield operation;
+                }
+
+                if let Some(next_page_token) = response.next_page_token {
+                    page_token = Some(next_page_token);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Create cached content with a fluent API.
+    pub fn create_cache(&self) -> CacheBuilder {
+        CacheBuilder::new(self.client.clone())
+    }
+
+    /// Get a handle to cached content by its name.
+    pub fn get_cached_content(&self, name: &str) -> CachedContentHandle {
+        CachedContentHandle::new(name.to_string(), self.client.clone())
+    }
+
+    /// Lists cached contents.
+    ///
+    /// This method returns a stream that handles pagination automatically.
+    pub fn list_cached_contents(
+        &self,
+        page_size: impl Into<Option<i32>>,
+    ) -> impl Stream<Item = Result<CachedContentSummary, Error>> + Send {
+        let client = self.client.clone();
+        let page_size = page_size.into();
+        async_stream::try_stream! {
+            let mut page_token: Option<String> = None;
+            loop {
+                let response = client
+                    .list_cached_contents(page_size, page_token.clone())
+                    .await?;
+
+                for cached_content in response.cached_contents {
+                    yield cached_content;
                 }
 
                 if let Some(next_page_token) = response.next_page_token {

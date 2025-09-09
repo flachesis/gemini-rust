@@ -35,7 +35,8 @@ snafu = { version = "0.8", features = ["backtrace"] }
 eventsource-stream = "0.2"
 mime_guess = "2.0"
 mime = "0.3"
-tokio = { version = "1", features = ["fs", "io-util"] }
+tokio = { version = "1", features = ["io-util"] }
+time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 
 [dev-dependencies]
 display-error-chain = "0.2"
