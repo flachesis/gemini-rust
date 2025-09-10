@@ -221,7 +221,7 @@ impl BatchStatus {
             })?;
 
             let mut results = Self::process_successful_response(response, client).await?;
-            results.sort_by_key(|r| r.meta.key.parse::<usize>().unwrap_or(usize::MAX));
+            results.sort_by_key(|r| r.meta.key);
 
             // Handle terminal states based on metadata for edge cases
             match operation.metadata.state {

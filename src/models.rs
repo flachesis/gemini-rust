@@ -48,7 +48,7 @@
 
 #![allow(clippy::enum_variant_names)]
 
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use snafu::Snafu;
 use time::OffsetDateTime;
 use url::Url;
@@ -775,7 +775,36 @@ pub struct BatchRequestItem {
 #[serde(rename_all = "camelCase")]
 pub struct RequestMetadata {
     /// Key for the request
-    pub key: String,
+    #[serde(with = "key_as_string")]
+    pub key: usize,
+}
+
+/// Custom serialization/deserialization for the request key.
+mod key_as_string {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+
+    /// Serializes a `usize` key as a string.
+    pub fn serialize<S>(key: &usize, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&key.to_string())
+    }
+
+    /// Deserializes a string key into a `usize`.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<usize, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        s.parse::<usize>().map_err(|e| {
+            let error_message = format!(
+                "Failed to parse key '{}' as a number: {}. This crate uses index-based keys for batch requests; custom string keys are not supported.",
+                s, e
+            );
+            serde::de::Error::custom(error_message)
+        })
+    }
 }
 
 /// Response from the Gemini API for batch content generation (async batch creation)
@@ -838,40 +867,69 @@ pub enum BatchState {
 #[serde(rename_all = "camelCase")]
 pub struct BatchStats {
     /// Total number of requests in the batch
-    #[serde(deserialize_with = "from_str_to_i64")]
+    #[serde(with = "i64_as_string")]
     pub request_count: i64,
     /// Number of pending requests
-    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(default, with = "i64_as_string::optional")]
     pub pending_request_count: Option<i64>,
     /// Number of completed requests
-    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(default, with = "i64_as_string::optional")]
     pub completed_request_count: Option<i64>,
     /// Number of failed requests
-    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(default, with = "i64_as_string::optional")]
     pub failed_request_count: Option<i64>,
     /// Number of successful requests
-    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(default, with = "i64_as_string::optional")]
     pub successful_request_count: Option<i64>,
 }
 
-/// Deserializes string numbers to i64. Fixes Google API returning numbers as strings.
-fn from_str_to_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    String::deserialize(deserializer)?
-        .parse()
-        .map_err(de::Error::custom)
-}
+/// Custom serialization/deserialization for i64 as a string.
+mod i64_as_string {
+    use serde::{self, de, Deserialize, Deserializer, Serializer};
 
-/// Deserializes optional string numbers to i64. Fixes Google API returning numbers as strings.
-fn from_str_to_i64_optional<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Option::<String>::deserialize(deserializer)?
-        .map(|s| s.parse::<i64>().map_err(de::Error::custom))
-        .transpose()
+    /// Serializes an `i64` as a string.
+    pub fn serialize<S>(value: &i64, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&value.to_string())
+    }
+
+    /// Deserializes a string into an `i64`.
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<i64, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        String::deserialize(deserializer)?
+            .parse()
+            .map_err(de::Error::custom)
+    }
+
+    /// Optional `i64` as string.
+    pub mod optional {
+        use serde::{self, de, Deserialize, Deserializer, Serializer};
+
+        /// Serializes an `Option<i64>` as a string or `None`.
+        pub fn serialize<S>(value: &Option<i64>, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            match value {
+                Some(v) => serializer.serialize_str(&v.to_string()),
+                None => serializer.serialize_none(),
+            }
+        }
+
+        /// Deserializes a string into an `Option<i64>`.
+        pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            Option::<String>::deserialize(deserializer)?
+                .map(|s| s.parse::<i64>().map_err(de::Error::custom))
+                .transpose()
+        }
+    }
 }
 
 /// Configuration for thinking (Gemini 2.5 series only)
@@ -1229,7 +1287,7 @@ pub struct File {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub mime_type: Option<String>,
     /// The size of the file in bytes.
-    #[serde(default, deserialize_with = "from_str_to_i64_optional")]
+    #[serde(default, with = "i64_as_string::optional")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub size_bytes: Option<i64>,
     /// The creation time of the file.
@@ -1318,7 +1376,8 @@ pub struct BatchRequestFileItem {
     /// Batch generation request (wrapped in request field for API compatibility)
     pub request: GenerateContentRequest,
     /// Batch request unique identifier
-    pub key: String,
+    #[serde(with = "key_as_string")]
+    pub key: usize,
 }
 
 /// Batch file response line JSON representation.
@@ -1328,7 +1387,8 @@ pub struct BatchResponseFileItem {
     #[serde(flatten)]
     pub response: BatchGenerateContentResponseItem,
     /// Batch response unique identifier
-    pub key: String,
+    #[serde(with = "key_as_string")]
+    pub key: usize,
 }
 
 impl From<BatchGenerateContentResponseItem> for Result<GenerationResponse, IndividualRequestError> {

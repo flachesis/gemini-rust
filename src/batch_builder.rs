@@ -60,7 +60,7 @@ impl BatchBuilder {
             .enumerate()
             .map(|(i, request)| BatchRequestItem {
                 request,
-                metadata: Some(RequestMetadata { key: i.to_string() }),
+                metadata: Some(RequestMetadata { key: i }),
             })
             .collect();
 
@@ -94,7 +94,7 @@ impl BatchBuilder {
         for (index, item) in self.requests.into_iter().enumerate() {
             let item = BatchRequestFileItem {
                 request: item,
-                key: index.to_string(),
+                key: index,
             };
 
             let line = serde_json::to_string(&item).context(crate::client::DeserializeSnafu)?;
