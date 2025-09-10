@@ -8,7 +8,7 @@ use crate::{
         BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
         InputConfig, RequestMetadata, RequestsContainer,
     },
-    BatchFileItem,
+    BatchRequestFileItem,
 };
 
 /// A builder for creating and executing synchronous batch content generation requests.
@@ -67,11 +67,9 @@ impl BatchBuilder {
         BatchGenerateContentRequest {
             batch: BatchConfig {
                 display_name: self.display_name,
-                input_config: InputConfig::Requests {
-                    requests: RequestsContainer {
-                        requests: batch_requests,
-                    },
-                },
+                input_config: InputConfig::Requests(RequestsContainer {
+                    requests: batch_requests,
+                }),
             },
         }
     }
@@ -92,18 +90,13 @@ impl BatchBuilder {
     /// It consumes the builder, serializes the requests to the JSON Lines format,
     /// uploads the content as a file, and then starts the batch operation using that file.
     pub async fn execute_as_file(self) -> Result<Batch, ClientError> {
-        let batch_requests: Vec<BatchFileItem> = self
-            .requests
-            .into_iter()
-            .enumerate()
-            .map(|(i, request)| BatchFileItem {
-                request,
-                key: i.to_string(),
-            })
-            .collect();
-
         let mut json_lines = String::new();
-        for item in batch_requests {
+        for (index, item) in self.requests.into_iter().enumerate() {
+            let item = BatchRequestFileItem {
+                request: item,
+                key: index.to_string(),
+            };
+
             let line = serde_json::to_string(&item).context(crate::client::DeserializeSnafu)?;
             json_lines.push_str(&line);
             json_lines.push('\n');
@@ -120,9 +113,7 @@ impl BatchBuilder {
         let request = BatchGenerateContentRequest {
             batch: BatchConfig {
                 display_name: self.display_name,
-                input_config: InputConfig::FileName {
-                    file_name: file.name().to_string(),
-                },
+                input_config: InputConfig::FileName(file.name().to_string()),
             },
         };
 

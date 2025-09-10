@@ -70,9 +70,8 @@ use std::{result::Result, sync::Arc};
 use crate::{
     client::{Error as ClientError, GeminiClient},
     files::GeminiFile,
-    models::OperationError,
-    models::{BatchGenerateContentResponseItem, BatchOperation, OperationResult},
-    BatchResultItem, BatchState,
+    models::{BatchOperation, BatchResponseFileItem, IndividualRequestError, OperationError},
+    BatchState, File, GenerationResponse, RequestMetadata,
 };
 
 #[derive(Debug, Snafu)]
@@ -120,6 +119,12 @@ pub enum Error {
     },
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct BatchGenerationResponseItem {
+    pub response: Result<GenerationResponse, IndividualRequestError>,
+    pub meta: RequestMetadata,
+}
+
 /// Represents the overall status of a batch operation.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BatchStatus {
@@ -133,7 +138,9 @@ pub enum BatchStatus {
         total_count: i64,
     },
     /// The operation has completed successfully.
-    Succeeded { results: Vec<BatchResultItem> },
+    Succeeded {
+        results: Vec<BatchGenerationResponseItem>,
+    },
     /// The operation was cancelled by the user.
     Cancelled,
     /// The operation has expired.
@@ -144,7 +151,7 @@ impl BatchStatus {
     async fn parse_response_file(
         response_file: crate::models::File,
         client: Arc<GeminiClient>,
-    ) -> Result<Vec<BatchResultItem>, Error> {
+    ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
         let file = GeminiFile::new(client.clone(), response_file);
         let file_content_bytes =
             file.download()
@@ -160,25 +167,15 @@ impl BatchStatus {
             if line.trim().is_empty() {
                 continue;
             }
-            let item: BatchGenerateContentResponseItem =
+            let item: BatchResponseFileItem =
                 serde_json::from_str(line).context(FileParseSnafu {
                     line: line.to_string(),
                 })?;
-            let result_item = match item {
-                BatchGenerateContentResponseItem::Success { response, metadata } => {
-                    BatchResultItem::Success {
-                        key: metadata.key,
-                        response,
-                    }
-                }
-                BatchGenerateContentResponseItem::Error { error, metadata } => {
-                    BatchResultItem::Error {
-                        key: metadata.key,
-                        error,
-                    }
-                }
-            };
-            results.push(result_item);
+
+            results.push(BatchGenerationResponseItem {
+                response: item.response.into(),
+                meta: RequestMetadata { key: item.key },
+            });
         }
         Ok(results)
     }
@@ -186,30 +183,24 @@ impl BatchStatus {
     async fn process_successful_response(
         response: crate::models::BatchOperationResponse,
         client: Arc<GeminiClient>,
-    ) -> Result<Vec<BatchResultItem>, Error> {
+    ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
         let results = match response {
             crate::models::BatchOperationResponse::InlinedResponses { inlined_responses } => {
                 inlined_responses
                     .inlined_responses
                     .into_iter()
-                    .map(|item| match item {
-                        BatchGenerateContentResponseItem::Success { response, metadata } => {
-                            BatchResultItem::Success {
-                                key: metadata.key,
-                                response,
-                            }
-                        }
-                        BatchGenerateContentResponseItem::Error { error, metadata } => {
-                            BatchResultItem::Error {
-                                key: metadata.key,
-                                error,
-                            }
-                        }
+                    .map(|item| BatchGenerationResponseItem {
+                        response: item.result.into(),
+                        meta: item.metadata,
                     })
                     .collect()
             }
-            crate::models::BatchOperationResponse::ResponseFile { response_file } => {
-                Self::parse_response_file(*response_file, client).await?
+            crate::models::BatchOperationResponse::ResponsesFile { responses_file } => {
+                let file = File {
+                    name: responses_file,
+                    ..Default::default()
+                };
+                Self::parse_response_file(file, client).await?
             }
         };
         Ok(results)
@@ -225,32 +216,18 @@ impl BatchStatus {
                 name: operation.name.clone(),
             })?;
 
-            match result {
-                OperationResult::Failure { error } => Err(error).context(BatchFailedSnafu {
-                    name: operation.name,
-                }),
-                OperationResult::Success { response } => {
-                    let results = Self::process_successful_response(response, client).await?;
+            let response = Result::from(result).context(BatchFailedSnafu {
+                name: operation.name,
+            })?;
 
-                    // Sort results by key to ensure a consistent order.
-                    let mut sorted_results = results;
-                    sorted_results.sort_by_key(|item| {
-                        let key_str = match item {
-                            BatchResultItem::Success { key, .. } => key,
-                            BatchResultItem::Error { key, .. } => key,
-                        };
-                        key_str.parse::<usize>().unwrap_or(usize::MAX)
-                    });
+            let mut results = Self::process_successful_response(response, client).await?;
+            results.sort_by_key(|r| r.meta.key.parse::<usize>().unwrap_or(usize::MAX));
 
-                    // Handle terminal states based on metadata for edge cases
-                    match operation.metadata.state {
-                        BatchState::BatchStateCancelled => Ok(BatchStatus::Cancelled),
-                        BatchState::BatchStateExpired => Ok(BatchStatus::Expired),
-                        _ => Ok(BatchStatus::Succeeded {
-                            results: sorted_results,
-                        }),
-                    }
-                }
+            // Handle terminal states based on metadata for edge cases
+            match operation.metadata.state {
+                BatchState::BatchStateCancelled => Ok(BatchStatus::Cancelled),
+                BatchState::BatchStateExpired => Ok(BatchStatus::Expired),
+                _ => Ok(BatchStatus::Succeeded { results }),
             }
         } else {
             // The operation is still in progress.

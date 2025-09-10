@@ -1,3 +1,51 @@
+//! # Gemini API Data Models
+//!
+//! Core data structures for Google's Gemini API with complete serialization support.
+//! Handles requests/responses for content generation, embeddings, batch processing,
+//! and cached content management.
+//!
+//! ## Model Categories
+//!
+//! ### Core Building Blocks
+//! - [`Role`], [`Part`], [`Content`], [`Message`] - Message construction
+//! - [`Blob`] - Binary data handling
+//!
+//! ### Content Generation
+//! - [`GenerationResponse`], [`GenerateContentRequest`] - Text/image generation
+//! - [`GenerationConfig`] - Generation parameters (temperature, tokens, etc.)
+//! - [`Candidate`] - Individual response candidates
+//!
+//! ### Batch Operations
+//! - [`BatchOperation`], [`BatchConfig`] - Batch job management
+//! - [`BatchGenerateContentRequest`], [`BatchStats`] - Batch processing
+//!
+//! ### Text Embeddings
+//! - [`ContentEmbedding`], [`EmbedContentRequest`] - Vector embeddings
+//! - [`TaskType`] - Embedding optimization types
+//!
+//! ### Content Caching
+//! - [`CachedContent`], [`CreateCachedContentRequest`] - Cache management
+//! - [`CacheUsageMetadata`], [`CacheExpirationRequest`] - Cache lifecycle
+//!
+//! ### Safety & Content Filtering
+//! - [`SafetySetting`], [`HarmCategory`], [`HarmBlockThreshold`] - Content moderation
+//! - [`PromptFeedback`], [`SafetyRating`] - Safety analysis results
+//!
+//! ### Speech Synthesis
+//! - [`SpeechConfig`], [`VoiceConfig`], [`MultiSpeakerVoiceConfig`] - TTS configuration
+//!
+//! ### File Management
+//! - [`File`], [`FileState`] - File upload/download operations
+//!
+//! ### Advanced Features
+//! - [`ThinkingConfig`] - Gemini 2.5 thinking mode
+//! - [`FunctionCallingConfig`], [`ToolConfig`] - Function calling
+//!
+//! ## API Quirks
+//!
+//! Some Google API endpoints return numbers as strings - custom deserializers
+//! handle this automatically for seamless Rust integration.
+
 #![allow(clippy::enum_variant_names)]
 
 use serde::{de, Deserialize, Deserializer, Serialize};
@@ -626,12 +674,11 @@ pub struct BatchConfig {
 /// Input configuration for batch requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[serde(untagged)]
 pub enum InputConfig {
     /// The requests to be processed in the batch.
-    Requests { requests: RequestsContainer },
+    Requests(RequestsContainer),
     /// The name of the File containing the input requests.
-    FileName { file_name: String },
+    FileName(String),
 }
 
 /// Container for requests
@@ -653,7 +700,7 @@ pub struct BatchRequestItem {
 }
 
 /// Metadata for batch request
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RequestMetadata {
     /// Key for the request
@@ -736,6 +783,7 @@ pub struct BatchStats {
     pub successful_request_count: Option<i64>,
 }
 
+/// Deserializes string numbers to i64. Fixes Google API returning numbers as strings.
 fn from_str_to_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
     D: Deserializer<'de>,
@@ -745,6 +793,7 @@ where
         .map_err(de::Error::custom)
 }
 
+/// Deserializes optional string numbers to i64. Fixes Google API returning numbers as strings.
 fn from_str_to_i64_optional<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
 where
     D: Deserializer<'de>,
@@ -780,6 +829,10 @@ pub struct ThinkingConfig {
 }
 
 impl ThinkingConfig {
+    // TODO: Add failable constructor with validation
+    // pub fn new() -> Result<Self, ValidationError> { ... }
+    // Should validate temperature (0.0-1.0), max_tokens (>0), etc.
+
     /// Create a new thinking config with default settings
     pub fn new() -> Self {
         Self {
@@ -1087,13 +1140,14 @@ pub enum TaskType {
 }
 
 /// Represents a file resource in the Gemini API.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct File {
     /// The unique identifier for the file.
     pub name: String,
     /// The URI of the file.
-    pub uri: Url,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uri: Option<Url>,
     /// The download URI of the file.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub download_uri: Option<Url>,
@@ -1170,27 +1224,49 @@ pub struct OperationError {
 
 /// Represents the result of a completed batch operation, which is either a response or an error.
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(rename_all = "camelCase")]
 pub enum OperationResult {
     /// Successful operation result
-    Success {
-        /// The batch operation response
-        response: BatchOperationResponse,
-    },
+    Response(BatchOperationResponse),
     /// Failed operation result
-    Failure {
-        /// The operation error
-        error: OperationError,
-    },
+    Error(OperationError),
 }
 
-/// Batch file line JSON representation.
+impl From<OperationResult> for Result<BatchOperationResponse, OperationError> {
+    fn from(operation: OperationResult) -> Self {
+        match operation {
+            OperationResult::Response(response) => Ok(response),
+            OperationResult::Error(error) => Err(error),
+        }
+    }
+}
+
+/// Batch file request line JSON representation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BatchFileItem {
-    /// Batch generatin request
+pub struct BatchRequestFileItem {
+    /// Batch generation request (wrapped in request field for API compatibility)
     pub request: GenerateContentRequest,
     /// Batch request unique identifier
     pub key: String,
+}
+
+/// Batch file response line JSON representation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BatchResponseFileItem {
+    /// Batch response (wrapped in response field for API compatibility)
+    #[serde(flatten)]
+    pub response: BatchGenerateContentResponseItem,
+    /// Batch response unique identifier
+    pub key: String,
+}
+
+impl From<BatchGenerateContentResponseItem> for Result<GenerationResponse, IndividualRequestError> {
+    fn from(response: BatchGenerateContentResponseItem) -> Self {
+        match response {
+            BatchGenerateContentResponseItem::Response(r) => Ok(r),
+            BatchGenerateContentResponseItem::Error(err) => Err(err),
+        }
+    }
 }
 
 /// Represents the response of a batch operation.
@@ -1198,17 +1274,11 @@ pub struct BatchFileItem {
 #[serde(untagged)]
 pub enum BatchOperationResponse {
     /// Response with inlined responses
-    InlinedResponses {
-        /// The inlined responses
-        #[serde(rename = "inlinedResponses")]
-        inlined_responses: InlinedResponses,
-    },
+    #[serde(rename_all = "camelCase")]
+    InlinedResponses { inlined_responses: InlinedResponses },
     /// Response with a file containing results
-    ResponseFile {
-        /// The file containing the batch results
-        #[serde(rename = "responseFile")]
-        response_file: Box<File>,
-    },
+    #[serde(rename_all = "camelCase")]
+    ResponsesFile { responses_file: String },
 }
 
 /// A container for inlined responses.
@@ -1216,28 +1286,31 @@ pub enum BatchOperationResponse {
 #[serde(rename_all = "camelCase")]
 pub struct InlinedResponses {
     /// The list of batch response items
-    pub inlined_responses: Vec<BatchGenerateContentResponseItem>,
+    pub inlined_responses: Vec<InlinedBatchGenerationResponseItem>,
+}
+
+/// Represents a single response item within an inlined batch response.
+///
+/// This structure combines request metadata with the actual response or error,
+/// used when batch results are returned inline rather than in a separate file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InlinedBatchGenerationResponseItem {
+    /// Request metadata containing the original key and other identifiers
+    pub metadata: RequestMetadata,
+    /// The actual response content or error for this batch item
+    #[serde(flatten)]
+    pub result: BatchGenerateContentResponseItem,
 }
 
 /// An item in a batch generate content response.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[serde(untagged)]
 pub enum BatchGenerateContentResponseItem {
     /// Successful response item
-    Success {
-        /// The generation response
-        response: GenerationResponse,
-        /// The request metadata
-        metadata: RequestMetadata,
-    },
+    Response(GenerationResponse),
     /// Error response item
-    Error {
-        /// The error that occurred
-        error: IndividualRequestError,
-        /// The request metadata
-        metadata: RequestMetadata,
-    },
+    Error(IndividualRequestError),
 }
 
 /// An error for an individual request in a batch.
@@ -1253,24 +1326,6 @@ pub struct IndividualRequestError {
 }
 
 /// The outcome of a single request in a batch operation.
-#[derive(Debug, Clone, PartialEq)]
-pub enum BatchResultItem {
-    /// Successful batch item result
-    Success {
-        /// The request key
-        key: String,
-        /// The generation response
-        response: GenerationResponse,
-    },
-    /// Failed batch item result
-    Error {
-        /// The request key
-        key: String,
-        /// The error that occurred
-        error: IndividualRequestError,
-    },
-}
-
 /// Response from the Gemini API for listing batch operations.
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -1425,15 +1480,6 @@ pub struct CreateCachedContentRequest {
     #[serde(flatten)]
     pub expiration: CacheExpirationRequest,
 }
-
-/// Response from creating cached content.
-pub type CreateCachedContentResponse = CachedContent;
-
-/// Response from getting cached content.
-pub type GetCachedContentResponse = CachedContent;
-
-/// Response from updating cached content.
-pub type UpdateCachedContentResponse = CachedContent;
 
 /// Response from deleting cached content.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

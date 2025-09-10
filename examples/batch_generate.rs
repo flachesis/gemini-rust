@@ -11,7 +11,7 @@
 //! cargo run --package gemini-rust --example batch_generate
 //! ```
 
-use gemini_rust::{Batch, BatchError, BatchResultItem, BatchStatus, Gemini, Message};
+use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
 use std::time::Duration;
 
 /// Waits for the batch operation to complete by periodically polling its status.
@@ -84,13 +84,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 BatchStatus::Succeeded { results } => {
                     println!("Batch succeeded!");
                     for item in results {
-                        match item {
-                            BatchResultItem::Success { key, response } => {
-                                println!("--- Response for Key {} ---", key);
+                        match item.response {
+                            Ok(response) => {
+                                println!("--- Response for Key {} ---", item.meta.key);
                                 println!("{}", response.text());
                             }
-                            BatchResultItem::Error { key, error } => {
-                                println!("--- Error for Key {} ---", key);
+                            Err(error) => {
+                                println!("--- Error for Key {} ---", item.meta.key);
                                 println!("Code: {}, Message: {}", error.code, error.message);
                                 if let Some(details) = &error.details {
                                     println!("Details: {}", details);
