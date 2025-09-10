@@ -169,3 +169,150 @@ fn test_multi_turn_content_structure() {
         _ => panic!("Expected FunctionCall part"),
     }
 }
+
+#[test]
+fn test_text_with_thought_signature() {
+    use crate::GenerationResponse;
+
+    // Test JSON similar to the provided API response
+    let json_response = json!({
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {
+                            "text": "**Okay, here's what I'm thinking:**\n\nThe user wants me to show them...",
+                            "thought": true
+                        },
+                        {
+                            "text": "The following functions are available in the environment: `chat.get_message_count()`",
+                            "thoughtSignature": "Cs4BA.../Yw="
+                        }
+                    ],
+                    "role": "model"
+                },
+                "finishReason": "STOP",
+                "index": 0
+            }
+        ],
+        "usageMetadata": {
+            "promptTokenCount": 36,
+            "candidatesTokenCount": 18,
+            "totalTokenCount": 96,
+            "thoughtsTokenCount": 42
+        },
+        "modelVersion": "gemini-2.5-flash",
+        "responseId": "gIC..."
+    });
+
+    // Test deserialization
+    let response: GenerationResponse = serde_json::from_value(json_response).unwrap();
+
+    // Verify basic structure
+    assert_eq!(response.candidates.len(), 1);
+    let candidate = &response.candidates[0];
+
+    // Check content parts
+    let parts = candidate.content.parts.as_ref().unwrap();
+    assert_eq!(parts.len(), 2);
+
+    // Check first part (thought without signature)
+    match &parts[0] {
+        Part::Text {
+            text,
+            thought,
+            thought_signature,
+        } => {
+            assert_eq!(*thought, Some(true));
+            assert_eq!(*thought_signature, None);
+            assert!(text.contains("here's what I'm thinking"));
+        }
+        _ => panic!("Expected Text part for first element"),
+    }
+
+    // Check second part (text with thought signature)
+    match &parts[1] {
+        Part::Text {
+            text,
+            thought,
+            thought_signature,
+        } => {
+            assert_eq!(*thought, None);
+            assert!(thought_signature.is_some());
+            assert_eq!(thought_signature.as_ref().unwrap(), "Cs4BA.../Yw=");
+            assert!(text.contains("chat.get_message_count"));
+        }
+        _ => panic!("Expected Text part for second element"),
+    }
+
+    // Test the new text_with_thoughts method
+    let text_with_thoughts = response.text_with_thoughts();
+    assert_eq!(text_with_thoughts.len(), 2);
+
+    let (first_text, is_thought, thought_sig) = &text_with_thoughts[0];
+    assert_eq!(*is_thought, true);
+    assert!(thought_sig.is_none());
+    assert!(first_text.contains("here's what I'm thinking"));
+
+    let (second_text, is_thought, thought_sig) = &text_with_thoughts[1];
+    assert_eq!(*is_thought, false);
+    assert!(thought_sig.is_some());
+    assert_eq!(thought_sig.unwrap(), "Cs4BA.../Yw=");
+    assert!(second_text.contains("chat.get_message_count"));
+}
+
+#[test]
+fn test_content_creation_with_thought_signature() {
+    // Test creating content with thought signature
+    use crate::Content;
+    let content = Content::text_with_thought_signature("Test response", "test_signature_123");
+
+    let parts = content.parts.as_ref().unwrap();
+    assert_eq!(parts.len(), 1);
+
+    match &parts[0] {
+        Part::Text {
+            text,
+            thought,
+            thought_signature,
+        } => {
+            assert_eq!(text, "Test response");
+            assert_eq!(*thought, None);
+            assert_eq!(thought_signature.as_ref().unwrap(), "test_signature_123");
+        }
+        _ => panic!("Expected Text part"),
+    }
+
+    // Test creating thought content with signature
+    let thought_content =
+        Content::thought_with_signature("This is my thinking process", "thought_signature_456");
+
+    let parts = thought_content.parts.as_ref().unwrap();
+    assert_eq!(parts.len(), 1);
+
+    match &parts[0] {
+        Part::Text {
+            text,
+            thought,
+            thought_signature,
+        } => {
+            assert_eq!(text, "This is my thinking process");
+            assert_eq!(*thought, Some(true));
+            assert_eq!(thought_signature.as_ref().unwrap(), "thought_signature_456");
+        }
+        _ => panic!("Expected Text part"),
+    }
+
+    // Test serialization
+    let serialized = serde_json::to_string(&content).unwrap();
+    println!("Serialized content with thought signature: {}", serialized);
+    assert!(serialized.contains("thoughtSignature"));
+    assert!(serialized.contains("test_signature_123"));
+
+    // Test serialization of thought content
+    let serialized_thought = serde_json::to_string(&thought_content).unwrap();
+    println!("Serialized thought content: {}", serialized_thought);
+    assert!(serialized_thought.contains("thoughtSignature"));
+    assert!(serialized_thought.contains("thought_signature_456"));
+    assert!(serialized_thought.contains("\"thought\":true"));
+}

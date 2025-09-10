@@ -97,7 +97,11 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
                                 }
                             }
                             // Display any text content
-                            Part::Text { text, thought } => {
+                            Part::Text {
+                                text,
+                                thought,
+                                thought_signature: _,
+                            } => {
                                 if thought.unwrap_or(false) {
                                     println!("💭 Model thought: {}", text);
                                 } else {

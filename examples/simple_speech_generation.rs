@@ -72,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             },
                             // Display any text content
-                            Part::Text { text, thought } => {
+                            Part::Text { text, thought, thought_signature: _ } => {
                                 if thought.unwrap_or(false) {
                                     println!("💭 Thought: {}", text);
                                 } else {

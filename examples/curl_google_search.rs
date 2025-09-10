@@ -33,6 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let text_part = Part::Text {
         text: "What is the current Google stock price?".to_string(),
         thought: None,
+        thought_signature: None,
     };
 
     let content = Content {

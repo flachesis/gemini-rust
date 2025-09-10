@@ -173,6 +173,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 parts: Some(vec![gemini_rust::Part::Text {
                     text: final_response.text(),
                     thought: None,
+                    thought_signature: None,
                 }]),
                 role: Some(gemini_rust::Role::Model),
             };
