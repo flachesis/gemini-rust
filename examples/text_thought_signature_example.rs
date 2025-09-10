@@ -60,12 +60,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display usage metadata
     if let Some(usage) = &response.usage_metadata {
         println!("\n📊 Token Usage:");
-        println!("  Prompt tokens: {}", usage.prompt_token_count);
+        if let Some(prompt_token_count) = usage.prompt_token_count {
+            println!("  Prompt tokens: {}", prompt_token_count);
+        }
         println!(
             "  Response tokens: {}",
             usage.candidates_token_count.unwrap_or(0)
         );
-        println!("  Total tokens: {}", usage.total_token_count);
+        if let Some(total_token_count) = usage.total_token_count {
+            println!("  Total tokens: {}", total_token_count);
+        }
         if let Some(thinking_tokens) = usage.thoughts_token_count {
             println!("  Thinking tokens: {}", thinking_tokens);
         }
@@ -116,32 +120,30 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(candidate) = response.candidates.first() {
         if let Some(parts) = &candidate.content.parts {
             for (i, part) in parts.iter().enumerate() {
-                match part {
-                    Part::Text {
-                        text: _,
-                        thought,
-                        thought_signature,
-                    } => {
-                        println!(
-                            "\nPart {}: {} text{}",
-                            i + 1,
-                            if *thought == Some(true) {
-                                "Thought"
-                            } else {
-                                "Regular"
-                            },
-                            if thought_signature.is_some() {
-                                " with signature"
-                            } else {
-                                ""
-                            }
-                        );
-
-                        if let Some(sig) = thought_signature {
-                            println!("  ↳ Preserve signature: {}...", &sig[..10.min(sig.len())]);
+                if let Part::Text {
+                    text: _,
+                    thought,
+                    thought_signature,
+                } = part
+                {
+                    println!(
+                        "\nPart {}: {} text{}",
+                        i + 1,
+                        if *thought == Some(true) {
+                            "Thought"
+                        } else {
+                            "Regular"
+                        },
+                        if thought_signature.is_some() {
+                            " with signature"
+                        } else {
+                            ""
                         }
+                    );
+
+                    if let Some(sig) = thought_signature {
+                        println!("  ↳ Preserve signature: {}...", &sig[..10.min(sig.len())]);
                     }
-                    _ => {}
                 }
             }
         }

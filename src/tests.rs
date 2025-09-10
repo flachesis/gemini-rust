@@ -250,12 +250,12 @@ fn test_text_with_thought_signature() {
     assert_eq!(text_with_thoughts.len(), 2);
 
     let (first_text, is_thought, thought_sig) = &text_with_thoughts[0];
-    assert_eq!(*is_thought, true);
+    assert!(*is_thought);
     assert!(thought_sig.is_none());
     assert!(first_text.contains("here's what I'm thinking"));
 
     let (second_text, is_thought, thought_sig) = &text_with_thoughts[1];
-    assert_eq!(*is_thought, false);
+    assert!(!(*is_thought));
     assert!(thought_sig.is_some());
     assert_eq!(thought_sig.unwrap(), "Cs4BA.../Yw=");
     assert!(second_text.contains("chat.get_message_count"));
