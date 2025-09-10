@@ -112,15 +112,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Display usage metadata
             if let Some(usage) = &final_response.usage_metadata {
                 println!("\nToken usage:");
-                println!("  Prompt tokens: {}", usage.prompt_token_count);
-                println!(
-                    "  Response tokens: {}",
-                    usage.candidates_token_count.unwrap_or(0)
-                );
+                if let Some(prompt_tokens) = usage.prompt_token_count {
+                    println!("  Prompt tokens: {}", prompt_tokens);
+                }
+                if let Some(response_tokens) = usage.candidates_token_count {
+                    println!("  Response tokens: {}", response_tokens);
+                }
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
                     println!("  Thinking tokens: {}", thinking_tokens);
                 }
-                println!("  Total tokens: {}", usage.total_token_count);
+                if let Some(total_tokens) = usage.total_token_count {
+                    println!("  Total tokens: {}", total_tokens);
+                }
             }
 
             // --- Step 3: Multi-turn conversation with thought context ---
@@ -230,15 +233,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Display follow-up usage metadata
             if let Some(usage) = &followup_response.usage_metadata {
                 println!("\nFollow-up token usage:");
-                println!("  Prompt tokens: {}", usage.prompt_token_count);
-                println!(
-                    "  Response tokens: {}",
-                    usage.candidates_token_count.unwrap_or(0)
-                );
+                if let Some(prompt_tokens) = usage.prompt_token_count {
+                    println!("  Prompt tokens: {}", prompt_tokens);
+                }
+                if let Some(response_tokens) = usage.candidates_token_count {
+                    println!("  Response tokens: {}", response_tokens);
+                }
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
                     println!("  Thinking tokens: {}", thinking_tokens);
                 }
-                println!("  Total tokens: {}", usage.total_token_count);
+                if let Some(total_tokens) = usage.total_token_count {
+                    println!("  Total tokens: {}", total_tokens);
+                }
             }
 
             println!("\n=== Multi-turn conversation completed ===");

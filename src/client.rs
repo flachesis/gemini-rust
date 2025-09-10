@@ -1,21 +1,27 @@
 use crate::{
     batch_builder::BatchBuilder,
+    cache::CacheBuilder,
     content_builder::ContentBuilder,
     embed_builder::EmbedBuilder,
+    files::GeminiFile,
     models::{
         BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
-        BatchGenerateContentResponse, BatchOperation, ContentEmbeddingResponse,
-        EmbedContentRequest, GenerateContentRequest, GenerationResponse, ListBatchesResponse,
+        BatchGenerateContentResponse, BatchOperation, CacheExpirationRequest, CachedContent,
+        CachedContentSummary, ContentEmbeddingResponse, CreateCachedContentRequest,
+        DeleteCachedContentResponse, EmbedContentRequest, File, GenerateContentRequest,
+        GenerationResponse, ListBatchesResponse, ListCachedContentsResponse, ListFilesResponse,
     },
-    Batch,
+    Batch, CachedContentHandle,
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
+use mime::Mime;
 use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
     Client, ClientBuilder, Response,
 };
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use snafu::{ResultExt, Snafu};
 use std::{
     fmt::{self, Formatter},
@@ -69,6 +75,7 @@ impl fmt::Display for Model {
 }
 
 #[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("failed to parse API key"))]
     InvalidApiKey { source: InvalidHeaderValue },
@@ -103,6 +110,15 @@ pub enum Error {
 
     #[snafu(display("failed to generate content"))]
     DecodeResponse { source: reqwest::Error },
+
+    #[snafu(display("failed to parse URL"))]
+    UrlParse { source: url::ParseError },
+
+    #[snafu(display("no download URI for file"))]
+    NoDownloadUri { meta: Box<File> },
+
+    #[snafu(display("I/O error during file operations"))]
+    Io { source: std::io::Error },
 }
 
 /// Internal client for making requests to the Gemini API
@@ -276,13 +292,43 @@ impl GeminiClient {
             .context(DecodeResponseSnafu)
     }
 
+    /// List files
+    pub(crate) async fn list_files(
+        &self,
+        page_size: Option<u32>,
+        page_token: Option<String>,
+    ) -> Result<ListFilesResponse, Error> {
+        let mut url = self.build_files_url(None)?;
+
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", &token);
+        }
+
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
     /// Cancel a batch operation
     pub(crate) async fn cancel_batch_operation(&self, name: &str) -> Result<(), Error> {
         let url = self.build_batch_url(name, Some("cancel"))?;
         let response = self
             .http_client
             .post(url.clone())
-            .json(&serde_json::json!({}))
+            .json(&json!({}))
             .send()
             .await
             .context(PerformRequestSnafu { url })?;
@@ -303,6 +349,131 @@ impl GeminiClient {
 
         Self::check_response(response).await?;
         Ok(())
+    }
+
+    /// Upload a file using the resumable upload protocol.
+    pub(crate) async fn upload_file(
+        &self,
+        display_name: Option<String>,
+        file_bytes: Vec<u8>,
+        mime_type: Mime,
+    ) -> Result<File, Error> {
+        // Step 1: Initiate resumable upload
+        // The upload URL is different from the metadata URL, so we construct it relative to the base URL's root.
+        let initiate_url =
+            self.base_url
+                .join("/upload/v1beta/files")
+                .context(ConstructUrlSnafu {
+                    suffix: "/upload/v1beta/files".to_string(),
+                })?;
+
+        let response = self
+            .http_client
+            .post(initiate_url.clone())
+            .header("X-Goog-Upload-Protocol", "resumable")
+            .header("X-Goog-Upload-Command", "start")
+            .header(
+                "X-Goog-Upload-Header-Content-Length",
+                file_bytes.len().to_string(),
+            )
+            .header("X-Goog-Upload-Header-Content-Type", mime_type.to_string())
+            .json(&json!({"file": {"displayName": display_name}}))
+            .send()
+            .await
+            .context(PerformRequestSnafu {
+                url: initiate_url.clone(),
+            })?;
+
+        let checked_response = Self::check_response(response).await?;
+
+        let upload_url = checked_response
+            .headers()
+            .get("X-Goog-Upload-URL")
+            .and_then(|h| h.to_str().ok())
+            .ok_or_else(|| Error::BadResponse {
+                code: 500,
+                description: Some("Missing upload URL in response".to_string()),
+            })?;
+
+        // Step 2: Upload file content
+        let upload_response = self
+            .http_client
+            .post(upload_url)
+            .header("X-Goog-Upload-Command", "upload, finalize")
+            .header("X-Goog-Upload-Offset", "0")
+            .body(file_bytes)
+            .send()
+            .await
+            .map_err(|e| Error::PerformRequest {
+                source: e,
+                url: Url::parse(upload_url).unwrap_or_else(|_| initiate_url.clone()),
+            })?;
+
+        let final_response = Self::check_response(upload_response).await?;
+
+        #[derive(serde::Deserialize)]
+        struct UploadResponse {
+            file: File,
+        }
+
+        let upload_response: UploadResponse =
+            final_response.json().await.context(DecodeResponseSnafu)?;
+        Ok(upload_response.file)
+    }
+
+    /// Get a file resource
+    pub(crate) async fn get_file(&self, name: &str) -> Result<File, Error> {
+        let url = self.build_files_url(Some(name))?;
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Delete a file resource
+    pub(crate) async fn delete_file(&self, name: &str) -> Result<(), Error> {
+        let url = self.build_files_url(Some(name))?;
+        let response = self
+            .http_client
+            .delete(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response).await?;
+        Ok(())
+    }
+
+    pub(crate) async fn download_file(&self, name: &str) -> Result<Vec<u8>, Error> {
+        let mut url = self
+            .base_url
+            .join(&format!("/download/v1beta/{name}:download"))
+            .context(ConstructUrlSnafu {
+                suffix: format!("/download/v1beta/{name}:download"),
+            })?;
+        url.query_pairs_mut().append_pair("alt", "media");
+
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url: url.clone() })?;
+
+        Self::check_response(response)
+            .await?
+            .bytes()
+            .await
+            .context(PerformRequestSnafu { url })
+            .map(|b| b.to_vec())
     }
 
     /// Post JSON to an endpoint
@@ -328,6 +499,132 @@ impl GeminiClient {
             .context(DecodeResponseSnafu)
     }
 
+    /// Create cached content
+    pub(crate) async fn create_cached_content(
+        &self,
+        cached_content: CreateCachedContentRequest,
+    ) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(None)?;
+        let response = self
+            .http_client
+            .post(url.clone())
+            .json(&cached_content)
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Get cached content
+    pub(crate) async fn get_cached_content(&self, name: &str) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(Some(name))?;
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Update cached content (typically to update TTL)
+    pub(crate) async fn update_cached_content(
+        &self,
+        name: &str,
+        expiration: CacheExpirationRequest,
+    ) -> Result<CachedContent, Error> {
+        let url = self.build_cache_url(Some(name))?;
+
+        // Create a minimal update payload with just the expiration
+        let update_payload = match expiration {
+            CacheExpirationRequest::Ttl { ttl } => json!({ "ttl": ttl }),
+            CacheExpirationRequest::ExpireTime { expire_time } => {
+                json!({ "expireTime": expire_time.format(&time::format_description::well_known::Rfc3339).unwrap() })
+            }
+        };
+
+        let response = self
+            .http_client
+            .patch(url.clone())
+            .json(&update_payload)
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<CachedContent>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
+    /// Delete cached content
+    pub(crate) async fn delete_cached_content(
+        &self,
+        name: &str,
+    ) -> Result<DeleteCachedContentResponse, Error> {
+        let url = self.build_cache_url(Some(name))?;
+        let response = self
+            .http_client
+            .delete(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        // For DELETE operations, we might get an empty response, so handle that case
+        if response.status().is_success() {
+            Ok(DeleteCachedContentResponse {
+                success: Some(true),
+            })
+        } else {
+            Self::check_response(response)
+                .await?
+                .json::<DeleteCachedContentResponse>()
+                .await
+                .context(DecodeResponseSnafu)
+        }
+    }
+
+    /// List cached contents
+    pub(crate) async fn list_cached_contents(
+        &self,
+        page_size: Option<i32>,
+        page_token: Option<String>,
+    ) -> Result<ListCachedContentsResponse, Error> {
+        let mut url = self.build_cache_url(None)?;
+
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", &token);
+        }
+
+        let response = self
+            .http_client
+            .get(url.clone())
+            .send()
+            .await
+            .context(PerformRequestSnafu { url })?;
+
+        Self::check_response(response)
+            .await?
+            .json::<ListCachedContentsResponse>()
+            .await
+            .context(DecodeResponseSnafu)
+    }
+
     /// Build a URL for the API
     fn build_url(&self, endpoint: &str) -> Result<Url, Error> {
         let url = self.base_url.clone();
@@ -343,6 +640,34 @@ impl GeminiClient {
 
         let url = self.base_url.clone();
         url.join(&suffix).context(ConstructUrlSnafu { suffix })
+    }
+
+    /// Build a URL for file operations
+    fn build_files_url(&self, name: Option<&str>) -> Result<Url, Error> {
+        let suffix = name
+            .map(|n| format!("files/{}", n.strip_prefix("files/").unwrap_or(n)))
+            .unwrap_or_else(|| "files".to_string());
+
+        self.base_url
+            .join(&suffix)
+            .context(ConstructUrlSnafu { suffix })
+    }
+
+    /// Build a URL for cache operations
+    fn build_cache_url(&self, name: Option<&str>) -> Result<Url, Error> {
+        let suffix = name
+            .map(|n| {
+                if n.starts_with("cachedContents/") {
+                    n.to_string()
+                } else {
+                    format!("cachedContents/{}", n)
+                }
+            })
+            .unwrap_or_else(|| "cachedContents".to_string());
+
+        self.base_url
+            .join(&suffix)
+            .context(ConstructUrlSnafu { suffix })
     }
 }
 
@@ -423,6 +748,85 @@ impl Gemini {
 
                 for operation in response.operations {
                     yield operation;
+                }
+
+                if let Some(next_page_token) = response.next_page_token {
+                    page_token = Some(next_page_token);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Create cached content with a fluent API.
+    pub fn create_cache(&self) -> CacheBuilder {
+        CacheBuilder::new(self.client.clone())
+    }
+
+    /// Get a handle to cached content by its name.
+    pub fn get_cached_content(&self, name: &str) -> CachedContentHandle {
+        CachedContentHandle::new(name.to_string(), self.client.clone())
+    }
+
+    /// Lists cached contents.
+    ///
+    /// This method returns a stream that handles pagination automatically.
+    pub fn list_cached_contents(
+        &self,
+        page_size: impl Into<Option<i32>>,
+    ) -> impl Stream<Item = Result<CachedContentSummary, Error>> + Send {
+        let client = self.client.clone();
+        let page_size = page_size.into();
+        async_stream::try_stream! {
+            let mut page_token: Option<String> = None;
+            loop {
+                let response = client
+                    .list_cached_contents(page_size, page_token.clone())
+                    .await?;
+
+                for cached_content in response.cached_contents {
+                    yield cached_content;
+                }
+
+                if let Some(next_page_token) = response.next_page_token {
+                    page_token = Some(next_page_token);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Start building a file resource
+    pub fn create_file<B: Into<Vec<u8>>>(&self, bytes: B) -> crate::files::FileBuilder {
+        crate::files::FileBuilder::new(self.client.clone(), bytes)
+    }
+
+    /// Get a handle to a file by its name.
+    pub async fn get_file(&self, name: &str) -> Result<GeminiFile, Error> {
+        let file = self.client.get_file(name).await?;
+        Ok(GeminiFile::new(self.client.clone(), file))
+    }
+
+    /// Lists files.
+    ///
+    /// This method returns a stream that handles pagination automatically.
+    pub fn list_files(
+        &self,
+        page_size: impl Into<Option<u32>>,
+    ) -> impl Stream<Item = Result<GeminiFile, Error>> + Send {
+        let client = self.client.clone();
+        let page_size = page_size.into();
+        async_stream::try_stream! {
+            let mut page_token: Option<String> = None;
+            loop {
+                let response = client
+                    .list_files(page_size, page_token.clone())
+                    .await?;
+
+                for file in response.files {
+                    yield GeminiFile::new(client.clone(), file);
                 }
 
                 if let Some(next_page_token) = response.next_page_token {

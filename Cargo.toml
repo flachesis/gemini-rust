@@ -25,7 +25,7 @@ features = [
 [dependencies]
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
-url = "^2.4"
+url = { version = "^2.4", features = ["serde"] }
 async-trait = "^0.1"
 futures = "^0.3.1"
 futures-util = "^0.3"
@@ -33,6 +33,10 @@ base64 = "0.22"
 async-stream = "0.3"
 snafu = { version = "0.8", features = ["backtrace"] }
 eventsource-stream = "0.2"
+mime_guess = "2.0"
+mime = "0.3"
+tokio = { version = "1", features = ["io-util"] }
+time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 
 [dev-dependencies]
 display-error-chain = "0.2"

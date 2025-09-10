@@ -1,3 +1,4 @@
+use snafu::ResultExt;
 use std::sync::Arc;
 
 use crate::{
@@ -7,6 +8,7 @@ use crate::{
         BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
         InputConfig, RequestMetadata, RequestsContainer,
     },
+    BatchRequestFileItem,
 };
 
 /// A builder for creating and executing synchronous batch content generation requests.
@@ -58,18 +60,16 @@ impl BatchBuilder {
             .enumerate()
             .map(|(i, request)| BatchRequestItem {
                 request,
-                metadata: Some(RequestMetadata { key: i.to_string() }),
+                metadata: Some(RequestMetadata { key: i }),
             })
             .collect();
 
         BatchGenerateContentRequest {
             batch: BatchConfig {
                 display_name: self.display_name,
-                input_config: InputConfig {
-                    requests: RequestsContainer {
-                        requests: batch_requests,
-                    },
-                },
+                input_config: InputConfig::Requests(RequestsContainer {
+                    requests: batch_requests,
+                }),
             },
         }
     }
@@ -80,6 +80,48 @@ impl BatchBuilder {
     pub async fn execute(self) -> Result<Batch, ClientError> {
         let client = self.client.clone();
         let request = self.build();
+        let response = client.batch_generate_content_sync(request).await?;
+        Ok(Batch::new(response.name, client))
+    }
+
+    /// Executes the batch request by first uploading the requests as a JSON file.
+    ///
+    /// This method is ideal for large batch jobs that might exceed inline request limits.
+    /// It consumes the builder, serializes the requests to the JSON Lines format,
+    /// uploads the content as a file, and then starts the batch operation using that file.
+    pub async fn execute_as_file(self) -> Result<Batch, ClientError> {
+        let mut json_lines = String::new();
+        for (index, item) in self.requests.into_iter().enumerate() {
+            let item = BatchRequestFileItem {
+                request: item,
+                key: index,
+            };
+
+            let line = serde_json::to_string(&item).context(crate::client::DeserializeSnafu)?;
+            json_lines.push_str(&line);
+            json_lines.push('\n');
+        }
+        let json_bytes = json_lines.into_bytes();
+
+        let file_display_name = format!("{}-input.jsonl", self.display_name);
+        let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
+            .display_name(file_display_name)
+            .with_mime_type(
+                "application/jsonl"
+                    .parse()
+                    .expect("failed to parse MIME type 'application/jsonl'"),
+            )
+            .upload()
+            .await?;
+
+        let request = BatchGenerateContentRequest {
+            batch: BatchConfig {
+                display_name: self.display_name,
+                input_config: InputConfig::FileName(file.name().to_string()),
+            },
+        };
+
+        let client = self.client.clone();
         let response = client.batch_generate_content_sync(request).await?;
         Ok(Batch::new(response.name, client))
     }

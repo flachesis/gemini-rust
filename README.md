@@ -11,6 +11,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
 - **🛠️ Function Calling & Tools** - Custom functions and Google Search integration
 - **📦 Batch Processing** - Efficient batch content generation and embedding
+- **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
 - **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
 - **🎨 Image Generation** - Text-to-image generation and image editing capabilities
@@ -284,7 +285,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Cached Content
+
+Cache large context (system instructions, conversation history) to reduce costs and improve performance for repeated API calls:
+
+```rust
+use gemini_rust::{Gemini, Model};
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
+
+    // Create cached content with system instruction and conversation history
+    let cache = client
+        .create_cache()
+        .with_model(Model::Gemini25Flash)
+        .with_display_name("My Programming Assistant")
+        .with_system_instruction("You are a helpful programming assistant.")
+        .with_user_message("Hello! I'm learning Rust.")
+        .with_model_message("Great! I'm here to help you learn Rust programming.")
+        .with_ttl(Duration::from_secs(3600)) // Cache for 1 hour
+        .execute()
+        .await?;
+
+    // Use the cached content for subsequent requests
+    let response = client
+        .generate_content()
+        .with_cached_content(&cache)
+        .with_user_message("Can you explain ownership?")
+        .execute()
+        .await?;
+
+    println!("Response: {}", response.text());
+
+    // Clean up when done
+    cache.delete().await.map_err(|(_, e)| e)?;
+    Ok(())
+}
+```
+
 ### Batch Processing
+
+The library supports batching multiple content generation requests into a single operation. You can execute the batch directly for a small number of requests. For larger jobs, you should use the `execute_as_file()` method, which serializes the requests to a JSONL file, uploads it, and initiates the batch job.
 
 ```rust
 use gemini_rust::{Gemini, Message};
@@ -304,16 +347,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_user_message("What is the best programming language?")
         .build();
 
-    // Submit batch request
-    let batch_response = client
-        .batch_generate_content_sync()
+    // For smaller jobs, execute directly:
+    let batch = client
+        .batch_generate_content()
         .with_request(request1)
         .with_request(request2)
         .execute()
         .await?;
 
-    println!("Batch ID: {}", batch_response.name);
-    println!("State: {}", batch_response.metadata.state);
+    // For a large number of requests, use execute_as_file():
+    // let batch = client
+    //     .batch_generate_content()
+    //     .with_requests(many_requests)
+    //     .execute_as_file()
+    //     .await?;
+
+    println!("Batch Name: {}", batch.name());
+
+    // The `execute()` method polls for completion.
+    // You can then immediately check the final status.
+    match batch.status().await? {
+        gemini_rust::BatchStatus::Succeeded { results } => {
+            for item in results {
+                if let gemini_rust::BatchResultItem::Success { key, response } = item {
+                    println!("Result for key {}: {}", key, response.text());
+                }
+            }
+        }
+        status => println!("Batch finished with status: {:?}", status),
+    }
+
     Ok(())
 }
 ```
@@ -428,9 +491,12 @@ The repository includes comprehensive examples:
 | [`batch_delete.rs`](examples/batch_delete.rs) | Batch operation deletion |
 | [`batch_list.rs`](examples/batch_list.rs) | Batch operation listing with streaming |
 | [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
+| [`cache_basic.rs`](examples/cache_basic.rs) | Cached content creation and usage |
 | [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
 | [`error_handling.rs`](examples/error_handling.rs) | Error handling examples |
 | [`blob.rs`](examples/blob.rs) | Image and binary data processing |
+| [`files_delete_all.rs`](examples/files_delete_all.rs) | Delete all files |
+| [`files_lifecycle.rs`](examples/files_lifecycle.rs) | Full file lifecycle |
 | [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
 | [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
 | [`image_editing.rs`](examples/image_editing.rs) | Image editing with text prompts |

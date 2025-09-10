@@ -119,8 +119,12 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
             // Display usage metadata if available
             if let Some(usage_metadata) = &response.usage_metadata {
                 println!("\n📊 Usage Statistics:");
-                println!("   Prompt tokens: {}", usage_metadata.prompt_token_count);
-                println!("   Total tokens: {}", usage_metadata.total_token_count);
+                if let Some(prompt_tokens) = usage_metadata.prompt_token_count {
+                    println!("   Prompt tokens: {}", prompt_tokens);
+                }
+                if let Some(total_tokens) = usage_metadata.total_token_count {
+                    println!("   Total tokens: {}", total_tokens);
+                }
                 if let Some(thoughts_tokens) = usage_metadata.thoughts_token_count {
                     println!("   Thinking tokens: {}", thoughts_tokens);
                 }
