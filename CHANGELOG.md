@@ -75,6 +75,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Better async stream handling**
 - **Consolidated error types for better developer experience**
 
+### 🙏 Contributors
+
+- **@npatsakula** - Major contributions to the v1.4.0 release including Content Caching API implementation, file-based batch processing enhancements, and technical improvements to error handling and type safety
+
 ## [1.3.1] - 2025-09-01
 
 ### 🔧 Maintenance
