@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] - v1.4.0
+## [1.4.0] - 2025-09-11
 
 ### ✨ Features
 
@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Content Caching Integration**: Added `with_cached_content()` method to `ContentBuilder` for using cached content in generation requests
 - **TTL and Expiration Support**: Full support for TTL-based and absolute time-based cache expiration
 - **Cache Management**: Complete CRUD operations for cached content with proper error handling and resource cleanup
+
+#### Thought Signature Support for Gemini 2.5
+
+- **Enhanced Function Calling**: Added `thought_signature` field to `FunctionCall` struct for encrypted thinking process signatures
+- **Text Response Signatures**: Extended `Part::Text` variant with optional `thought_signature` field for text responses with thought context
+- **Multi-turn Context Preservation**: New methods for maintaining thinking context across conversation turns using thought signatures
+- **New Response Methods**: Added `function_calls_with_thoughts()` and `text_with_thoughts()` for accessing content with thought signatures
+- **Content Creation Helpers**: New `Content::text_with_thought_signature()` and `Content::thought_with_signature()` methods
+- **New Examples**: Added comprehensive examples for thought signature usage including multi-turn conversations
+- **Backward Compatibility**: All existing APIs remain unchanged while providing optional thought signature access
 
 #### File-Based Batch Processing for Large Jobs
 - **New `execute_as_file()` method**: Added a new method to the `BatchBuilder` for submitting a large number of requests, ideal for jobs that might exceed API size limits.
