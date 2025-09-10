@@ -106,7 +106,11 @@ impl BatchBuilder {
         let file_display_name = format!("{}-input.jsonl", self.display_name);
         let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
             .display_name(file_display_name)
-            .with_mime_type("application/jsonl".parse().unwrap())
+            .with_mime_type(
+                "application/jsonl"
+                    .parse()
+                    .expect("failed to parse MIME type 'application/jsonl'"),
+            )
             .upload()
             .await?;
 

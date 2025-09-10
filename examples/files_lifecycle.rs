@@ -30,7 +30,7 @@ async fn main() -> Result<(), ClientError> {
 
     assert!(
         remote_file.download().await.is_err(),
-        "You can download only generated files"
+        "Download of user-uploaded files is not supported by the Gemini API; only generated files can be downloaded"
     );
 
     // 3. Assert that the byte size is identical
