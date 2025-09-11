@@ -396,6 +396,7 @@ pub struct CitationSource {
 #[serde(rename_all = "camelCase")]
 pub struct Candidate {
     /// The content of the candidate
+    #[serde(default)]
     pub content: Content,
     /// The safety ratings for the candidate
     #[serde(skip_serializing_if = "Option::is_none")]
