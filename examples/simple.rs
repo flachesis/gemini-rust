@@ -1,7 +1,4 @@
-use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini,
-    GenerationConfig, Message, PropertyDetails, Role,
-};
+use gemini_rust::{prelude::*, tools::model::FunctionCallingMode};
 use std::env;
 
 #[tokio::main]

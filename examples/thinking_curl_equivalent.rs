@@ -1,4 +1,4 @@
-use gemini_rust::{Gemini, GenerationConfig, ThinkingConfig};
+use gemini_rust::{generation::model::ThinkingConfig, prelude::*};
 use std::env;
 
 #[tokio::main]

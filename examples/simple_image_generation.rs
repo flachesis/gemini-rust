@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use gemini_rust::{Gemini, GenerationConfig};
+use gemini_rust::prelude::*;
 use std::env;
 use std::fs;
 
@@ -40,10 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if let Some(parts) = &candidate.content.parts {
             for part in parts.iter() {
                 match part {
-                    gemini_rust::Part::Text { text, .. } => {
+                    Part::Text { text, .. } => {
                         println!("📝 Model response: {}", text);
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    Part::InlineData { inline_data } => {
                         println!("🖼️  Image generated!");
                         println!("   MIME type: {}", inline_data.mime_type);
 

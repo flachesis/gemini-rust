@@ -7,7 +7,10 @@
 //! 4. Canceling the batch when CTRL-C is pressed
 //! 5. Properly handling the result
 
-use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
+use gemini_rust::{
+    batch::handle::{Batch, Error as BatchError},
+    prelude::*,
+};
 use std::{env, sync::Arc, time::Duration};
 use tokio::{signal, sync::Mutex};
 
@@ -125,13 +128,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // Print some details about the results
                 match final_status {
-                    gemini_rust::BatchStatus::Succeeded { .. } => {
+                    BatchStatus::Succeeded { .. } => {
                         println!("Batch succeeded!");
                     }
-                    gemini_rust::BatchStatus::Cancelled => {
+                    BatchStatus::Cancelled => {
                         println!("Batch was cancelled as requested.");
                     }
-                    gemini_rust::BatchStatus::Expired => {
+                    BatchStatus::Expired => {
                         println!("Batch expired.");
                     }
                     _ => {

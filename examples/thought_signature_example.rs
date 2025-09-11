@@ -14,8 +14,7 @@
 /// Thought signatures are encrypted representations of the model's internal
 /// thought process that help maintain context across conversation turns.
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, FunctionResponse, Gemini,
-    PropertyDetails, ThinkingConfig, Tool,
+    generation::model::ThinkingConfig, prelude::*, tools::model::FunctionCallingMode,
 };
 use serde_json::json;
 use std::env;
@@ -147,12 +146,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // IMPORTANT: Add the model's response with the function call INCLUDING the thought signature
             // This maintains the thought context for the next turn
             // DO NOT concatenate parts or merge signatures - include the complete original part
-            let model_content = gemini_rust::Content {
-                parts: Some(vec![gemini_rust::Part::FunctionCall {
+            let model_content = Content {
+                parts: Some(vec![Part::FunctionCall {
                     function_call: function_call.clone(),
                     thought_signature: thought_signature.cloned(), // This is crucial for context
                 }]),
-                role: Some(gemini_rust::Role::Model),
+                role: Some(Role::Model),
             };
             conversation_builder.contents.push(model_content);
 
@@ -169,13 +168,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             );
 
             // Add the model's text response (complete the conversation history)
-            let model_text_content = gemini_rust::Content {
-                parts: Some(vec![gemini_rust::Part::Text {
+            let model_text_content = Content {
+                parts: Some(vec![Part::Text {
                     text: final_response.text(),
                     thought: None,
                     thought_signature: None,
                 }]),
-                role: Some(gemini_rust::Role::Model),
+                role: Some(Role::Model),
             };
             conversation_builder.contents.push(model_text_content);
 

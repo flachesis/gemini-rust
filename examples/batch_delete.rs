@@ -16,7 +16,7 @@
 //! cargo run --package gemini-rust --example batch_delete
 //! ```
 
-use gemini_rust::{BatchStatus, Gemini};
+use gemini_rust::prelude::*;
 use std::env;
 
 #[tokio::main]

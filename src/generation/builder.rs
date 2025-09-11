@@ -2,13 +2,14 @@ use futures::TryStream;
 use std::sync::Arc;
 
 use crate::{
+    cache::handle::CachedContentHandle,
     client::{Error as ClientError, GeminiClient},
-    models::{
-        FunctionCallingConfig, GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig,
-        ThinkingConfig, ToolConfig,
+    generation::model::{
+        GenerateContentRequest, GenerationConfig, GenerationResponse, SpeakerVoiceConfig,
+        SpeechConfig, ThinkingConfig,
     },
-    CachedContentHandle, Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
-    GenerationResponse, Message, Role, Tool,
+    models::{Content, Message, Role},
+    tools::model::{FunctionCallingMode, FunctionDeclaration, Tool, ToolConfig},
 };
 
 /// Builder for content generation requests
@@ -247,10 +248,11 @@ impl ContentBuilder {
     pub fn with_function_calling_mode(mut self, mode: FunctionCallingMode) -> Self {
         if self.tool_config.is_none() {
             self.tool_config = Some(ToolConfig {
-                function_calling_config: Some(FunctionCallingConfig { mode }),
+                function_calling_config: Some(crate::tools::model::FunctionCallingConfig { mode }),
             });
         } else if let Some(tool_config) = &mut self.tool_config {
-            tool_config.function_calling_config = Some(FunctionCallingConfig { mode });
+            tool_config.function_calling_config =
+                Some(crate::tools::model::FunctionCallingConfig { mode });
         }
         self
     }

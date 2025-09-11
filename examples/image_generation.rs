@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use gemini_rust::{Gemini, GenerationConfig};
+use gemini_rust::prelude::*;
 use std::env;
 use std::fs;
 
@@ -38,10 +38,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             for (j, part) in parts.iter().enumerate() {
                 match part {
-                    gemini_rust::Part::Text { text, .. } => {
+                    Part::Text { text, .. } => {
                         println!("Text response {}: {}", j + 1, text);
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    Part::InlineData { inline_data } => {
                         println!("Image response {} found!", j + 1);
                         println!("MIME type: {}", inline_data.mime_type);
 
@@ -131,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Helper function to save generated images from a response
 fn save_generated_images(
-    response: &gemini_rust::GenerationResponse,
+    response: &GenerationResponse,
     prefix: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     for candidate in response.candidates.iter() {
@@ -141,10 +141,10 @@ fn save_generated_images(
 
             for part in parts.iter() {
                 match part {
-                    gemini_rust::Part::Text { text, .. } => {
+                    Part::Text { text, .. } => {
                         text_parts.push(text.clone());
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    Part::InlineData { inline_data } => {
                         image_count += 1;
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {

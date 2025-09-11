@@ -1,17 +1,38 @@
-use crate::{
-    batch_builder::BatchBuilder,
-    cache::CacheBuilder,
-    content_builder::ContentBuilder,
-    embed_builder::EmbedBuilder,
-    files::GeminiFile,
-    models::{
-        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
-        BatchGenerateContentResponse, BatchOperation, CacheExpirationRequest, CachedContent,
-        CachedContentSummary, ContentEmbeddingResponse, CreateCachedContentRequest,
-        DeleteCachedContentResponse, EmbedContentRequest, File, GenerateContentRequest,
-        GenerationResponse, ListBatchesResponse, ListCachedContentsResponse, ListFilesResponse,
+#[cfg(feature = "batch")]
+use crate::batch::{
+    builder::BatchBuilder,
+    handle::Batch,
+    model::{
+        BatchGenerateContentRequest, BatchGenerateContentResponse, BatchOperation,
+        ListBatchesResponse,
     },
-    Batch, CachedContentHandle,
+};
+#[cfg(feature = "cache")]
+use crate::cache::{
+    builder::CacheBuilder,
+    handle::CachedContentHandle,
+    model::{
+        CacheExpirationRequest, CachedContent, CachedContentSummary, CreateCachedContentRequest,
+        DeleteCachedContentResponse, ListCachedContentsResponse,
+    },
+};
+#[cfg(feature = "embedding")]
+use crate::embedding::{
+    builder::EmbedBuilder,
+    model::{
+        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
+        EmbedContentRequest,
+    },
+};
+#[cfg(feature = "files")]
+use crate::files::{
+    handle::GeminiFile,
+    model::{File, ListFilesResponse},
+};
+#[cfg(feature = "generation")]
+use crate::generation::{
+    builder::ContentBuilder,
+    model::{GenerateContentRequest, GenerationResponse},
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
@@ -115,7 +136,10 @@ pub enum Error {
     UrlParse { source: url::ParseError },
 
     #[snafu(display("no download URI for file"))]
-    NoDownloadUri { meta: Box<File> },
+    #[cfg(feature = "files")]
+    NoDownloadUri {
+        meta: Box<crate::files::model::File>,
+    },
 
     #[snafu(display("I/O error during file operations"))]
     Io { source: std::io::Error },
@@ -168,6 +192,7 @@ impl GeminiClient {
     }
 
     /// Generate content
+    #[cfg(feature = "generation")]
     pub(crate) async fn generate_content_raw(
         &self,
         request: GenerateContentRequest,
@@ -190,6 +215,7 @@ impl GeminiClient {
     }
 
     /// Generate content with streaming
+    #[cfg(feature = "generation")]
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
@@ -213,10 +239,14 @@ impl GeminiClient {
             .map_ok(|event| {
                 serde_json::from_str::<GenerationResponse>(&event.data).context(DeserializeSnafu)
             })
-            .map(|r| r.flatten()))
+            .map(|r| match r {
+                Ok(res) => res,
+                Err(e) => Err(e),
+            }))
     }
 
     /// Embed content
+    #[cfg(feature = "embedding")]
     pub(crate) async fn embed_content(
         &self,
         request: EmbedContentRequest,
@@ -225,6 +255,7 @@ impl GeminiClient {
     }
 
     /// Batch Embed content
+    #[cfg(feature = "embedding")]
     pub(crate) async fn embed_content_batch(
         &self,
         request: BatchEmbedContentsRequest,
@@ -233,6 +264,7 @@ impl GeminiClient {
     }
 
     /// Synchronous Batch Generate content
+    #[cfg(feature = "batch")]
     pub(crate) async fn batch_generate_content_sync(
         &self,
         request: BatchGenerateContentRequest,
@@ -242,6 +274,7 @@ impl GeminiClient {
     }
 
     /// Get a batch operation
+    #[cfg(feature = "batch")]
     pub(crate) async fn get_batch_operation<T: serde::de::DeserializeOwned>(
         &self,
         name: &str,
@@ -263,6 +296,7 @@ impl GeminiClient {
     }
 
     /// List batch operations
+    #[cfg(feature = "batch")]
     pub(crate) async fn list_batch_operations(
         &self,
         page_size: Option<u32>,
@@ -293,6 +327,7 @@ impl GeminiClient {
     }
 
     /// List files
+    #[cfg(feature = "files")]
     pub(crate) async fn list_files(
         &self,
         page_size: Option<u32>,
@@ -323,6 +358,7 @@ impl GeminiClient {
     }
 
     /// Cancel a batch operation
+    #[cfg(feature = "batch")]
     pub(crate) async fn cancel_batch_operation(&self, name: &str) -> Result<(), Error> {
         let url = self.build_batch_url(name, Some("cancel"))?;
         let response = self
@@ -338,6 +374,7 @@ impl GeminiClient {
     }
 
     /// Delete a batch operation
+    #[cfg(feature = "batch")]
     pub(crate) async fn delete_batch_operation(&self, name: &str) -> Result<(), Error> {
         let url = self.build_batch_url(name, None)?;
         let response = self
@@ -352,6 +389,7 @@ impl GeminiClient {
     }
 
     /// Upload a file using the resumable upload protocol.
+    #[cfg(feature = "files")]
     pub(crate) async fn upload_file(
         &self,
         display_name: Option<String>,
@@ -422,6 +460,7 @@ impl GeminiClient {
     }
 
     /// Get a file resource
+    #[cfg(feature = "files")]
     pub(crate) async fn get_file(&self, name: &str) -> Result<File, Error> {
         let url = self.build_files_url(Some(name))?;
         let response = self
@@ -439,6 +478,7 @@ impl GeminiClient {
     }
 
     /// Delete a file resource
+    #[cfg(feature = "files")]
     pub(crate) async fn delete_file(&self, name: &str) -> Result<(), Error> {
         let url = self.build_files_url(Some(name))?;
         let response = self
@@ -452,6 +492,7 @@ impl GeminiClient {
         Ok(())
     }
 
+    #[cfg(feature = "files")]
     pub(crate) async fn download_file(&self, name: &str) -> Result<Vec<u8>, Error> {
         let mut url = self
             .base_url
@@ -500,6 +541,7 @@ impl GeminiClient {
     }
 
     /// Create cached content
+    #[cfg(feature = "cache")]
     pub(crate) async fn create_cached_content(
         &self,
         cached_content: CreateCachedContentRequest,
@@ -521,6 +563,7 @@ impl GeminiClient {
     }
 
     /// Get cached content
+    #[cfg(feature = "cache")]
     pub(crate) async fn get_cached_content(&self, name: &str) -> Result<CachedContent, Error> {
         let url = self.build_cache_url(Some(name))?;
         let response = self
@@ -538,6 +581,7 @@ impl GeminiClient {
     }
 
     /// Update cached content (typically to update TTL)
+    #[cfg(feature = "cache")]
     pub(crate) async fn update_cached_content(
         &self,
         name: &str,
@@ -569,6 +613,7 @@ impl GeminiClient {
     }
 
     /// Delete cached content
+    #[cfg(feature = "cache")]
     pub(crate) async fn delete_cached_content(
         &self,
         name: &str,
@@ -596,6 +641,7 @@ impl GeminiClient {
     }
 
     /// List cached contents
+    #[cfg(feature = "cache")]
     pub(crate) async fn list_cached_contents(
         &self,
         page_size: Option<i32>,
@@ -711,21 +757,25 @@ impl Gemini {
     }
 
     /// Start building a content generation request
+    #[cfg(feature = "generation")]
     pub fn generate_content(&self) -> ContentBuilder {
         ContentBuilder::new(self.client.clone())
     }
 
     /// Start building a content generation request
+    #[cfg(feature = "embedding")]
     pub fn embed_content(&self) -> EmbedBuilder {
         EmbedBuilder::new(self.client.clone())
     }
 
     /// Start building a synchronous batch content generation request
+    #[cfg(feature = "batch")]
     pub fn batch_generate_content_sync(&self) -> BatchBuilder {
         BatchBuilder::new(self.client.clone())
     }
 
     /// Get a handle to a batch operation by its name.
+    #[cfg(feature = "batch")]
     pub fn get_batch(&self, name: &str) -> Batch {
         Batch::new(name.to_string(), self.client.clone())
     }
@@ -733,6 +783,7 @@ impl Gemini {
     /// Lists batch operations.
     ///
     /// This method returns a stream that handles pagination automatically.
+    #[cfg(feature = "batch")]
     pub fn list_batches(
         &self,
         page_size: impl Into<Option<u32>>,
@@ -760,11 +811,13 @@ impl Gemini {
     }
 
     /// Create cached content with a fluent API.
+    #[cfg(feature = "cache")]
     pub fn create_cache(&self) -> CacheBuilder {
         CacheBuilder::new(self.client.clone())
     }
 
     /// Get a handle to cached content by its name.
+    #[cfg(feature = "cache")]
     pub fn get_cached_content(&self, name: &str) -> CachedContentHandle {
         CachedContentHandle::new(name.to_string(), self.client.clone())
     }
@@ -772,6 +825,7 @@ impl Gemini {
     /// Lists cached contents.
     ///
     /// This method returns a stream that handles pagination automatically.
+    #[cfg(feature = "cache")]
     pub fn list_cached_contents(
         &self,
         page_size: impl Into<Option<i32>>,
@@ -799,11 +853,13 @@ impl Gemini {
     }
 
     /// Start building a file resource
-    pub fn create_file<B: Into<Vec<u8>>>(&self, bytes: B) -> crate::files::FileBuilder {
-        crate::files::FileBuilder::new(self.client.clone(), bytes)
+    #[cfg(feature = "files")]
+    pub fn create_file<B: Into<Vec<u8>>>(&self, bytes: B) -> crate::files::builder::FileBuilder {
+        crate::files::builder::FileBuilder::new(self.client.clone(), bytes)
     }
 
     /// Get a handle to a file by its name.
+    #[cfg(feature = "files")]
     pub async fn get_file(&self, name: &str) -> Result<GeminiFile, Error> {
         let file = self.client.get_file(name).await?;
         Ok(GeminiFile::new(self.client.clone(), file))
@@ -812,6 +868,7 @@ impl Gemini {
     /// Lists files.
     ///
     /// This method returns a stream that handles pagination automatically.
+    #[cfg(feature = "files")]
     pub fn list_files(
         &self,
         page_size: impl Into<Option<u32>>,

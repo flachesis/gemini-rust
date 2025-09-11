@@ -1,7 +1,7 @@
 use std::process::ExitCode;
 
 use display_error_chain::DisplayErrorChain;
-use gemini_rust::{ClientError, Gemini, Model, TaskType};
+use gemini_rust::{client::Error as ClientError, prelude::*};
 
 async fn do_main(api_key: &str) -> Result<(), ClientError> {
     let client = Gemini::with_model(api_key, Model::TextEmbedding004)

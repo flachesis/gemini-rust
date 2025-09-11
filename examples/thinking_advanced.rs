@@ -1,7 +1,5 @@
 use futures::TryStreamExt;
-use gemini_rust::{
-    FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails, ThinkingConfig,
-};
+use gemini_rust::{generation::model::ThinkingConfig, prelude::*};
 use std::env;
 
 #[tokio::main]

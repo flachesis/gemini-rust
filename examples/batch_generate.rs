@@ -11,7 +11,10 @@
 //! cargo run --package gemini-rust --example batch_generate
 //! ```
 
-use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
+use gemini_rust::{
+    batch::handle::{Batch, Error as BatchError},
+    prelude::*,
+};
 use std::time::Duration;
 
 /// Waits for the batch operation to complete by periodically polling its status.

@@ -1,4 +1,6 @@
-use crate::{FinishReason, FunctionCall, GenerationResponse, Part};
+use crate::generation::model::{FinishReason, GenerationResponse};
+use crate::models::{Content, Part, Role};
+use crate::tools::model::FunctionCall;
 use serde_json::json;
 
 #[test]
@@ -122,7 +124,6 @@ fn test_function_call_without_thought_signature() {
 #[test]
 fn test_multi_turn_content_structure() {
     // Test that we can create proper multi-turn content structure for maintaining thought context
-    use crate::{Content, Part, Role};
 
     // Simulate a function call with thought signature from first turn
     let function_call = FunctionCall::with_thought_signature(
@@ -172,8 +173,6 @@ fn test_multi_turn_content_structure() {
 
 #[test]
 fn test_text_with_thought_signature() {
-    use crate::GenerationResponse;
-
     // Test JSON similar to the provided API response
     let json_response = json!({
         "candidates": [
@@ -223,8 +222,8 @@ fn test_text_with_thought_signature() {
             thought,
             thought_signature,
         } => {
-            assert_eq!(*thought, Some(true));
-            assert_eq!(*thought_signature, None);
+            assert_eq!(thought, &Some(true));
+            assert_eq!(thought_signature, &None);
             assert!(text.contains("here's what I'm thinking"));
         }
         _ => panic!("Expected Text part for first element"),
@@ -237,7 +236,7 @@ fn test_text_with_thought_signature() {
             thought,
             thought_signature,
         } => {
-            assert_eq!(*thought, None);
+            assert_eq!(thought, &None);
             assert!(thought_signature.is_some());
             assert_eq!(thought_signature.as_ref().unwrap(), "Cs4BA.../Yw=");
             assert!(text.contains("chat.get_message_count"));
@@ -255,16 +254,15 @@ fn test_text_with_thought_signature() {
     assert!(first_text.contains("here's what I'm thinking"));
 
     let (second_text, is_thought, thought_sig) = &text_with_thoughts[1];
-    assert!(!(*is_thought));
+    assert!(!*is_thought);
     assert!(thought_sig.is_some());
-    assert_eq!(thought_sig.unwrap(), "Cs4BA.../Yw=");
+    assert_eq!(thought_sig.as_ref().unwrap(), &"Cs4BA.../Yw=");
     assert!(second_text.contains("chat.get_message_count"));
 }
 
 #[test]
 fn test_content_creation_with_thought_signature() {
     // Test creating content with thought signature
-    use crate::Content;
     let content = Content::text_with_thought_signature("Test response", "test_signature_123");
 
     let parts = content.parts.as_ref().unwrap();
@@ -277,7 +275,7 @@ fn test_content_creation_with_thought_signature() {
             thought_signature,
         } => {
             assert_eq!(text, "Test response");
-            assert_eq!(*thought, None);
+            assert_eq!(thought, &None);
             assert_eq!(thought_signature.as_ref().unwrap(), "test_signature_123");
         }
         _ => panic!("Expected Text part"),
@@ -297,7 +295,7 @@ fn test_content_creation_with_thought_signature() {
             thought_signature,
         } => {
             assert_eq!(text, "This is my thinking process");
-            assert_eq!(*thought, Some(true));
+            assert_eq!(thought, &Some(true));
             assert_eq!(thought_signature.as_ref().unwrap(), "thought_signature_456");
         }
         _ => panic!("Expected Text part"),

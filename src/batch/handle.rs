@@ -68,13 +68,18 @@ use snafu::{OptionExt, ResultExt, Snafu};
 use std::{result::Result, sync::Arc};
 
 use crate::{
+    batch::model::{
+        BatchOperation, BatchResponseFileItem, BatchState, IndividualRequestError, OperationError,
+        RequestMetadata,
+    },
     client::{Error as ClientError, GeminiClient},
-    files::GeminiFile,
-    models::{BatchOperation, BatchResponseFileItem, IndividualRequestError, OperationError},
-    BatchState, File, GenerationResponse, RequestMetadata,
+    files::handle::GeminiFile,
+    files::model::File,
+    generation::model::GenerationResponse,
 };
 
 #[derive(Debug, Snafu)]
+#[snafu(visibility(pub))]
 pub enum Error {
     #[snafu(display("batch '{name}' expired before finishing"))]
     BatchExpired {
@@ -149,7 +154,7 @@ pub enum BatchStatus {
 
 impl BatchStatus {
     async fn parse_response_file(
-        response_file: crate::models::File,
+        response_file: crate::files::model::File,
         client: Arc<GeminiClient>,
     ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
         let file = GeminiFile::new(client.clone(), response_file);
@@ -181,11 +186,11 @@ impl BatchStatus {
     }
 
     async fn process_successful_response(
-        response: crate::models::BatchOperationResponse,
+        response: crate::batch::model::BatchOperationResponse,
         client: Arc<GeminiClient>,
     ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
         let results = match response {
-            crate::models::BatchOperationResponse::InlinedResponses { inlined_responses } => {
+            crate::batch::model::BatchOperationResponse::InlinedResponses { inlined_responses } => {
                 inlined_responses
                     .inlined_responses
                     .into_iter()
@@ -195,7 +200,7 @@ impl BatchStatus {
                     })
                     .collect()
             }
-            crate::models::BatchOperationResponse::ResponsesFile { responses_file } => {
+            crate::batch::model::BatchOperationResponse::ResponsesFile { responses_file } => {
                 let file = File {
                     name: responses_file,
                     ..Default::default()

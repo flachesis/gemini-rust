@@ -1,4 +1,4 @@
-use gemini_rust::{Gemini, Model, TaskType};
+use gemini_rust::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

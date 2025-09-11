@@ -2,13 +2,13 @@ use snafu::ResultExt;
 use std::sync::Arc;
 
 use crate::{
-    batch::Batch,
-    client::{Error as ClientError, GeminiClient},
-    models::{
-        BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
+    batch::handle::Batch,
+    batch::model::{
+        BatchConfig, BatchGenerateContentRequest, BatchRequestFileItem, BatchRequestItem,
         InputConfig, RequestMetadata, RequestsContainer,
     },
-    BatchRequestFileItem,
+    client::{Error as ClientError, GeminiClient},
+    generation::model::GenerateContentRequest,
 };
 
 /// A builder for creating and executing synchronous batch content generation requests.
@@ -104,7 +104,7 @@ impl BatchBuilder {
         let json_bytes = json_lines.into_bytes();
 
         let file_display_name = format!("{}-input.jsonl", self.display_name);
-        let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
+        let file = crate::files::builder::FileBuilder::new(self.client.clone(), json_bytes)
             .display_name(file_display_name)
             .with_mime_type(
                 "application/jsonl"

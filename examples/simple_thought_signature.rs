@@ -1,6 +1,5 @@
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails,
-    ThinkingConfig, Tool,
+    generation::model::ThinkingConfig, prelude::*, tools::model::FunctionCallingMode,
 };
 use std::env;
 

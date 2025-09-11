@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use crate::{
     client::{Error as ClientError, GeminiClient},
-    models::{
+    embedding::model::{
         BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
         EmbedContentRequest, TaskType,
     },
-    Content, Message,
+    models::{Content, Message},
 };
 
 /// Builder for embed generation requests

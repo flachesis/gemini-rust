@@ -41,3 +41,13 @@ time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 [dev-dependencies]
 display-error-chain = "0.2"
 tokio = { version = "^1.47", features = ["full"] }
+
+[features]
+default = ["generation", "embedding", "batch", "files", "cache", "tools"]
+minimize = ["generation", "tools"]
+generation = ["tools"]
+embedding = []
+batch = ["files", "generation"] # batch generate content needs generation
+files = []
+cache = ["tools"] # cache needs tools
+tools = []

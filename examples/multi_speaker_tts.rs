@@ -1,5 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
-use gemini_rust::{Gemini, GenerationConfig, Part, SpeakerVoiceConfig, SpeechConfig};
+use gemini_rust::{
+    generation::model::{GenerationConfig, SpeakerVoiceConfig, SpeechConfig},
+    prelude::*,
+};
 use std::fs::File;
 use std::io::Write;
 

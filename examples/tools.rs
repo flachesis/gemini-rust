@@ -1,7 +1,4 @@
-use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Message,
-    PropertyDetails, Role, Tool,
-};
+use gemini_rust::{prelude::*, tools::model::FunctionCallingMode};
 use serde_json::json;
 use std::env;
 

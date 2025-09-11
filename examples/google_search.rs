@@ -1,4 +1,4 @@
-use gemini_rust::{Gemini, Tool};
+use gemini_rust::prelude::*;
 use std::env;
 
 #[tokio::main]

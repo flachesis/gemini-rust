@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose, Engine as _};
-use gemini_rust::{Gemini, GenerationConfig};
+use gemini_rust::prelude::*;
 use std::env;
 use std::fs::File;
 use std::io::Read;
