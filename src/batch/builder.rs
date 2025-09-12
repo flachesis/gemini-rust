@@ -1,15 +1,10 @@
 use snafu::ResultExt;
 use std::sync::Arc;
 
-use crate::{
-    batch::Batch,
-    client::{Error as ClientError, GeminiClient},
-    models::{
-        BatchConfig, BatchGenerateContentRequest, BatchRequestItem, GenerateContentRequest,
-        InputConfig, RequestMetadata, RequestsContainer,
-    },
-    BatchRequestFileItem,
-};
+use super::handle::BatchHandle;
+use super::model::*;
+use super::*;
+use crate::{client::GeminiClient, generation::GenerateContentRequest};
 
 /// A builder for creating and executing synchronous batch content generation requests.
 ///
@@ -58,9 +53,9 @@ impl BatchBuilder {
             .requests
             .into_iter()
             .enumerate()
-            .map(|(i, request)| BatchRequestItem {
+            .map(|(key, request)| BatchRequestItem {
                 request,
-                metadata: Some(RequestMetadata { key: i }),
+                metadata: RequestMetadata { key },
             })
             .collect();
 
@@ -77,11 +72,14 @@ impl BatchBuilder {
     /// Submits the batch request to the Gemini API and returns a `Batch` handle.
     ///
     /// This method consumes the builder and initiates the long-running batch operation.
-    pub async fn execute(self) -> Result<Batch, ClientError> {
+    pub async fn execute(self) -> Result<BatchHandle, Error> {
         let client = self.client.clone();
         let request = self.build();
-        let response = client.batch_generate_content_sync(request).await?;
-        Ok(Batch::new(response.name, client))
+        let response = client
+            .batch_generate_content_sync(request)
+            .await
+            .context(ClientSnafu)?;
+        Ok(BatchHandle::new(response.name, client))
     }
 
     /// Executes the batch request by first uploading the requests as a JSON file.
@@ -89,7 +87,7 @@ impl BatchBuilder {
     /// This method is ideal for large batch jobs that might exceed inline request limits.
     /// It consumes the builder, serializes the requests to the JSON Lines format,
     /// uploads the content as a file, and then starts the batch operation using that file.
-    pub async fn execute_as_file(self) -> Result<Batch, ClientError> {
+    pub async fn execute_as_file(self) -> Result<BatchHandle, Error> {
         let mut json_lines = String::new();
         for (index, item) in self.requests.into_iter().enumerate() {
             let item = BatchRequestFileItem {
@@ -97,14 +95,14 @@ impl BatchBuilder {
                 key: index,
             };
 
-            let line = serde_json::to_string(&item).context(crate::client::DeserializeSnafu)?;
+            let line = serde_json::to_string(&item).context(SerializeSnafu)?;
             json_lines.push_str(&line);
             json_lines.push('\n');
         }
         let json_bytes = json_lines.into_bytes();
 
         let file_display_name = format!("{}-input.jsonl", self.display_name);
-        let file = crate::files::FileBuilder::new(self.client.clone(), json_bytes)
+        let file = crate::files::builder::FileBuilder::new(self.client.clone(), json_bytes)
             .display_name(file_display_name)
             .with_mime_type(
                 "application/jsonl"
@@ -112,7 +110,8 @@ impl BatchBuilder {
                     .expect("failed to parse MIME type 'application/jsonl'"),
             )
             .upload()
-            .await?;
+            .await
+            .context(FileSnafu)?;
 
         let request = BatchGenerateContentRequest {
             batch: BatchConfig {
@@ -122,7 +121,11 @@ impl BatchBuilder {
         };
 
         let client = self.client.clone();
-        let response = client.batch_generate_content_sync(request).await?;
-        Ok(Batch::new(response.name, client))
+        let response = client
+            .batch_generate_content_sync(request)
+            .await
+            .context(ClientSnafu)?;
+
+        Ok(BatchHandle::new(response.name, client))
     }
 }

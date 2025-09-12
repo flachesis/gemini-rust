@@ -290,7 +290,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Cache large context (system instructions, conversation history) to reduce costs and improve performance for repeated API calls:
 
 ```rust
-use gemini_rust::{Gemini, Model};
+use gemini_rust::Gemini;
 use std::time::Duration;
 
 #[tokio::main]
@@ -300,8 +300,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Create cached content with system instruction and conversation history
     let cache = client
         .create_cache()
-        .with_model(Model::Gemini25Flash)
-        .with_display_name("My Programming Assistant")
+        .with_display_name("My Programming Assistant")?
         .with_system_instruction("You are a helpful programming assistant.")
         .with_user_message("Hello! I'm learning Rust.")
         .with_model_message("Great! I'm here to help you learn Rust programming.")
@@ -369,8 +368,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     match batch.status().await? {
         gemini_rust::BatchStatus::Succeeded { results } => {
             for item in results {
-                if let gemini_rust::BatchResultItem::Success { key, response } = item {
-                    println!("Result for key {}: {}", key, response.text());
+                match item.response {
+                    Ok(response) => {
+                        println!("Result for key {}: {}", item.meta.key, response.text());
+                    }
+                    Err(e) => {
+                        println!("Error for key {}: {:?}", item.meta.key, e);
+                    }
                 }
             }
         }

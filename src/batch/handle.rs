@@ -67,11 +67,11 @@
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::{result::Result, sync::Arc};
 
+use super::model::*;
 use crate::{
     client::{Error as ClientError, GeminiClient},
-    files::GeminiFile,
-    models::{BatchOperation, BatchResponseFileItem, IndividualRequestError, OperationError},
-    BatchState, File, GenerationResponse, RequestMetadata,
+    files::handle::FileHandle,
+    GenerationResponse,
 };
 
 #[derive(Debug, Snafu)]
@@ -94,7 +94,7 @@ pub enum Error {
 
     #[snafu(display("failed to download batch result file '{file_name}'"))]
     FileDownload {
-        source: Box<ClientError>,
+        source: crate::files::Error,
         file_name: String,
     },
 
@@ -149,17 +149,13 @@ pub enum BatchStatus {
 
 impl BatchStatus {
     async fn parse_response_file(
-        response_file: crate::models::File,
+        response_file: crate::files::model::File,
         client: Arc<GeminiClient>,
     ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
-        let file = GeminiFile::new(client.clone(), response_file);
-        let file_content_bytes =
-            file.download()
-                .await
-                .map_err(Box::new)
-                .context(FileDownloadSnafu {
-                    file_name: file.name(),
-                })?;
+        let file = FileHandle::new(client.clone(), response_file);
+        let file_content_bytes = file.download().await.context(FileDownloadSnafu {
+            file_name: file.name(),
+        })?;
         let file_content = String::from_utf8(file_content_bytes).context(FileDecodeSnafu)?;
 
         let mut results = vec![];
@@ -181,22 +177,20 @@ impl BatchStatus {
     }
 
     async fn process_successful_response(
-        response: crate::models::BatchOperationResponse,
+        response: BatchOperationResponse,
         client: Arc<GeminiClient>,
     ) -> Result<Vec<BatchGenerationResponseItem>, Error> {
         let results = match response {
-            crate::models::BatchOperationResponse::InlinedResponses { inlined_responses } => {
-                inlined_responses
-                    .inlined_responses
-                    .into_iter()
-                    .map(|item| BatchGenerationResponseItem {
-                        response: item.result.into(),
-                        meta: item.metadata,
-                    })
-                    .collect()
-            }
-            crate::models::BatchOperationResponse::ResponsesFile { responses_file } => {
-                let file = File {
+            BatchOperationResponse::InlinedResponses { inlined_responses } => inlined_responses
+                .inlined_responses
+                .into_iter()
+                .map(|item| BatchGenerationResponseItem {
+                    response: item.result.into(),
+                    meta: item.metadata,
+                })
+                .collect(),
+            BatchOperationResponse::ResponsesFile { responses_file } => {
+                let file = crate::files::model::File {
                     name: responses_file,
                     ..Default::default()
                 };
@@ -268,13 +262,13 @@ impl BatchStatus {
 ///
 /// A `Batch` object is a handle to a batch operation on the Gemini API. It allows you to
 /// check the status, cancel the operation, or delete it once it's no longer needed.
-pub struct Batch {
+pub struct BatchHandle {
     /// The unique resource name of the batch operation, e.g., `operations/batch-xxxxxxxx`.
     pub name: String,
     client: Arc<GeminiClient>,
 }
 
-impl Batch {
+impl BatchHandle {
     /// Creates a new Batch instance.
     pub(crate) fn new(name: String, client: Arc<GeminiClient>) -> Self {
         Self { name, client }

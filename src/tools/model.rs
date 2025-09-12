@@ -304,3 +304,30 @@ impl FunctionResponse {
         })
     }
 }
+
+/// Configuration for tools
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ToolConfig {
+    /// The function calling config
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_calling_config: Option<FunctionCallingConfig>,
+}
+
+/// Configuration for function calling
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FunctionCallingConfig {
+    /// The mode for function calling
+    pub mode: FunctionCallingMode,
+}
+
+/// Mode for function calling
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FunctionCallingMode {
+    /// The model may use function calling
+    Auto,
+    /// The model must use function calling
+    Any,
+    /// The model must not use function calling
+    None,
+}
