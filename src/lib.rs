@@ -132,5 +132,5 @@ pub use files::{
 
 pub use cache::{
     builder::CacheBuilder, handle::CachedContentHandle, model::CacheExpirationRequest,
-    model::CachedContent, model::CreateCachedContentRequest,
+    model::CacheExpirationResponse, model::CachedContent, model::CreateCachedContentRequest,
 };
