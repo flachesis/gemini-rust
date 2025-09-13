@@ -69,7 +69,7 @@ impl fmt::Display for Model {
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
-            Model::TextEmbedding004 => write!(f, "models/texte-mbedding-004"),
+            Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
             Model::Custom(model) => write!(f, "{}", model),
         }
     }
