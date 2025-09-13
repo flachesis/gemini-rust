@@ -1,17 +1,15 @@
 use crate::{
-    batch_builder::BatchBuilder,
-    cache::CacheBuilder,
-    content_builder::ContentBuilder,
-    embed_builder::EmbedBuilder,
-    files::GeminiFile,
-    models::{
-        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, BatchGenerateContentRequest,
-        BatchGenerateContentResponse, BatchOperation, CacheExpirationRequest, CachedContent,
-        CachedContentSummary, ContentEmbeddingResponse, CreateCachedContentRequest,
-        DeleteCachedContentResponse, EmbedContentRequest, File, GenerateContentRequest,
-        GenerationResponse, ListBatchesResponse, ListCachedContentsResponse, ListFilesResponse,
+    batch::{BatchBuilder, BatchHandle},
+    cache::{CacheBuilder, CachedContentHandle},
+    embedding::{
+        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
+        EmbedBuilder, EmbedContentRequest,
     },
-    Batch, CachedContentHandle,
+    files::{
+        handle::FileHandle,
+        model::{File, ListFilesResponse},
+    },
+    generation::{ContentBuilder, GenerateContentRequest, GenerationResponse},
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
@@ -28,6 +26,9 @@ use std::{
     sync::{Arc, LazyLock},
 };
 use url::Url;
+
+use crate::batch::model::*;
+use crate::cache::model::*;
 
 static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
     Url::parse("https://generativelanguage.googleapis.com/v1beta/")
@@ -68,7 +69,7 @@ impl fmt::Display for Model {
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
-            Model::TextEmbedding004 => write!(f, "models/texte-mbedding-004"),
+            Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
             Model::Custom(model) => write!(f, "{}", model),
         }
     }
@@ -113,9 +114,6 @@ pub enum Error {
 
     #[snafu(display("failed to parse URL"))]
     UrlParse { source: url::ParseError },
-
-    #[snafu(display("no download URI for file"))]
-    NoDownloadUri { meta: Box<File> },
 
     #[snafu(display("I/O error during file operations"))]
     Io { source: std::io::Error },
@@ -721,13 +719,13 @@ impl Gemini {
     }
 
     /// Start building a synchronous batch content generation request
-    pub fn batch_generate_content_sync(&self) -> BatchBuilder {
+    pub fn batch_generate_content(&self) -> BatchBuilder {
         BatchBuilder::new(self.client.clone())
     }
 
     /// Get a handle to a batch operation by its name.
-    pub fn get_batch(&self, name: &str) -> Batch {
-        Batch::new(name.to_string(), self.client.clone())
+    pub fn get_batch(&self, name: &str) -> BatchHandle {
+        BatchHandle::new(name.to_string(), self.client.clone())
     }
 
     /// Lists batch operations.
@@ -799,14 +797,14 @@ impl Gemini {
     }
 
     /// Start building a file resource
-    pub fn create_file<B: Into<Vec<u8>>>(&self, bytes: B) -> crate::files::FileBuilder {
-        crate::files::FileBuilder::new(self.client.clone(), bytes)
+    pub fn create_file<B: Into<Vec<u8>>>(&self, bytes: B) -> crate::files::builder::FileBuilder {
+        crate::files::builder::FileBuilder::new(self.client.clone(), bytes)
     }
 
     /// Get a handle to a file by its name.
-    pub async fn get_file(&self, name: &str) -> Result<GeminiFile, Error> {
+    pub async fn get_file(&self, name: &str) -> Result<FileHandle, Error> {
         let file = self.client.get_file(name).await?;
-        Ok(GeminiFile::new(self.client.clone(), file))
+        Ok(FileHandle::new(self.client.clone(), file))
     }
 
     /// Lists files.
@@ -815,7 +813,7 @@ impl Gemini {
     pub fn list_files(
         &self,
         page_size: impl Into<Option<u32>>,
-    ) -> impl Stream<Item = Result<GeminiFile, Error>> + Send {
+    ) -> impl Stream<Item = Result<FileHandle, Error>> + Send {
         let client = self.client.clone();
         let page_size = page_size.into();
         async_stream::try_stream! {
@@ -826,7 +824,7 @@ impl Gemini {
                     .await?;
 
                 for file in response.files {
-                    yield GeminiFile::new(client.clone(), file);
+                    yield FileHandle::new(client.clone(), file);
                 }
 
                 if let Some(next_page_token) = response.next_page_token {

@@ -1,11 +1,11 @@
 use std::sync::Arc;
 
+use super::model::{
+    BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
+    EmbedContentRequest, TaskType,
+};
 use crate::{
     client::{Error as ClientError, GeminiClient},
-    models::{
-        BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
-        EmbedContentRequest, TaskType,
-    },
     Content, Message,
 };
 

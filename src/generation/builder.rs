@@ -2,13 +2,12 @@ use futures::TryStream;
 use std::sync::Arc;
 
 use crate::{
+    cache::CachedContentHandle,
     client::{Error as ClientError, GeminiClient},
-    models::{
-        FunctionCallingConfig, GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig,
-        ThinkingConfig, ToolConfig,
-    },
-    CachedContentHandle, Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
-    GenerationResponse, Message, Role, Tool,
+    generation::{GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig, ThinkingConfig},
+    tools::{FunctionCallingConfig, ToolConfig},
+    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
+    Message, Role, Tool,
 };
 
 /// Builder for content generation requests

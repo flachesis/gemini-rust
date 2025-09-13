@@ -7,7 +7,7 @@
 //! 4. Canceling the batch when CTRL-C is pressed
 //! 5. Properly handling the result
 
-use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
+use gemini_rust::{Batch, BatchHandleError, BatchStatus, Gemini, Message};
 use std::{env, sync::Arc, time::Duration};
 use tokio::{signal, sync::Mutex};
 
@@ -21,19 +21,19 @@ use tokio::{signal, sync::Mutex};
 pub async fn wait_for_completion(
     batch: Batch,
     delay: Duration,
-) -> Result<BatchStatus, (Batch, BatchError)> {
+) -> Result<BatchStatus, (Batch, BatchHandleError)> {
     let batch_name = batch.name.clone();
     loop {
         match batch.status().await {
             Ok(status) => match status {
                 BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
                 BatchStatus::Expired => {
-                    return Err((batch, BatchError::BatchExpired { name: batch_name }))
+                    return Err((batch, BatchHandleError::BatchExpired { name: batch_name }))
                 }
                 _ => tokio::time::sleep(delay).await,
             },
             Err(e) => match e {
-                BatchError::BatchFailed { .. } => return Err((batch, e)),
+                BatchHandleError::BatchFailed { .. } => return Err((batch, e)),
                 _ => return Err((batch, e)), // Return the batch and error for retry
             },
         }
@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create a batch with multiple requests
     let mut batch_generate_content = gemini
-        .batch_generate_content_sync()
+        .batch_generate_content()
         .with_name("batch_cancel_example".to_string());
 
     // Add several requests to make the batch take some time to process

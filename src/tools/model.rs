@@ -122,7 +122,8 @@ pub struct PropertyDetails {
     #[serde(rename = "type")]
     pub property_type: String,
     /// The description of the property
-    pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
     /// The enum values if the property is an enum
     #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
     pub enum_values: Option<Vec<String>>,
@@ -136,7 +137,7 @@ impl PropertyDetails {
     pub fn string(description: impl Into<String>) -> Self {
         Self {
             property_type: "string".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: None,
             items: None,
         }
@@ -146,7 +147,7 @@ impl PropertyDetails {
     pub fn number(description: impl Into<String>) -> Self {
         Self {
             property_type: "number".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: None,
             items: None,
         }
@@ -156,7 +157,7 @@ impl PropertyDetails {
     pub fn integer(description: impl Into<String>) -> Self {
         Self {
             property_type: "integer".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: None,
             items: None,
         }
@@ -166,7 +167,7 @@ impl PropertyDetails {
     pub fn boolean(description: impl Into<String>) -> Self {
         Self {
             property_type: "boolean".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: None,
             items: None,
         }
@@ -176,7 +177,7 @@ impl PropertyDetails {
     pub fn array(description: impl Into<String>, items: PropertyDetails) -> Self {
         Self {
             property_type: "array".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: None,
             items: Some(Box::new(items)),
         }
@@ -189,7 +190,7 @@ impl PropertyDetails {
     ) -> Self {
         Self {
             property_type: "string".to_string(),
-            description: description.into(),
+            description: Some(description.into()),
             enum_values: Some(enum_values.into_iter().map(|s| s.into()).collect()),
             items: None,
         }
@@ -303,4 +304,31 @@ impl FunctionResponse {
             response: Some(json),
         })
     }
+}
+
+/// Configuration for tools
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ToolConfig {
+    /// The function calling config
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function_calling_config: Option<FunctionCallingConfig>,
+}
+
+/// Configuration for function calling
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FunctionCallingConfig {
+    /// The mode for function calling
+    pub mode: FunctionCallingMode,
+}
+
+/// Mode for function calling
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FunctionCallingMode {
+    /// The model may use function calling
+    Auto,
+    /// The model must use function calling
+    Any,
+    /// The model must not use function calling
+    None,
 }

@@ -1,11 +1,11 @@
 //! An example of uploading a file, downloading it, and verifying the content.
 use futures::TryStreamExt;
-use gemini_rust::{ClientError, Gemini};
+use gemini_rust::Gemini;
 
 const TEST_CONTENT: &str = "Hello, world! This is a test file for Gemini-Rust.";
 
 #[tokio::main]
-async fn main() -> Result<(), ClientError> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
     let gemini = Gemini::new(&api_key)?;
 

@@ -11,7 +11,7 @@
 //! cargo run --package gemini-rust --example batch_generate
 //! ```
 
-use gemini_rust::{Batch, BatchError, BatchStatus, Gemini, Message};
+use gemini_rust::{Batch, BatchHandleError, BatchStatus, Gemini, Message};
 use std::time::Duration;
 
 /// Waits for the batch operation to complete by periodically polling its status.
@@ -24,19 +24,19 @@ use std::time::Duration;
 pub async fn wait_for_completion(
     batch: Batch,
     delay: Duration,
-) -> Result<BatchStatus, (Batch, BatchError)> {
+) -> Result<BatchStatus, (Batch, BatchHandleError)> {
     let batch_name = batch.name.clone();
     loop {
         match batch.status().await {
             Ok(status) => match status {
                 BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
                 BatchStatus::Expired => {
-                    return Err((batch, BatchError::BatchExpired { name: batch_name }))
+                    return Err((batch, BatchHandleError::BatchExpired { name: batch_name }))
                 }
                 _ => tokio::time::sleep(delay).await,
             },
             Err(e) => match e {
-                BatchError::BatchFailed { .. } => return Err((batch, e)),
+                BatchHandleError::BatchFailed { .. } => return Err((batch, e)),
                 _ => return Err((batch, e)), // Return the batch and error for retry
             },
         }
@@ -65,7 +65,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Create the batch request
     let batch = gemini
-        .batch_generate_content_sync()
+        .batch_generate_content()
         .with_request(request1)
         .with_request(request2)
         .execute()
