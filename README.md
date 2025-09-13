@@ -545,4 +545,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Google for providing the Gemini API
 - The Rust community for excellent async and HTTP libraries
+- Special thanks to @npatsakula for major contributions that made this project more complete
 - All contributors who have helped improve this library
