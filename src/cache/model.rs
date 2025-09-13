@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::models::Content;
-use crate::{Tool, ToolConfig};
+use crate::{Model, Tool, ToolConfig};
 
 /// Cached content resource returned by the API (with all server-provided fields).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -13,8 +13,7 @@ pub struct CachedContent {
     pub name: String,
 
     /// The name of the model used for cached content.
-    /// Format: models/{model}
-    pub model: String,
+    pub model: Model,
 
     /// Output only. Creation time of the cached content.
     #[serde(with = "time::serde::rfc3339")]
@@ -114,8 +113,7 @@ pub struct CreateCachedContentRequest {
     pub display_name: Option<String>,
 
     /// Required. The name of the model to use for cached content.
-    /// Format: models/{model}
-    pub model: String,
+    pub model: Model,
 
     /// Optional. Input only. Immutable. The content to cache.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -154,7 +152,7 @@ pub struct CachedContentSummary {
     pub name: String,
 
     /// The name of the model used for cached content.
-    pub model: String,
+    pub model: Model,
 
     /// Creation time of the cached content.
     #[serde(with = "time::serde::rfc3339")]
