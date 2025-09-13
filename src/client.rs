@@ -129,6 +129,7 @@ pub(crate) struct GeminiClient {
 impl GeminiClient {
     /// Create a new client with custom base URL
     fn with_base_url<K: AsRef<str>, M: Into<Model>>(
+        client_builder: ClientBuilder,
         api_key: K,
         model: M,
         base_url: Url,
@@ -138,7 +139,7 @@ impl GeminiClient {
             HeaderValue::from_str(api_key.as_ref()).context(InvalidApiKeySnafu)?,
         )]);
 
-        let http_client = ClientBuilder::new()
+        let http_client = client_builder
             .default_headers(headers)
             .build()
             .expect("all parameters must be valid");
@@ -669,6 +670,88 @@ impl GeminiClient {
     }
 }
 
+/// A builder for the `Gemini` client.
+///
+/// # Examples
+///
+/// ## Basic usage
+///
+/// ```no_run
+/// use gemini_rust::{GeminiBuilder, Model};
+///
+/// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+/// let gemini = GeminiBuilder::new("YOUR_API_KEY")
+///     .with_model(Model::Gemini25Pro)
+///     .build()?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## With proxy configuration
+///
+/// ```no_run
+/// use gemini_rust::{GeminiBuilder, Model};
+/// use reqwest::{ClientBuilder, Proxy};
+///
+/// # async fn run() -> Result<(), Box<dyn std::error::Error>> {
+/// let proxy = Proxy::https("https://my.proxy")?;
+/// let http_client = ClientBuilder::new().proxy(proxy);
+///
+/// let gemini = GeminiBuilder::new("YOUR_API_KEY")
+///     .with_http_client(http_client)
+///     .build()?;
+/// # Ok(())
+/// # }
+/// ```
+pub struct GeminiBuilder {
+    key: String,
+    model: Model,
+    client_builder: ClientBuilder,
+    base_url: Url,
+}
+
+impl GeminiBuilder {
+    /// Creates a new `GeminiBuilder` with the given API key.
+    pub fn new<K: Into<String>>(key: K) -> Self {
+        Self {
+            key: key.into(),
+            model: Model::default(),
+            client_builder: ClientBuilder::default(),
+            base_url: DEFAULT_BASE_URL.clone(),
+        }
+    }
+
+    /// Sets the model for the client.
+    pub fn with_model<M: Into<Model>>(mut self, model: M) -> Self {
+        self.model = model.into();
+        self
+    }
+
+    /// Sets a custom `reqwest::ClientBuilder`.
+    pub fn with_http_client(mut self, client_builder: ClientBuilder) -> Self {
+        self.client_builder = client_builder;
+        self
+    }
+
+    /// Sets a custom base URL for the API.
+    pub fn with_base_url(mut self, base_url: Url) -> Self {
+        self.base_url = base_url;
+        self
+    }
+
+    /// Builds the `Gemini` client.
+    pub fn build(self) -> Result<Gemini, Error> {
+        Ok(Gemini {
+            client: Arc::new(GeminiClient::with_base_url(
+                self.client_builder,
+                self.key,
+                self.model,
+                self.base_url,
+            )?),
+        })
+    }
+}
+
 /// Client for the Gemini API
 #[derive(Clone)]
 pub struct Gemini {
@@ -702,7 +785,8 @@ impl Gemini {
         model: M,
         base_url: Url,
     ) -> Result<Self, Error> {
-        let client = GeminiClient::with_base_url(api_key, model.into(), base_url)?;
+        let client =
+            GeminiClient::with_base_url(Default::default(), api_key, model.into(), base_url)?;
         Ok(Self {
             client: Arc::new(client),
         })
