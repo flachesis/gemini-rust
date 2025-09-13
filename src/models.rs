@@ -278,4 +278,6 @@ pub enum Modality {
     Image,
     /// Indicates the model should return audio.
     Audio,
+    /// Indicates the model should return video.
+    Video,
 }
