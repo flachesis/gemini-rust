@@ -68,6 +68,8 @@ mod tests;
 pub use client::Error as ClientError;
 /// The main Gemini API client
 pub use client::Gemini;
+/// Builder for creating a new Gemini client
+pub use client::GeminiBuilder;
 /// Available Gemini models
 pub use client::Model;
 

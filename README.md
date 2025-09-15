@@ -476,6 +476,28 @@ let client = Gemini::with_model_and_base_url(
 )?;
 ```
 
+### Configurable HTTP Client Builder
+
+For advanced HTTP configuration (timeouts, proxies, custom headers), use the builder pattern:
+
+```rust
+use gemini_rust::{Gemini, GeminiBuilder, Model};
+use reqwest::ClientBuilder;
+use std::time::Duration;
+
+let http_client = ClientBuilder::new()
+    .timeout(Duration::from_secs(30))
+    .user_agent("my-app/1.0")
+    .proxy(reqwest::Proxy::http("http://proxy.example.com:8080")?)
+    .build()?;
+
+let client = GeminiBuilder::new(api_key)
+    .with_model(Model::Gemini25Pro)
+    .with_http_client(http_client)
+    .with_base_url("https://api.example.com/".parse()?)
+    .build()?;
+```
+
 ## 📚 Examples
 
 The repository includes comprehensive examples:
