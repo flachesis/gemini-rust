@@ -3,9 +3,13 @@ use gemini_rust::{
     GenerationConfig, Message, PropertyDetails, Role,
 };
 use std::env;
+use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -13,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Simple generation
-    println!("--- Simple generation ---");
+    info!("starting simple generation");
     let response = client
         .generate_content()
         .with_user_message("Hello, can you tell me a joke about programming?")
@@ -25,10 +29,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Response: {}", response.text());
+    info!(response = response.text(), "simple generation completed");
 
     // Function calling example
-    println!("\n--- Function calling example ---");
+    info!("starting function calling example");
 
     // Define a weather function
     let get_weather = FunctionDeclaration::new(
@@ -59,9 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if there are function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = function_call.args.to_string(),
+            "function call received"
         );
 
         // Get parameters from the function call
@@ -70,7 +75,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .get::<String>("unit")
             .unwrap_or_else(|_| String::from("celsius"));
 
-        println!("Location: {}, Unit: {}", location, unit);
+        info!(
+            location = location,
+            unit = unit,
+            "function call parameters extracted"
+        );
 
         // Create model content with function call
         let model_content = Content::function_call((*function_call).clone());
@@ -86,6 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "{{\"temperature\": 22, \"unit\": \"{}\", \"condition\": \"sunny\"}}",
             unit
         );
+        info!(response = weather_response, "simulated function response");
 
         // Continue the conversation with the function result
         let final_response = client
@@ -102,9 +112,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .execute()
             .await?;
 
-        println!("Final response: {}", final_response.text());
+        info!(
+            final_response = final_response.text(),
+            "function calling completed"
+        );
     } else {
-        println!("No function calls in the response.");
+        warn!("no function calls in the response");
     }
 
     Ok(())

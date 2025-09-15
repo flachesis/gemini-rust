@@ -4,9 +4,12 @@
 /// as seen in the Gemini 2.5 Flash API response format.
 use gemini_rust::{Content, GenerationResponse, Part};
 use serde_json::json;
+use tracing::info;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    println!("=== Text with thoughtSignature Example ===\n");
+    tracing_subscriber::fmt::init();
+
+    info!("starting text with thoughtSignature example");
 
     // Simulate an API response similar to the one you provided
     let api_response = json!({
@@ -126,29 +129,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     thought_signature,
                 } = part
                 {
-                    println!(
-                        "\nPart {}: {} text{}",
-                        i + 1,
-                        if *thought == Some(true) {
+                    info!(
+                        part_number = i + 1,
+                        text_type = if *thought == Some(true) {
                             "Thought"
                         } else {
                             "Regular"
                         },
-                        if thought_signature.is_some() {
-                            " with signature"
-                        } else {
-                            ""
-                        }
+                        has_signature = thought_signature.is_some(),
+                        "part analysis"
                     );
 
                     if let Some(sig) = thought_signature {
-                        println!("  ↳ Preserve signature: {}...", &sig[..10.min(sig.len())]);
+                        info!(
+                            signature_preview = &sig[..10.min(sig.len())],
+                            "preserve signature"
+                        );
                     }
                 }
             }
         }
     }
 
-    println!("\n✅ Example completed successfully!");
+    info!("example completed successfully");
     Ok(())
 }

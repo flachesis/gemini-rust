@@ -2,12 +2,13 @@ use std::process::ExitCode;
 
 use display_error_chain::DisplayErrorChain;
 use gemini_rust::{ClientError, Gemini, Model, TaskType};
+use tracing::{error, info};
 
 async fn do_main(api_key: &str) -> Result<(), ClientError> {
     let client = Gemini::with_model(api_key, Model::TextEmbedding004)
         .expect("unable to create Gemini API client");
 
-    println!("Sending embedding request to Gemini API...");
+    info!("sending embedding request to gemini api");
 
     // Simple text embedding
     let response = client
@@ -17,20 +18,24 @@ async fn do_main(api_key: &str) -> Result<(), ClientError> {
         .execute()
         .await?;
 
-    println!("Response: {:?}", response.embedding.values);
+    info!(embedding_values = ?response.embedding.values, "embedding response received");
 
     Ok(())
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
+
     let api_key = std::env::var("GEMINI_API_KEY").expect("no gemini api key provided");
 
     if let Err(err) = do_main(&api_key).await {
-        let formated = DisplayErrorChain::new(err).to_string();
-        eprintln!("{formated}");
+        let formatted = DisplayErrorChain::new(err).to_string();
+        error!(error = formatted, "request failed");
         ExitCode::FAILURE
     } else {
+        info!("embedding request completed successfully");
         ExitCode::SUCCESS
     }
 }

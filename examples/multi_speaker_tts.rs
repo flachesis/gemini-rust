@@ -2,9 +2,12 @@ use base64::{engine::general_purpose, Engine as _};
 use gemini_rust::{Gemini, GenerationConfig, Part, SpeakerVoiceConfig, SpeechConfig};
 use std::fs::File;
 use std::io::Write;
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Load API key from environment variable
     let api_key =
         std::env::var("GEMINI_API_KEY").expect("Please set GEMINI_API_KEY environment variable");
@@ -13,8 +16,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-preview-tts".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("🎭 Gemini Multi-Speaker Speech Generation Example");
-    println!("Generating multi-speaker audio from dialogue...\n");
+    info!("starting gemini multi-speaker speech generation example");
 
     // Create multi-speaker configuration
     let speakers = vec![
@@ -50,7 +52,7 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
         .await
     {
         Ok(response) => {
-            println!("✅ Multi-speaker speech generation completed!");
+            info!("multi-speaker speech generation completed");
 
             // Check if we have candidates
             for (i, candidate) in response.candidates.iter().enumerate() {
@@ -131,7 +133,7 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
             }
         }
         Err(e) => {
-            eprintln!("❌ Error generating multi-speaker speech: {}", e);
+            error!(error = ?e, "error generating multi-speaker speech");
             eprintln!("\n💡 Troubleshooting tips:");
             eprintln!("   1. Make sure GEMINI_API_KEY environment variable is set");
             eprintln!("   2. Verify you have access to the Gemini TTS model");

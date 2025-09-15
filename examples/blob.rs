@@ -4,9 +4,12 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -24,12 +27,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Convert to base64
     let data = general_purpose::STANDARD.encode(&buffer);
 
-    println!("Image loaded: {}", image_path.display());
+    info!(image_path = ?image_path, file_size = buffer.len(), "image loaded and encoded to base64");
 
     // Create client
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
-    println!("--- Describe Image ---");
+    info!("starting image description request");
     let response = client
         .generate_content()
         .with_inline_data(data, "image/webp")
@@ -42,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Response: {}", response.text());
+    info!(response = response.text(), "image description received");
 
     Ok(())
 }

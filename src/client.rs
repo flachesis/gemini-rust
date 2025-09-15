@@ -25,6 +25,7 @@ use std::{
     fmt::{self, Formatter},
     sync::{Arc, LazyLock},
 };
+use tracing::{debug, instrument, Span};
 use url::Url;
 
 use crate::batch::model::*;
@@ -167,11 +168,23 @@ impl GeminiClient {
     }
 
     /// Generate content
+    #[instrument(skip_all, fields(model, url, status.code, parts.total))]
     pub(crate) async fn generate_content_raw(
         &self,
         request: GenerateContentRequest,
     ) -> Result<GenerationResponse, Error> {
+        Span::current().record("model", self.model.as_str());
+
+        let parts_total = request
+            .contents
+            .iter()
+            .map(|c| c.parts.as_ref().map(|p| p.len()).unwrap_or(0))
+            .sum::<usize>();
+        Span::current().record("parts.total", parts_total);
+
         let url = self.build_url("generateContent")?;
+        Span::current().record("url", url.as_str());
+        debug!("generating content");
 
         let response = self
             .http_client
@@ -180,6 +193,10 @@ impl GeminiClient {
             .send()
             .await
             .context(PerformRequestSnafu { url })?;
+
+        let status_code = response.status().as_u16();
+        Span::current().record("status.code", status_code);
+        debug!("generation completed");
 
         Self::check_response(response)
             .await?
@@ -189,12 +206,24 @@ impl GeminiClient {
     }
 
     /// Generate content with streaming
+    #[instrument(skip_all, fields(model, url, status.code, parts.total))]
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
     ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send, Error> {
+        Span::current().record("model", self.model.as_str());
+
+        let parts_total = request
+            .contents
+            .iter()
+            .map(|c| c.parts.as_ref().map(|p| p.len()).unwrap_or(0))
+            .sum::<usize>();
+        Span::current().record("parts.total", parts_total);
+
         let mut url = self.build_url("streamGenerateContent")?;
         url.query_pairs_mut().append_pair("alt", "sse");
+        Span::current().record("url", url.as_str());
+        debug!("starting streaming generation");
 
         let response = self
             .http_client
@@ -203,6 +232,10 @@ impl GeminiClient {
             .send()
             .await
             .context(PerformRequestSnafu { url })?;
+
+        let status_code = response.status().as_u16();
+        Span::current().record("status.code", status_code);
+        debug!("streaming established");
 
         Ok(Self::check_response(response)
             .await?
@@ -216,26 +249,39 @@ impl GeminiClient {
     }
 
     /// Embed content
+    #[instrument(skip_all, fields(model))]
     pub(crate) async fn embed_content(
         &self,
         request: EmbedContentRequest,
     ) -> Result<ContentEmbeddingResponse, Error> {
+        Span::current().record("model", self.model.as_str());
+        debug!("embedding content");
         self.post_json(request, "embedContent").await
     }
 
     /// Batch Embed content
+    #[instrument(skip_all, fields(model, batch.size))]
     pub(crate) async fn embed_content_batch(
         &self,
         request: BatchEmbedContentsRequest,
     ) -> Result<BatchContentEmbeddingResponse, Error> {
+        Span::current()
+            .record("model", self.model.as_str())
+            .record("batch.size", request.requests.len());
+        debug!("batch embedding content");
         self.post_json(request, "batchEmbedContents").await
     }
 
     /// Synchronous Batch Generate content
+    #[instrument(skip_all, fields(model, batch.display_name))]
     pub(crate) async fn batch_generate_content_sync(
         &self,
         request: BatchGenerateContentRequest,
     ) -> Result<BatchGenerateContentResponse, Error> {
+        Span::current()
+            .record("model", self.model.as_str())
+            .record("batch.display_name", &request.batch.display_name);
+        debug!("synchronous batch generate content");
         let value = self.post_json(request, "batchGenerateContent").await?;
         serde_json::from_value(value).context(DeserializeSnafu)
     }
@@ -351,12 +397,21 @@ impl GeminiClient {
     }
 
     /// Upload a file using the resumable upload protocol.
+    #[instrument(skip_all, fields(file.size, mime.type, file.display_name))]
     pub(crate) async fn upload_file(
         &self,
         display_name: Option<String>,
         file_bytes: Vec<u8>,
         mime_type: Mime,
     ) -> Result<File, Error> {
+        Span::current()
+            .record("file.size", file_bytes.len())
+            .record("mime.type", mime_type.to_string())
+            .record(
+                "file.display_name",
+                display_name.as_deref().unwrap_or("none"),
+            );
+        debug!("starting file upload");
         // Step 1: Initiate resumable upload
         // The upload URL is different from the metadata URL, so we construct it relative to the base URL's root.
         let initiate_url =
@@ -476,12 +531,17 @@ impl GeminiClient {
     }
 
     /// Post JSON to an endpoint
+    #[instrument(skip_all, fields(endpoint, url, status.code))]
     async fn post_json<I: serde::Serialize, O: DeserializeOwned>(
         &self,
         request: I,
         endpoint: &str,
     ) -> Result<O, Error> {
+        Span::current().record("endpoint", endpoint);
+
         let url = self.build_url(endpoint)?;
+        Span::current().record("url", url.as_str());
+        debug!("sending post request");
 
         let response = self
             .http_client
@@ -490,6 +550,10 @@ impl GeminiClient {
             .send()
             .await
             .context(PerformRequestSnafu { url })?;
+
+        let status_code = response.status().as_u16();
+        Span::current().record("status.code", status_code);
+        debug!("received response");
 
         Self::check_response(response)
             .await?

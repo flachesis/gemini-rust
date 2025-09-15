@@ -18,9 +18,12 @@
 
 use gemini_rust::{BatchStatus, Gemini};
 use std::env;
+use tracing::{info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get the API key from the environment
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY not set");
 
@@ -36,27 +39,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Check the batch status
     match batch.status().await {
         Ok(status) => {
-            println!("Batch status: {:?}", status);
+            info!(status = ?status, "batch status retrieved");
 
             // Only delete completed batches (succeeded, failed, cancelled, or expired)
             match status {
                 BatchStatus::Succeeded { .. } | BatchStatus::Cancelled | BatchStatus::Expired => {
-                    println!("Deleting batch operation...");
+                    info!("deleting batch operation");
                     // We need to handle the std::result::Result<(), (Batch, Error)> return type
                     match batch.delete().await {
-                        Ok(()) => println!("Batch deleted successfully!"),
+                        Ok(()) => info!("batch deleted successfully"),
                         Err((_batch, e)) => {
-                            println!("Failed to delete batch: {}. You can retry with the returned batch.", e);
+                            warn!(error = ?e, "failed to delete batch - you can retry with the returned batch");
                             // Here you could retry: batch.delete().await, etc.
                         }
                     }
                 }
                 _ => {
-                    println!("Batch is still running or pending. Use cancel() to stop it, or wait for completion before deleting.");
+                    info!("batch is still running or pending - use cancel() to stop it or wait for completion before deleting");
                 }
             }
         }
-        Err(e) => println!("Failed to get batch status: {}", e),
+        Err(e) => warn!(error = ?e, "failed to get batch status"),
     }
 
     Ok(())

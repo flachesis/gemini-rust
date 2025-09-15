@@ -1,9 +1,13 @@
 use gemini_rust::Gemini;
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -11,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Using response_schema for structured output
-    println!("--- Structured Response Example ---");
+    info!("starting structured response example");
 
     // Define a JSON schema for the response
     let schema = json!({
@@ -53,22 +57,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Structured JSON Response:");
-    println!("{}", response.text());
+    info!(
+        response = response.text(),
+        "structured json response received"
+    );
 
     // Parse the JSON response
     let json_response: serde_json::Value = serde_json::from_str(&response.text())?;
 
-    println!("\nAccessing specific fields:");
-    println!("Language: {}", json_response["name"]);
-    println!("Created in: {}", json_response["year_created"]);
-    println!("Created by: {}", json_response["creator"]);
-    println!("Popularity: {}/10", json_response["popularity_score"]);
+    info!(
+        language = json_response["name"].as_str().unwrap_or("unknown"),
+        year = json_response["year_created"].as_i64().unwrap_or(0),
+        creator = json_response["creator"].as_str().unwrap_or("unknown"),
+        popularity = json_response["popularity_score"].as_i64().unwrap_or(0),
+        "parsed structured response fields"
+    );
 
-    println!("\nKey Features:");
     if let Some(features) = json_response["key_features"].as_array() {
         for (i, feature) in features.iter().enumerate() {
-            println!("{}. {}", i + 1, feature);
+            info!(
+                index = i + 1,
+                feature = feature.as_str().unwrap_or("unknown"),
+                "key feature"
+            );
         }
     }
 

@@ -2,11 +2,14 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use gemini_rust::Gemini;
 use std::env;
 use std::fs;
+use tracing::{info, warn};
 
 /// Image editing example using Gemini API
 /// This demonstrates how to edit existing images using text prompts
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -14,12 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("🎨 Image Editing with Gemini");
-    println!("This example shows how to edit images using text descriptions.");
-    println!();
+    info!("starting image editing example with Gemini");
 
     // First, let's generate a base image to edit
-    println!("📸 Step 1: Generating a base image...");
+    info!("step 1: generating base image");
     let base_response = client
         .generate_content()
         .with_user_message(
@@ -39,7 +40,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     base_image_data = Some(inline_data.data.clone());
                     let image_bytes = BASE64.decode(&inline_data.data)?;
                     fs::write("base_landscape.png", image_bytes)?;
-                    println!("✅ Base image saved as: base_landscape.png");
+                    info!(filename = "base_landscape.png", "base image saved");
                     break;
                 }
             }
@@ -49,16 +50,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let base_data = match base_image_data {
         Some(data) => data,
         None => {
-            println!("❌ Failed to generate base image");
+            warn!("failed to generate base image");
             return Ok(());
         }
     };
 
-    println!();
-    println!("🖌️  Step 2: Editing the image...");
+    info!("step 2: editing the image");
 
     // Example 1: Add elements to the image
-    println!("   Adding a red barn to the scene...");
+    info!("adding red barn to the scene");
     let edit_response1 = client
         .generate_content()
         .with_user_message(
@@ -73,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     save_generated_images(&edit_response1, "landscape_with_barn")?;
 
     // Example 2: Change the weather/atmosphere
-    println!("   Changing the scene to sunset...");
+    info!("changing scene to sunset");
     let edit_response2 = client
         .generate_content()
         .with_user_message(
@@ -89,7 +89,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     save_generated_images(&edit_response2, "sunset_landscape")?;
 
     // Example 3: Style transfer
-    println!("   Converting to watercolor style...");
+    info!("converting to watercolor style");
     let edit_response3 = client
         .generate_content()
         .with_user_message(
@@ -104,13 +104,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     save_generated_images(&edit_response3, "watercolor_landscape")?;
 
-    println!();
-    println!("🎉 Image editing examples completed!");
-    println!("Check the generated files:");
-    println!("   - base_landscape.png (original)");
-    println!("   - landscape_with_barn_*.png (with added barn)");
-    println!("   - sunset_landscape_*.png (sunset version)");
-    println!("   - watercolor_landscape_*.png (watercolor style)");
+    info!("image editing examples completed - check generated files: base_landscape.png, landscape_with_barn_*.png, sunset_landscape_*.png, watercolor_landscape_*.png");
 
     Ok(())
 }
@@ -128,7 +122,7 @@ fn save_generated_images(
                 match part {
                     gemini_rust::Part::Text { text, .. } => {
                         if !text.trim().is_empty() {
-                            println!("   📝 Model says: {}", text.trim());
+                            info!(text = text.trim(), prefix = prefix, "model text response");
                         }
                     }
                     gemini_rust::Part::InlineData { inline_data } => {
@@ -137,10 +131,10 @@ fn save_generated_images(
                             Ok(image_bytes) => {
                                 let filename = format!("{}_{}.png", prefix, image_count);
                                 fs::write(&filename, image_bytes)?;
-                                println!("   ✅ Edited image saved as: {}", filename);
+                                info!(filename = filename, prefix = prefix, "edited image saved");
                             }
                             Err(e) => {
-                                println!("   ❌ Failed to decode image: {}", e);
+                                warn!(error = ?e, prefix = prefix, "failed to decode image");
                             }
                         }
                     }
@@ -151,7 +145,7 @@ fn save_generated_images(
     }
 
     if image_count == 0 {
-        println!("   ⚠️  No images were generated for this edit");
+        warn!(prefix = prefix, "no images were generated for this edit");
     }
 
     Ok(())

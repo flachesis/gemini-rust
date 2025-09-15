@@ -2,13 +2,16 @@
 use futures::stream::TryStreamExt;
 use gemini_rust::{ClientError, Gemini};
 use std::sync::atomic::{AtomicBool, Ordering};
+use tracing::{error, info};
 
 #[tokio::main]
 async fn main() -> Result<(), ClientError> {
+    tracing_subscriber::fmt::init();
+
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
     let gemini = Gemini::new(&api_key)?;
 
-    println!("Fetching and deleting files...");
+    info!("fetching and deleting files");
 
     let any_files_found = AtomicBool::new(false);
 
@@ -18,18 +21,19 @@ async fn main() -> Result<(), ClientError> {
             // Concurrently delete up to 10 files at a time
             any_files_found.store(true, Ordering::SeqCst);
             async move {
-                println!(
-                    "Deleting {} ({})",
-                    file.get_file_meta()
+                info!(
+                    display_name = file
+                        .get_file_meta()
                         .display_name
                         .clone()
                         .unwrap_or_default(),
-                    file.name()
+                    file_name = file.name(),
+                    "deleting file"
                 );
 
                 match file.delete().await {
-                    Ok(_) => println!("Success."),
-                    Err((_, e)) => println!("Failed: {}", e),
+                    Ok(_) => info!("file deleted successfully"),
+                    Err((_, e)) => error!(error = %e, "failed to delete file"),
                 }
                 Ok(())
             }
@@ -37,9 +41,9 @@ async fn main() -> Result<(), ClientError> {
         .await?;
 
     if !any_files_found.load(Ordering::SeqCst) {
-        println!("No files found to delete.");
+        info!("no files found to delete");
     } else {
-        println!("Deletion process complete.");
+        info!("deletion process complete");
     }
 
     Ok(())

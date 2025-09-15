@@ -10,6 +10,7 @@
 use gemini_rust::{Batch, BatchHandleError, BatchStatus, Gemini, Message};
 use std::{env, sync::Arc, time::Duration};
 use tokio::{signal, sync::Mutex};
+use tracing::{error, info, warn};
 
 /// Waits for the batch operation to complete by periodically polling its status.
 ///
@@ -42,6 +43,9 @@ pub async fn wait_for_completion(
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
+
     // Get the API key from the environment
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
 
@@ -68,9 +72,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Build and start the batch
     let batch = batch_generate_content.execute().await?;
-    println!("Batch created successfully!");
-    println!("Batch Name: {}", batch.name());
-    println!("Press CTRL-C to cancel the batch operation...");
+    info!(batch_name = batch.name(), "batch created successfully");
+    info!("press ctrl-c to cancel the batch operation");
 
     // Wrap the batch in an Arc<Mutex<Option<Batch>>> to allow safe sharing
     let batch = Arc::new(Mutex::new(Some(batch)));
@@ -80,7 +83,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cancel_task = tokio::spawn(async move {
         // Wait for CTRL-C signal
         signal::ctrl_c().await.expect("Failed to listen for CTRL-C");
-        println!("Received CTRL-C, canceling batch operation...");
+        info!("received ctrl-c, canceling batch operation");
 
         // Take the batch from the Option, leaving None.
         // The lock is released immediately after this block.
@@ -90,23 +93,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Cancel the batch operation
             match batch.cancel().await {
                 Ok(()) => {
-                    println!("Batch canceled successfully!");
+                    info!("batch canceled successfully");
                 }
                 Err((batch, e)) => {
-                    println!("Failed to cancel batch: {}. Retrying...", e);
+                    warn!(error = %e, "failed to cancel batch, retrying");
                     // Retry once
                     match batch.cancel().await {
                         Ok(()) => {
-                            println!("Batch canceled successfully on retry!");
+                            info!("batch canceled successfully on retry");
                         }
                         Err((_, retry_error)) => {
-                            eprintln!("Failed to cancel batch even on retry: {}", retry_error);
+                            error!(error = %retry_error, "failed to cancel batch even on retry");
                         }
                     }
                 }
             }
         } else {
-            println!("Batch was already processed.");
+            info!("batch was already processed");
         }
     });
 
@@ -115,38 +118,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Wait for the batch to complete or be canceled
     if let Some(batch) = batch.lock().await.take() {
-        println!("Waiting for batch to complete or be canceled...");
+        info!("waiting for batch to complete or be canceled");
         match wait_for_completion(batch, Duration::from_secs(5)).await {
             Ok(final_status) => {
                 // Cancel task is no longer needed since batch completed
                 cancel_task.abort();
 
-                println!("Batch completed with status: {:?}", final_status);
+                info!(status = ?final_status, "batch completed");
 
-                // Print some details about the results
+                // Log details about the results
                 match final_status {
                     gemini_rust::BatchStatus::Succeeded { .. } => {
-                        println!("Batch succeeded!");
+                        info!("batch succeeded");
                     }
                     gemini_rust::BatchStatus::Cancelled => {
-                        println!("Batch was cancelled as requested.");
+                        info!("batch was cancelled as requested");
                     }
                     gemini_rust::BatchStatus::Expired => {
-                        println!("Batch expired.");
+                        warn!("batch expired");
                     }
                     _ => {
-                        println!("Batch finished with an unexpected status.");
+                        warn!("batch finished with unexpected status");
                     }
                 }
             }
             Err((batch, e)) => {
                 // This could happen if there was a network error while polling
-                println!("Error while waiting for batch completion: {}", e);
+                error!(error = %e, "error while waiting for batch completion");
 
                 // Try one more time to get the status
                 match batch.status().await {
-                    Ok(status) => println!("Current batch status: {:?}", status),
-                    Err(status_error) => println!("Error getting final status: {}", status_error),
+                    Ok(status) => info!(status = ?status, "current batch status"),
+                    Err(status_error) => {
+                        error!(error = %status_error, "error getting final status")
+                    }
                 }
             }
         }

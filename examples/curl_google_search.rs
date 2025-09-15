@@ -1,12 +1,15 @@
 use gemini_rust::{Content, Gemini, Part, Tool};
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
-    println!("--- Curl equivalent with Google Search tool ---");
+    info!("starting curl equivalent with google search tool example");
 
     // This is equivalent to the curl example:
     // curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
@@ -52,7 +55,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = content_builder.execute().await?;
 
-    println!("Response: {}", response.text());
+    info!(
+        response = response.text(),
+        "google search response received"
+    );
 
     Ok(())
 }

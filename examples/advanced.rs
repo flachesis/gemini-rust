@@ -3,9 +3,12 @@ use gemini_rust::{
     PropertyDetails,
 };
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     let api_key = env::var("GEMINI_API_KEY")?;
 
     // Create client
@@ -29,7 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // Create a request with function calling
-    println!("Sending function call request...");
+    info!("sending function call request");
     let response = client
         .generate_content()
         .with_user_message("What's the weather like in Tokyo right now?")
@@ -40,9 +43,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if there are function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call received: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = ?function_call.args,
+            "function call received"
         );
 
         // Get parameters from the function call
@@ -51,7 +55,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .get::<String>("unit")
             .unwrap_or_else(|_| String::from("celsius"));
 
-        println!("Location: {}, Unit: {}", location, unit);
+        info!(
+            location = location,
+            unit = unit,
+            "function parameters extracted"
+        );
 
         // Simulate function execution (in a real app, this would call a weather API)
         // Create a JSON response object
@@ -64,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Continue the conversation with the function result
         // We need to replay the entire conversation with the function response
-        println!("Sending function response...");
+        info!("sending function response");
 
         // First, need to recreate the original prompt and the model's response
         let mut final_request = client
@@ -87,10 +95,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Execute the request
         let final_response = final_request.execute().await?;
 
-        println!("Final response: {}", final_response.text());
+        info!(response = final_response.text(), "final response received");
     } else {
-        println!("No function calls in the response.");
-        println!("Response text: {}", response.text());
+        info!("no function calls in response");
+        info!(response = response.text(), "direct response received");
     }
 
     Ok(())
