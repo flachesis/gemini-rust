@@ -4,16 +4,19 @@ use gemini_rust::{
 };
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
-    println!("--- Tools example with multiple functions ---");
+    info!("starting tools example with multiple functions");
 
     // Define a weather function
     let get_weather = FunctionDeclaration::new(
@@ -66,9 +69,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = ?function_call.args,
+            "function call received"
         );
 
         // Handle different function calls
@@ -78,7 +82,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let a: f64 = function_call.get("a")?;
                 let b: f64 = function_call.get("b")?;
 
-                println!("Calculation: {} {} {}", a, operation, b);
+                info!(
+                    a = a,
+                    operation = operation,
+                    b = b,
+                    "performing calculation"
+                );
 
                 let result = match operation.as_str() {
                     "add" => a + b,
@@ -123,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Execute the request
                 let final_response = conversation.execute().await?;
 
-                println!("Final response: {}", final_response.text());
+                info!(response = final_response.text(), "final response received");
             }
             "get_weather" => {
                 let location: String = function_call.get("location")?;
@@ -131,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .get::<String>("unit")
                     .unwrap_or_else(|_| String::from("celsius"));
 
-                println!("Weather request for: {}, Unit: {}", location, unit);
+                info!(location = location, unit = unit, "weather request received");
 
                 let weather_response = json!({
                     "temperature": 22,
@@ -170,13 +179,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Execute the request
                 let final_response = conversation.execute().await?;
 
-                println!("Final response: {}", final_response.text());
+                info!(response = final_response.text(), "final response received");
             }
-            _ => println!("Unknown function"),
+            _ => info!(function_name = function_call.name, "unknown function call"),
         }
     } else {
-        println!("No function calls in the response.");
-        println!("Response: {}", response.text());
+        info!("no function calls in response");
+        info!(response = response.text(), "direct response received");
     }
 
     Ok(())

@@ -3,9 +3,12 @@ use gemini_rust::{
     ThinkingConfig, Tool,
 };
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     let api_key = env::var("GEMINI_API_KEY")?;
     let client = Gemini::pro(api_key)?;
 
@@ -38,17 +41,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let function_calls_with_thoughts = response.function_calls_with_thoughts();
 
     for (function_call, thought_signature) in function_calls_with_thoughts {
-        println!("Function called: {}", function_call.name);
-        println!("Arguments: {}", function_call.args);
+        info!(function_name = function_call.name, args = ?function_call.args, "function called");
 
         if let Some(signature) = thought_signature {
-            println!("Thought signature present: {} characters", signature.len());
-            println!(
-                "Signature preview: {}...",
-                &signature[..50.min(signature.len())]
+            info!(
+                signature_length = signature.len(),
+                preview = &signature[..50.min(signature.len())],
+                "thought signature present"
             );
         } else {
-            println!("No thought signature");
+            info!("no thought signature");
         }
     }
 

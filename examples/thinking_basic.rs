@@ -1,20 +1,21 @@
 use gemini_rust::{Gemini, GenerationConfig, ThinkingConfig};
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
     let client = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
-    println!("=== Gemini 2.5 Thinking Basic Example ===\n");
+    info!("starting gemini 2.5 thinking basic example");
 
     // Example 1: Using default dynamic thinking
-    println!(
-        "--- Example 1: Dynamic thinking (model automatically determines thinking budget) ---"
-    );
+    info!("example 1: dynamic thinking (model automatically determines thinking budget)");
     let response1 = client
         .generate_content()
         .with_system_prompt("You are a helpful mathematics assistant.")
@@ -29,33 +30,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts = response1.thoughts();
     if !thoughts.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
-    println!("Answer: {}\n", response1.text());
+    info!(answer = response1.text(), "answer");
 
     // Display token usage
     if let Some(usage) = &response1.usage_metadata {
-        println!("Token usage:");
+        info!("token usage");
         if let Some(prompt_tokens) = usage.prompt_token_count {
-            println!("  Prompt tokens: {}", prompt_tokens);
+            info!(prompt_tokens = prompt_tokens, "prompt tokens");
         }
         if let Some(response_tokens) = usage.candidates_token_count {
-            println!("  Response tokens: {}", response_tokens);
+            info!(response_tokens = response_tokens, "response tokens");
         }
         if let Some(thinking_tokens) = usage.thoughts_token_count {
-            println!("  Thinking tokens: {}", thinking_tokens);
+            info!(thinking_tokens = thinking_tokens, "thinking tokens");
         }
         if let Some(total_tokens) = usage.total_token_count {
-            println!("  Total tokens: {}\n", total_tokens);
+            info!(total_tokens = total_tokens, "total tokens");
         }
     }
 
     // Example 2: Set specific thinking budget
-    println!("--- Example 2: Set thinking budget (1024 tokens) ---");
+    info!("example 2: set thinking budget (1024 tokens)");
     let response2 = client
         .generate_content()
         .with_system_prompt("You are a helpful programming assistant.")
@@ -68,16 +69,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts2 = response2.thoughts();
     if !thoughts2.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts2.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
-    println!("Answer: {}\n", response2.text());
+    info!(answer = response2.text(), "answer");
 
     // Example 3: Disable thinking feature
-    println!("--- Example 3: Disable thinking feature ---");
+    info!("example 3: disable thinking feature");
     let response3 = client
         .generate_content()
         .with_system_prompt("You are a helpful assistant.")
@@ -85,10 +86,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Answer: {}\n", response3.text());
+    info!(answer = response3.text(), "answer");
 
     // Example 4: Use GenerationConfig to set thinking
-    println!("--- Example 4: Use GenerationConfig to set thinking ---");
+    info!("example 4: use GenerationConfig to set thinking");
     let thinking_config = ThinkingConfig::new()
         .with_thinking_budget(2048)
         .with_thoughts_included(true);
@@ -113,13 +114,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts4 = response4.thoughts();
     if !thoughts4.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts4.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
-    println!("Answer: {}\n", response4.text());
+    info!(answer = response4.text(), "answer");
 
     Ok(())
 }

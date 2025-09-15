@@ -4,16 +4,19 @@ use gemini_rust::{
 };
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
-    println!("--- Meeting Scheduler Function Calling example ---");
+    info!("starting meeting scheduler function calling example");
 
     // Define a meeting scheduler function that matches the curl example
     let schedule_meeting = FunctionDeclaration::new(
@@ -59,9 +62,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if there are function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = ?function_call.args,
+            "function call received"
         );
 
         // Handle the schedule_meeting function
@@ -71,11 +75,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let time: String = function_call.get("time")?;
             let topic: String = function_call.get("topic")?;
 
-            println!("Scheduling meeting:");
-            println!("  Attendees: {:?}", attendees);
-            println!("  Date: {}", date);
-            println!("  Time: {}", time);
-            println!("  Topic: {}", topic);
+            info!(
+                attendees = ?attendees,
+                date = date,
+                time = time,
+                topic = topic,
+                "scheduling meeting"
+            );
 
             // Simulate scheduling the meeting
             let meeting_id = format!(
@@ -116,13 +122,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Execute final request
             let final_response = conversation.execute().await?;
 
-            println!("Final response: {}", final_response.text());
+            info!(response = final_response.text(), "final response received");
         } else {
-            println!("Unknown function call: {}", function_call.name);
+            info!(
+                function_name = function_call.name,
+                "unknown function call received"
+            );
         }
     } else {
-        println!("No function calls in the response.");
-        println!("Direct response: {}", response.text());
+        info!("no function calls in response");
+        info!(response = response.text(), "direct response received");
     }
 
     Ok(())

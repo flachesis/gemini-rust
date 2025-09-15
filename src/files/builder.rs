@@ -1,6 +1,7 @@
 use mime::Mime;
 use snafu::ResultExt;
 use std::sync::Arc;
+use tracing::{debug, instrument, Span};
 
 use super::*;
 use crate::client::GeminiClient;
@@ -36,8 +37,19 @@ impl FileBuilder {
     }
 
     /// Upload the file.
+    #[instrument(skip_all, fields(file.size, mime.type, display.name))]
     pub async fn upload(self) -> Result<super::handle::FileHandle, super::Error> {
         let mime_type = self.mime_type.unwrap_or(mime::APPLICATION_OCTET_STREAM);
+
+        Span::current()
+            .record("file.size", self.file_bytes.len())
+            .record("mime.type", mime_type.to_string())
+            .record(
+                "display.name",
+                self.display_name.as_deref().unwrap_or("none"),
+            );
+        debug!("uploading file");
+
         let file = self
             .client
             .upload_file(self.display_name, self.file_bytes, mime_type)

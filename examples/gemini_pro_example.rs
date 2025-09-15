@@ -1,9 +1,12 @@
 use gemini_rust::Gemini;
 use std::env;
+use tracing::info;
 
 /// Example usage of Gemini API matching the curl example format
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Replace with your actual API key
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -38,8 +41,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    // Print the response
-    println!("Response: {}", response.text());
+    // Log the response
+    info!(response = response.text(), "gemini pro response received");
 
     Ok(())
 }

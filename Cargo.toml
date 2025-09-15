@@ -37,7 +37,9 @@ mime_guess = "2.0"
 mime = "0.3"
 tokio = { version = "1", features = ["io-util"] }
 time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
+tracing = "0.1.41"
 
 [dev-dependencies]
 display-error-chain = "0.2"
 tokio = { version = "^1.47", features = ["full"] }
+tracing-subscriber = "0.3.20"

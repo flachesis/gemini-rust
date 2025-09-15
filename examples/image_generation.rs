@@ -2,11 +2,14 @@ use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use gemini_rust::{Gemini, GenerationConfig};
 use std::env;
 use std::fs;
+use tracing::{info, warn};
 
 /// Example of using Gemini API for image generation (text-to-image)
 /// This example demonstrates how to generate images using the Gemini 2.5 Flash Image Preview model
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -14,7 +17,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("--- Text-to-Image Generation ---");
+    info!("starting text-to-image generation examples");
 
     // Example 1: Simple text-to-image generation
     let response = client
@@ -34,38 +37,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Process the response - look for both text and image outputs
     for (i, candidate) in response.candidates.iter().enumerate() {
         if let Some(parts) = &candidate.content.parts {
-            println!("Processing candidate {}", i + 1);
+            info!(candidate_number = i + 1, "processing candidate");
 
             for (j, part) in parts.iter().enumerate() {
                 match part {
                     gemini_rust::Part::Text { text, .. } => {
-                        println!("Text response {}: {}", j + 1, text);
+                        info!(
+                            response_number = j + 1,
+                            text = text,
+                            "text response received"
+                        );
                     }
                     gemini_rust::Part::InlineData { inline_data } => {
-                        println!("Image response {} found!", j + 1);
-                        println!("MIME type: {}", inline_data.mime_type);
+                        info!(
+                            response_number = j + 1,
+                            mime_type = inline_data.mime_type,
+                            "image response found"
+                        );
 
                         // Decode base64 image data and save to file
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {
                                 let filename = format!("generated_image_{}.png", j + 1);
                                 fs::write(&filename, image_bytes)?;
-                                println!("Image saved as: {}", filename);
+                                info!(filename = filename, "image saved successfully");
                             }
                             Err(e) => {
-                                println!("Failed to decode image data: {}", e);
+                                warn!(error = ?e, "failed to decode image data");
                             }
                         }
                     }
                     _ => {
-                        println!("Other part type encountered");
+                        info!("other part type encountered");
                     }
                 }
             }
         }
     }
 
-    println!("\n--- Advanced Image Generation Examples ---");
+    info!("starting advanced image generation examples");
 
     // Example 2: Product mockup
     let product_response = client
@@ -123,8 +133,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     save_generated_images(&minimal_response, "minimalist_leaf")?;
 
-    println!("\nAll image generation examples completed!");
-    println!("Check the current directory for the generated image files.");
+    info!("all image generation examples completed - check current directory for generated files");
 
     Ok(())
 }
@@ -150,10 +159,14 @@ fn save_generated_images(
                             Ok(image_bytes) => {
                                 let filename = format!("{}_{}.png", prefix, image_count);
                                 fs::write(&filename, image_bytes)?;
-                                println!("Generated image saved as: {}", filename);
+                                info!(
+                                    filename = filename,
+                                    prefix = prefix,
+                                    "generated image saved"
+                                );
                             }
                             Err(e) => {
-                                println!("Failed to decode image data: {}", e);
+                                warn!(error = ?e, prefix = prefix, "failed to decode image data");
                             }
                         }
                     }
@@ -161,9 +174,13 @@ fn save_generated_images(
                 }
             }
 
-            // Print any text responses
+            // Log any text responses
             if !text_parts.is_empty() {
-                println!("Text response for {}: {}", prefix, text_parts.join("\n"));
+                info!(
+                    prefix = prefix,
+                    text = text_parts.join("\n"),
+                    "text response received"
+                );
             }
         }
     }

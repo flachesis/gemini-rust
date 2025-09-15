@@ -1,9 +1,12 @@
 use futures_util::TryStreamExt;
 use gemini_rust::Gemini;
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -11,7 +14,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Simple streaming generation
-    println!("--- Streaming generation ---");
+    info!("starting streaming generation example");
 
     let mut stream = client
         .generate_content()
@@ -22,17 +25,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // pin!(stream);
 
-    print!("Streaming response: ");
+    info!("streaming response chunks");
+    let mut full_response = String::new();
     while let Some(chunk) = stream.try_next().await? {
-        print!("{}", chunk.text());
+        let chunk_text = chunk.text();
+        full_response.push_str(&chunk_text);
+        print!("{}", chunk_text);
         std::io::Write::flush(&mut std::io::stdout())?;
     }
-    println!("\n");
+    println!();
+    info!(response = full_response, "streaming generation completed");
 
     // Multi-turn conversation
-    println!("--- Multi-turn conversation ---");
+    info!("starting multi-turn conversation example");
 
     // First turn
+    info!(
+        question = "I'm planning a trip to Japan. What are the best times to visit?",
+        "sending first turn"
+    );
     let response1 = client
         .generate_content()
         .with_system_prompt("You are a helpful travel assistant.")
@@ -40,10 +51,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("User: I'm planning a trip to Japan. What are the best times to visit?");
-    println!("Assistant: {}\n", response1.text());
+    info!(
+        question = "I'm planning a trip to Japan. What are the best times to visit?",
+        response = response1.text(),
+        "first turn completed"
+    );
 
     // Second turn (continuing the conversation)
+    info!(
+        question = "What about cherry blossom season? When exactly does that happen?",
+        "sending second turn"
+    );
     let response2 = client
         .generate_content()
         .with_system_prompt("You are a helpful travel assistant.")
@@ -53,10 +71,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("User: What about cherry blossom season? When exactly does that happen?");
-    println!("Assistant: {}\n", response2.text());
+    info!(
+        question = "What about cherry blossom season? When exactly does that happen?",
+        response = response2.text(),
+        "second turn completed"
+    );
 
     // Third turn (continuing the conversation)
+    info!(
+        question = "What are some must-visit places in Tokyo?",
+        "sending third turn"
+    );
     let response3 = client
         .generate_content()
         .with_system_prompt("You are a helpful travel assistant.")
@@ -68,8 +93,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("User: What are some must-visit places in Tokyo?");
-    println!("Assistant: {}", response3.text());
+    info!(
+        question = "What are some must-visit places in Tokyo?",
+        response = response3.text(),
+        "third turn completed"
+    );
 
     Ok(())
 }

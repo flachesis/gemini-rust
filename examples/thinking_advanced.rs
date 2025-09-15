@@ -3,9 +3,12 @@ use gemini_rust::{
     FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails, ThinkingConfig,
 };
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -13,10 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("=== Gemini 2.5 Thinking Advanced Example ===\n");
+    info!("starting gemini 2.5 thinking advanced example");
 
     // Example 1: Streaming with thinking
-    println!("--- Example 1: Streaming with thinking ---");
+    info!("example 1: streaming with thinking");
     let mut stream = client
         .generate_content()
         .with_system_prompt("You are a mathematics expert skilled at solving complex mathematical problems.")
@@ -26,17 +29,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute_stream()
         .await?;
 
-    println!("Streaming response:");
+    info!("starting streaming response");
     let mut thoughts_shown = false;
     while let Some(chunk) = stream.try_next().await? {
         // Check if there's thinking content
         let thoughts = chunk.thoughts();
         if !thoughts.is_empty() && !thoughts_shown {
-            println!("\nThinking process:");
+            info!("showing thinking process");
             for (i, thought) in thoughts.iter().enumerate() {
-                println!("Thought {}: {}", i + 1, thought);
+                info!(thought_number = i + 1, thought = thought, "thought");
             }
-            println!("\nAnswer:");
+            info!("showing answer");
             thoughts_shown = true;
         }
 
@@ -44,10 +47,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         print!("{}", chunk.text());
         std::io::Write::flush(&mut std::io::stdout())?;
     }
-    println!("\n");
+    info!("streaming response completed");
 
     // Example 2: Thinking combined with function calls
-    println!("--- Example 2: Thinking combined with function calls ---");
+    info!("example 2: thinking combined with function calls");
 
     // Define a calculator function
     let calculator = FunctionDeclaration::new(
@@ -81,26 +84,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts = response.thoughts();
     if !thoughts.is_empty() {
-        println!("Thinking process:");
+        info!("showing thinking process");
         for (i, thought) in thoughts.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
     // Check for function calls
     let function_calls = response.function_calls();
     if !function_calls.is_empty() {
-        println!("Function calls:");
+        info!("function calls detected");
         for (i, call) in function_calls.iter().enumerate() {
-            println!("Call {}: {} Args: {}", i + 1, call.name, call.args);
+            info!(
+                call_number = i + 1,
+                function_name = call.name,
+                args = ?call.args,
+                "function call"
+            );
         }
-        println!();
     }
 
-    println!("Answer: {}\n", response.text());
+    info!(answer = response.text(), "answer");
 
     // Example 3: Complex reasoning task
-    println!("--- Example 3: Complex reasoning task ---");
+    info!("example 3: complex reasoning task");
     let complex_response = client
         .generate_content()
         .with_system_prompt("You are a logical reasoning expert.")
@@ -125,28 +132,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let complex_thoughts = complex_response.thoughts();
     if !complex_thoughts.is_empty() {
-        println!("Reasoning process:");
+        info!("showing reasoning process");
         for (i, thought) in complex_thoughts.iter().enumerate() {
-            println!("Reasoning step {}: {}\n", i + 1, thought);
+            info!(step_number = i + 1, reasoning = thought, "reasoning step");
         }
     }
 
-    println!("Conclusion: {}\n", complex_response.text());
+    info!(conclusion = complex_response.text(), "conclusion");
 
     // Display token usage statistics
     if let Some(usage) = &complex_response.usage_metadata {
-        println!("Token usage statistics:");
+        info!("token usage statistics");
         if let Some(prompt_tokens) = usage.prompt_token_count {
-            println!("  Prompt tokens: {}", prompt_tokens);
+            info!(prompt_tokens = prompt_tokens, "prompt tokens");
         }
         if let Some(response_tokens) = usage.candidates_token_count {
-            println!("  Response tokens: {}", response_tokens);
+            info!(response_tokens = response_tokens, "response tokens");
         }
         if let Some(thinking_tokens) = usage.thoughts_token_count {
-            println!("  Thinking tokens: {}", thinking_tokens);
+            info!(thinking_tokens = thinking_tokens, "thinking tokens");
         }
         if let Some(total_tokens) = usage.total_token_count {
-            println!("  Total tokens: {}", total_tokens);
+            info!(total_tokens = total_tokens, "total tokens");
         }
     }
 

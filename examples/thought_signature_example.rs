@@ -19,16 +19,19 @@ use gemini_rust::{
 };
 use serde_json::json;
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client using Gemini 2.5 Pro which supports thoughtSignature
     let client = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
-    println!("=== Gemini 2.5 Pro thoughtSignature Example ===\n");
+    info!("starting gemini 2.5 pro thoughtSignature example");
 
     // Define the weather function tool
     let weather_function = FunctionDeclaration::new(
@@ -49,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_thoughts_included(true);
 
     // First request: Ask about weather (expecting function call with thoughtSignature)
-    println!("--- Step 1: Asking about weather (expecting function call) ---");
+    info!("step 1: asking about weather (expecting function call)");
 
     let response = client
         .generate_content()
@@ -65,18 +68,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let function_calls_with_thoughts = response.function_calls_with_thoughts();
 
     if !function_calls_with_thoughts.is_empty() {
-        println!("Function calls received:");
+        info!("function calls received");
         for (function_call, thought_signature) in function_calls_with_thoughts {
-            println!("  Function: {}", function_call.name);
-            println!("  Arguments: {}", function_call.args);
+            info!(
+                function_name = function_call.name,
+                args = ?function_call.args,
+                "function call details"
+            );
 
             if let Some(signature) = thought_signature {
-                println!("  Thought Signature: {}", signature);
-                println!("  Thought Signature Length: {} characters", signature.len());
+                info!(
+                    signature = signature,
+                    signature_length = signature.len(),
+                    "thought signature details"
+                );
             } else {
-                println!("  No thought signature provided");
+                info!("no thought signature provided");
             }
-            println!();
 
             // Mock function response
             let weather_data = json!({
@@ -87,11 +95,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "location": function_call.get::<String>("location").unwrap_or_default()
             });
 
-            println!("Mock weather response: {}", weather_data);
-            println!();
+            info!(weather_data = ?weather_data, "mock weather response");
 
             // Continue the conversation with function response
-            println!("--- Step 2: Providing function response ---");
+            info!("step 2: providing function response");
             let function_response = FunctionResponse::new(&function_call.name, weather_data);
 
             let final_response = client
@@ -107,29 +114,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .execute()
                 .await?;
 
-            println!("Final response: {}", final_response.text());
+            info!(final_response = final_response.text(), "final response");
 
             // Display usage metadata
             if let Some(usage) = &final_response.usage_metadata {
-                println!("\nToken usage:");
+                info!("token usage");
                 if let Some(prompt_tokens) = usage.prompt_token_count {
-                    println!("  Prompt tokens: {}", prompt_tokens);
+                    info!(prompt_tokens = prompt_tokens, "prompt tokens");
                 }
                 if let Some(response_tokens) = usage.candidates_token_count {
-                    println!("  Response tokens: {}", response_tokens);
+                    info!(response_tokens = response_tokens, "response tokens");
                 }
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
-                    println!("  Thinking tokens: {}", thinking_tokens);
+                    info!(thinking_tokens = thinking_tokens, "thinking tokens");
                 }
                 if let Some(total_tokens) = usage.total_token_count {
-                    println!("  Total tokens: {}", total_tokens);
+                    info!(total_tokens = total_tokens, "total tokens");
                 }
             }
 
             // --- Step 3: Multi-turn conversation with thought context ---
-            println!("\n--- Step 3: Multi-turn conversation maintaining thought context ---");
-            println!("IMPORTANT: To maintain thought context, we must include the complete");
-            println!("previous response with thought signatures in the next turn.");
+            info!("step 3: multi-turn conversation maintaining thought context");
+            info!("IMPORTANT: To maintain thought context, we must include the complete previous response with thought signatures in the next turn");
 
             // Create a multi-turn conversation that includes the previous context
             // We need to include ALL parts from the previous responses to maintain thought context
@@ -205,18 +211,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let followup_response = conversation_builder.execute().await?;
 
-            println!("Follow-up question: Is this weather suitable for outdoor sports? Please recommend some appropriate activities.");
-            println!("Follow-up response: {}", followup_response.text());
+            info!("follow-up question: Is this weather suitable for outdoor sports? Please recommend some appropriate activities.");
+            info!(
+                followup_response = followup_response.text(),
+                "follow-up response"
+            );
 
             // Check if there are any new function calls with thought signatures in the follow-up
             let followup_function_calls = followup_response.function_calls_with_thoughts();
             if !followup_function_calls.is_empty() {
-                println!("\nFollow-up function calls:");
+                info!("follow-up function calls detected");
                 for (fc, ts) in followup_function_calls {
-                    println!("  Function: {}", fc.name);
-                    println!("  Arguments: {}", fc.args);
+                    info!(
+                        function_name = fc.name,
+                        args = ?fc.args,
+                        "follow-up function call"
+                    );
                     if let Some(sig) = ts {
-                        println!("  New thought signature: {} characters", sig.len());
+                        info!(signature_length = sig.len(), "new thought signature");
                     }
                 }
             }
@@ -224,50 +236,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Display thinking process for follow-up
             let followup_thoughts = followup_response.thoughts();
             if !followup_thoughts.is_empty() {
-                println!("\nFollow-up thinking summaries:");
+                info!("follow-up thinking summaries");
                 for (i, thought) in followup_thoughts.iter().enumerate() {
-                    println!("  Follow-up thought {}: {}", i + 1, thought);
+                    info!(
+                        thought_number = i + 1,
+                        thought = thought,
+                        "follow-up thought"
+                    );
                 }
             }
 
             // Display follow-up usage metadata
             if let Some(usage) = &followup_response.usage_metadata {
-                println!("\nFollow-up token usage:");
+                info!("follow-up token usage");
                 if let Some(prompt_tokens) = usage.prompt_token_count {
-                    println!("  Prompt tokens: {}", prompt_tokens);
+                    info!(prompt_tokens = prompt_tokens, "prompt tokens");
                 }
                 if let Some(response_tokens) = usage.candidates_token_count {
-                    println!("  Response tokens: {}", response_tokens);
+                    info!(response_tokens = response_tokens, "response tokens");
                 }
                 if let Some(thinking_tokens) = usage.thoughts_token_count {
-                    println!("  Thinking tokens: {}", thinking_tokens);
+                    info!(thinking_tokens = thinking_tokens, "thinking tokens");
                 }
                 if let Some(total_tokens) = usage.total_token_count {
-                    println!("  Total tokens: {}", total_tokens);
+                    info!(total_tokens = total_tokens, "total tokens");
                 }
             }
 
-            println!("\n=== Multi-turn conversation completed ===");
-            println!("Key takeaways:");
-            println!("1. Thought signatures help maintain context across conversation turns");
-            println!("2. Include the complete response (with signatures) in subsequent requests");
-            println!("3. Don't modify or concatenate parts that contain thought signatures");
-            println!("4. Thought signatures are only available with thinking + function calling");
-            println!(
-                "5. The model can build upon its previous reasoning when signatures are preserved"
+            info!("multi-turn conversation completed");
+            info!("key takeaways:");
+            info!("1. thought signatures help maintain context across conversation turns");
+            info!("2. include the complete response (with signatures) in subsequent requests");
+            info!("3. don't modify or concatenate parts that contain thought signatures");
+            info!("4. thought signatures are only available with thinking + function calling");
+            info!(
+                "5. the model can build upon its previous reasoning when signatures are preserved"
             );
         }
     } else {
-        println!("No function calls in response");
-        println!("Response text: {}", response.text());
+        info!("no function calls in response");
+        info!(response_text = response.text(), "response text");
     }
 
     // Display any thoughts from the initial response
     let thoughts = response.thoughts();
     if !thoughts.is_empty() {
-        println!("\nInitial thinking summaries:");
+        info!("initial thinking summaries");
         for (i, thought) in thoughts.iter().enumerate() {
-            println!("  Thought {}: {}", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "initial thought");
         }
     }
 

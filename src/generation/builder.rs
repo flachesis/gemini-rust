@@ -1,5 +1,6 @@
 use futures::TryStream;
 use std::sync::Arc;
+use tracing::{debug, instrument, Span};
 
 use crate::{
     cache::CachedContentHandle,
@@ -349,17 +350,37 @@ impl ContentBuilder {
     }
 
     /// Execute the request
+    #[instrument(skip_all, fields(messages.count, tools.present, system_instruction.present))]
     pub async fn execute(self) -> Result<GenerationResponse, ClientError> {
+        Span::current()
+            .record("messages.count", self.contents.len())
+            .record("tools.present", self.tools.is_some())
+            .record(
+                "system_instruction.present",
+                self.system_instruction.is_some(),
+            );
+        debug!("executing generation request");
+
         let client = self.client.clone();
         let request = self.build();
         client.generate_content_raw(request).await
     }
 
     /// Execute the request with streaming
+    #[instrument(skip_all, fields(messages.count, tools.present, system_instruction.present))]
     pub async fn execute_stream(
         self,
     ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>
     {
+        Span::current()
+            .record("messages.count", self.contents.len())
+            .record("tools.present", self.tools.is_some())
+            .record(
+                "system_instruction.present",
+                self.system_instruction.is_some(),
+            );
+        debug!("executing streaming generation request");
+
         let request = GenerateContentRequest {
             contents: self.contents,
             generation_config: self.generation_config,

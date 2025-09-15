@@ -1,17 +1,21 @@
 use gemini_rust::{Gemini, Model};
 use std::time::Duration;
+use tracing::{error, info, warn};
 
 // Include the story text at compile time
 const GRIEF_EATER_STORY: &str = include_str!("../test_data/grief_eater.txt");
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
+
     let api_key =
         std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable must be set");
 
     let client = Gemini::with_model(api_key, Model::Gemini25FlashLite)?;
 
-    println!("Creating cached content with the full story text...");
+    info!("creating cached content with full story text");
 
     // Create cached content with the full story for analysis
     let cache = client
@@ -24,33 +28,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("✅ Cache created successfully: {}", cache.name());
+    info!(cache_name = cache.name(), "cache created successfully");
 
     // Demonstrate cache retrieval to show token count
-    println!("\nRetrieving cache information...");
+    info!("retrieving cache information");
     let cached_content = cache.get().await?;
-    println!("📋 Cache details:");
-    println!("  - Name: {}", cached_content.name);
-    println!(
-        "  - Display Name: {}",
-        cached_content
-            .display_name
-            .as_ref()
-            .unwrap_or(&"N/A".to_string())
-    );
-    println!("  - Model: {}", cached_content.model);
-    println!("  - Created: {}", cached_content.create_time);
-    println!("  - Updated: {}", cached_content.update_time);
-    println!(
-        "  - Total tokens: {}",
-        cached_content.usage_metadata.total_token_count
+    info!(
+        cache_name = cached_content.name,
+        display_name = cached_content.display_name.as_ref().unwrap_or(&"N/A".to_string()),
+        model = cached_content.model,
+        create_time = %cached_content.create_time,
+        update_time = %cached_content.update_time,
+        total_tokens = cached_content.usage_metadata.total_token_count,
+        "cache details retrieved"
     );
     if let Some(expire_time) = cached_content.expiration.expire_time {
-        println!("  - Expires: {}", expire_time);
+        info!(expire_time = %expire_time, "cache expiration time");
     }
 
     // Ask several analytical questions using the cached content
-    println!("\n=== Question 1: Main Theme ===");
+    info!("asking question 1: main theme");
     let response1 = client
         .generate_content()
         .with_cached_content(&cache)
@@ -58,9 +55,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("🤖 {}", response1.text());
+    info!(response = response1.text(), "question 1 response received");
 
-    println!("\n=== Question 2: Narrative Technique ===");
+    info!("asking question 2: narrative technique");
     let response2 = client
         .generate_content()
         .with_cached_content(&cache)
@@ -68,9 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("🤖 {}", response2.text());
+    info!(response = response2.text(), "question 2 response received");
 
-    println!("\n=== Question 3: Character Arc ===");
+    info!("asking question 3: character arc");
     let response3 = client
         .generate_content()
         .with_cached_content(&cache)
@@ -78,9 +75,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("🤖 {}", response3.text());
+    info!(response = response3.text(), "question 3 response received");
 
-    println!("\n=== Question 4: Symbolism ===");
+    info!("asking question 4: symbolism");
     let response4 = client
         .generate_content()
         .with_cached_content(&cache)
@@ -88,17 +85,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("🤖 {}", response4.text());
+    info!(response = response4.text(), "question 4 response received");
 
     // Clean up by deleting the cache
-    println!("\nCleaning up cache...");
+    info!("cleaning up cache");
     match cache.delete().await {
-        Ok(_) => println!("✅ Cache deleted successfully"),
+        Ok(_) => info!("cache deleted successfully"),
         Err((cache, error)) => {
-            println!("❌ Failed to delete cache: {}", error);
-            println!(
-                "Cache handle returned for potential retry: {}",
-                cache.name()
+            error!(error = %error, "failed to delete cache");
+            warn!(
+                cache_name = cache.name(),
+                "cache handle returned for potential retry"
             );
         }
     }

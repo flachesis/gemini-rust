@@ -1,8 +1,11 @@
 use gemini_rust::{Gemini, GenerationConfig, ThinkingConfig};
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -33,10 +36,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-pro".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("=== Thinking Curl Equivalent Example ===\n");
+    info!("starting thinking curl equivalent example");
 
     // Method 1: Using high-level API (simplest approach)
-    println!("--- Method 1: Using high-level API ---");
+    info!("method 1: using high-level API");
 
     let response1 = client
         .generate_content()
@@ -51,16 +54,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts1 = response1.thoughts();
     if !thoughts1.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts1.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
-    println!("Answer: {}\n", response1.text());
+    info!(answer = response1.text(), "answer");
 
     // Method 2: Using GenerationConfig to fully match curl example structure
-    println!("--- Method 2: Fully matching curl example structure ---");
+    info!("method 2: fully matching curl example structure");
 
     let thinking_config = ThinkingConfig {
         thinking_budget: Some(1024),
@@ -84,45 +87,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Display thinking process
     let thoughts2 = response2.thoughts();
     if !thoughts2.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts2.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
 
-    println!("Answer: {}\n", response2.text());
+    info!(answer = response2.text(), "answer");
 
     // Show token usage
     if let Some(usage) = &response2.usage_metadata {
-        println!("Token usage:");
+        info!("token usage");
         if let Some(prompt_tokens) = usage.prompt_token_count {
-            println!("  Prompt tokens: {}", prompt_tokens);
+            info!(prompt_tokens = prompt_tokens, "prompt tokens");
         }
         if let Some(response_tokens) = usage.candidates_token_count {
-            println!("  Response tokens: {}", response_tokens);
+            info!(response_tokens = response_tokens, "response tokens");
         }
         if let Some(thinking_tokens) = usage.thoughts_token_count {
-            println!("  Thinking tokens: {}", thinking_tokens);
+            info!(thinking_tokens = thinking_tokens, "thinking tokens");
         }
         if let Some(total_tokens) = usage.total_token_count {
-            println!("  Total tokens: {}", total_tokens);
+            info!(total_tokens = total_tokens, "total tokens");
         }
     }
 
     // Method 3: Demonstrate different thinking budget settings
-    println!("\n--- Method 3: Different thinking budget comparison ---");
+    info!("method 3: different thinking budget comparison");
 
     // Thinking disabled
-    println!("Thinking disabled:");
+    info!("testing thinking disabled");
     let response_no_thinking = client
         .generate_content()
         .with_user_message("Explain the basic principles of quantum mechanics")
         .execute()
         .await?;
-    println!("Answer: {}\n", response_no_thinking.text());
+    info!(answer = response_no_thinking.text(), "answer");
 
     // Dynamic thinking
-    println!("Dynamic thinking:");
+    info!("testing dynamic thinking");
     let response_dynamic = client
         .generate_content()
         .with_user_message("Explain the basic principles of quantum mechanics")
@@ -133,15 +136,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let thoughts_dynamic = response_dynamic.thoughts();
     if !thoughts_dynamic.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts_dynamic.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
-    println!("Answer: {}\n", response_dynamic.text());
+    info!(answer = response_dynamic.text(), "answer");
 
     // High thinking budget
-    println!("High thinking budget (4096 tokens):");
+    info!("testing high thinking budget (4096 tokens)");
     let response_high_budget = client
         .generate_content()
         .with_user_message("Explain the basic principles of quantum mechanics")
@@ -152,12 +155,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let thoughts_high = response_high_budget.thoughts();
     if !thoughts_high.is_empty() {
-        println!("Thinking summary:");
+        info!("showing thinking summary");
         for (i, thought) in thoughts_high.iter().enumerate() {
-            println!("Thought {}: {}\n", i + 1, thought);
+            info!(thought_number = i + 1, thought = thought, "thought");
         }
     }
-    println!("Answer: {}", response_high_budget.text());
+    info!(answer = response_high_budget.text(), "answer");
 
     Ok(())
 }

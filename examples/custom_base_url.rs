@@ -1,8 +1,11 @@
 use gemini_rust::{Gemini, GenerationConfig};
 use std::env;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing subscriber
+    tracing_subscriber::fmt::init();
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
     // Using custom base URL
@@ -14,7 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .expect("unable to create Gemini API client");
 
-    println!("Custom base URL client created successfully");
+    info!(
+        base_url = custom_base_url,
+        "custom base url client created successfully"
+    );
 
     let response = client_custom
         .generate_content()
@@ -28,7 +34,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Response: {}", response.text());
+    info!(
+        response = response.text(),
+        "response received from custom base url"
+    );
 
     Ok(())
 }
