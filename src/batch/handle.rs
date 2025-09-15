@@ -1,17 +1,17 @@
 //! The Batch module for managing batch operations.
 //!
-//! This module provides the [`Batch`] struct, which is a handle to a long-running batch
+//! This module provides the [`BatchHandle`] struct, which is a handle to a long-running batch
 //! operation on the Gemini API. It allows for checking the status, canceling, and deleting
 //! the operation.
 //!
 //! The status of a batch operation is represented by the [`BatchStatus`] enum, which can be
-//! retrieved using the [`Batch::status()`] method. When a batch completes successfully,
+//! retrieved using the [`BatchHandle::status()`] method. When a batch completes successfully,
 //! it transitions to the [`BatchStatus::Succeeded`] state, which contains a vector of
-//! [`BatchResultItem`].
+//! [`BatchGenerationResponseItem`].
 //!
 //! ## Batch Results
 //!
-//! The [`BatchResultItem`] enum represents the outcome of a single request within the batch:
+//! The [`BatchGenerationResponseItem`] enum represents the outcome of a single request within the batch:
 //! - `Success`: Contains the generated `GenerationResponse` and the original request key.
 //! - `Error`: Contains an `IndividualRequestError` and the original request key.
 //!
@@ -32,26 +32,26 @@
 //!
 //! # Design Note: Resource Management in Batch Operations
 //!
-//! The Batch API methods that consume the [`Batch`] struct (`cancel`, `delete`)
+//! The Batch API methods that consume the [`BatchHandle`] struct (`cancel`, `delete`)
 //! return `std::result::Result<T, (Self, crate::Error)>` instead of the crate's `Result<T>`.
 //! This design follows patterns used in channel libraries (e.g., `std::sync::mpsc::Receiver`)
 //! and provides two key benefits:
 //!
-//! 1. **Resource Safety**: Once a [`Batch`] is consumed by an operation, it cannot be used again,
+//! 1. **Resource Safety**: Once a [`BatchHandle`] is consumed by an operation, it cannot be used again,
 //!    preventing invalid operations on deleted or canceled batches.
 //!
 //! 2. **Error Recovery**: If an operation fails due to transient network issues, both the
-//!    [`Batch`] and error information are returned, allowing callers to retry the operation.
+//!    [`BatchHandle`] and error information are returned, allowing callers to retry the operation.
 //!
 //! ## Example usage:
-//! ```rust,ignore
+//! ```rust,no_run
 //! use gemini_rust::{Gemini, Message};
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?);
+//!     let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
 //!     let request = client.generate_content().with_user_message("Why is the sky blue?").build();
-//!     let batch = client.batch_generate_content_sync().with_request(request).execute().await?;
+//!     let batch = client.batch_generate_content().with_request(request).execute().await?;
 //!
 //!     match batch.delete().await {
 //!         Ok(()) => println!("Batch deleted successfully!"),
