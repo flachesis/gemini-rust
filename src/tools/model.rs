@@ -307,7 +307,7 @@ impl FunctionResponse {
 }
 
 /// Configuration for tools
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ToolConfig {
     /// The function calling config
     #[serde(skip_serializing_if = "Option::is_none")]
