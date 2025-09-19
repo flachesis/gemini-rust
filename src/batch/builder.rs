@@ -83,7 +83,7 @@ impl BatchBuilder {
         let client = self.client.clone();
         let request = self.build();
         let response = client
-            .batch_generate_content_sync(request)
+            .batch_generate_content(request)
             .await
             .context(ClientSnafu)?;
         Ok(BatchHandle::new(response.name, client))
@@ -135,7 +135,7 @@ impl BatchBuilder {
 
         let client = self.client.clone();
         let response = client
-            .batch_generate_content_sync(request)
+            .batch_generate_content(request)
             .await
             .context(ClientSnafu)?;
 

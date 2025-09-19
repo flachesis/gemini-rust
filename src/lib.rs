@@ -28,7 +28,7 @@
 //! For more specialized types, import them directly from the crate root or their
 //! respective modules.
 
-mod client;
+pub mod client;
 mod models;
 
 /// Convenient re-exports of commonly used types
