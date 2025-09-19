@@ -138,14 +138,6 @@ pub struct CreateCachedContentRequest {
     pub expiration: CacheExpirationRequest,
 }
 
-/// Response from deleting cached content.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct DeleteCachedContentResponse {
-    /// HTTP status and metadata
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub success: Option<bool>,
-}
-
 /// Summary of cached content (used in list operations, may omit large content fields).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

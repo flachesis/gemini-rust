@@ -38,6 +38,8 @@ mime = "0.3"
 tokio = { version = "1", features = ["io-util"] }
 time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 tracing = "0.1.41"
+strum = { version = "0.26", features = ["derive"] }
+strum_macros = "0.26"
 
 [dev-dependencies]
 display-error-chain = "0.2"

@@ -261,6 +261,18 @@ pub enum InputConfig {
     FileName(String),
 }
 
+impl InputConfig {
+    /// Returns the batch size of the input configuration.
+    ///
+    /// Returns `None` if the input configuration is a file name.
+    pub fn batch_size(&self) -> Option<usize> {
+        match self {
+            InputConfig::Requests(container) => Some(container.requests.len()),
+            InputConfig::FileName(_) => None,
+        }
+    }
+}
+
 /// Container for requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

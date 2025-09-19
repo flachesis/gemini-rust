@@ -1,6 +1,6 @@
 use snafu::ResultExt;
 use std::sync::Arc;
-use tracing::{debug, instrument, Span};
+use tracing::{instrument, Span};
 
 use super::handle::BatchHandle;
 use super::model::*;
@@ -73,17 +73,15 @@ impl BatchBuilder {
     /// Submits the batch request to the Gemini API and returns a `Batch` handle.
     ///
     /// This method consumes the builder and initiates the long-running batch operation.
-    #[instrument(skip_all, fields(display.name, requests.count))]
+    #[instrument(skip_all, fields(
+        batch.display_name = self.display_name,
+        batch.size = self.requests.len()
+    ))]
     pub async fn execute(self) -> Result<BatchHandle, Error> {
-        Span::current()
-            .record("display.name", &self.display_name)
-            .record("requests.count", self.requests.len());
-        debug!("executing batch request");
-
         let client = self.client.clone();
         let request = self.build();
         let response = client
-            .batch_generate_content_sync(request)
+            .batch_generate_content(request)
             .await
             .context(ClientSnafu)?;
         Ok(BatchHandle::new(response.name, client))
@@ -94,12 +92,11 @@ impl BatchBuilder {
     /// This method is ideal for large batch jobs that might exceed inline request limits.
     /// It consumes the builder, serializes the requests to the JSON Lines format,
     /// uploads the content as a file, and then starts the batch operation using that file.
-    #[instrument(skip_all, fields(display.name, requests.count, file.size))]
+    #[instrument(skip_all, fields(
+        batch.display_name = self.display_name,
+        batch.size = self.requests.len()
+    ))]
     pub async fn execute_as_file(self) -> Result<BatchHandle, Error> {
-        Span::current()
-            .record("display.name", &self.display_name)
-            .record("requests.count", self.requests.len());
-        debug!("executing batch request as file");
         let mut json_lines = String::new();
         for (index, item) in self.requests.into_iter().enumerate() {
             let item = BatchRequestFileItem {
@@ -135,7 +132,7 @@ impl BatchBuilder {
 
         let client = self.client.clone();
         let response = client
-            .batch_generate_content_sync(request)
+            .batch_generate_content(request)
             .await
             .context(ClientSnafu)?;
 

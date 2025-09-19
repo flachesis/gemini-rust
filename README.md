@@ -559,6 +559,8 @@ export GEMINI_API_KEY="your-api-key-here"
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
+For guidelines on developing agents and applications, see the [Agent Development Guide](AGENTS.md).
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

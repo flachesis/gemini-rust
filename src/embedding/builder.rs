@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tracing::{debug, instrument, Span};
+use tracing::instrument;
 
 use super::model::{
     BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
@@ -68,19 +68,12 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
-    #[instrument(skip_all, fields(task.type, title, output.dimensionality))]
+    #[instrument(skip_all, fields(
+        task.type = self.task_type.as_ref().map(AsRef::<str>::as_ref),
+        title = self.title,
+        output.dimensionality = self.output_dimensionality
+    ))]
     pub async fn execute(self) -> Result<ContentEmbeddingResponse, ClientError> {
-        if let Some(task_type) = &self.task_type {
-            Span::current().record("task.type", format!("{:?}", task_type));
-        }
-        if let Some(title) = &self.title {
-            Span::current().record("title", title.as_str());
-        }
-        if let Some(dimensionality) = self.output_dimensionality {
-            Span::current().record("output.dimensionality", dimensionality);
-        }
-        debug!("executing embedding request");
-
         let request = EmbedContentRequest {
             model: self.client.model.to_string(),
             content: self.contents.first().expect("No content set").clone(),
@@ -93,20 +86,13 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
-    #[instrument(skip_all, fields(requests.count, task.type, title, output.dimensionality))]
+    #[instrument(skip_all, fields(
+        batch.size = self.contents.len(),
+        task.type = self.task_type.as_ref().map(AsRef::<str>::as_ref),
+        title = self.title,
+        output.dimensionality = self.output_dimensionality
+    ))]
     pub async fn execute_batch(self) -> Result<BatchContentEmbeddingResponse, ClientError> {
-        Span::current().record("requests.count", self.contents.len());
-        if let Some(task_type) = &self.task_type {
-            Span::current().record("task.type", format!("{:?}", task_type));
-        }
-        if let Some(title) = &self.title {
-            Span::current().record("title", title.as_str());
-        }
-        if let Some(dimensionality) = self.output_dimensionality {
-            Span::current().record("output.dimensionality", dimensionality);
-        }
-        debug!("executing batch embedding request");
-
         let mut batch_request = BatchEmbedContentsRequest {
             requests: Vec::new(),
         };
