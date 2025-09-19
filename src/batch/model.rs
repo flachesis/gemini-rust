@@ -4,6 +4,7 @@ use time::OffsetDateTime;
 
 use crate::common::serde::*;
 use crate::generation::{GenerateContentRequest, GenerationResponse};
+use crate::Model;
 
 /// Batch file request line JSON representation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -109,7 +110,7 @@ pub struct BatchMetadata {
     #[serde(rename = "@type")]
     pub type_annotation: String,
     /// Model used for the batch
-    pub model: String,
+    pub model: Model,
     /// Display name of the batch
     pub display_name: String,
     /// Creation time

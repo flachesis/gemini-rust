@@ -1,5 +1,28 @@
-use crate::{FinishReason, FunctionCall, GenerationResponse, Part};
+use crate::{FinishReason, FunctionCall, GenerationResponse, Model, Part};
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+
+#[test]
+fn test_model_deserialization() {
+    #[derive(Serialize, Deserialize)]
+    struct Response {
+        model: Model,
+    }
+
+    let response = Response {
+        model: Model::Custom("models/custom_gemini_model".to_string()),
+    };
+    let serialized = serde_json::to_string(&response).unwrap();
+    let deserialized: Response = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.model, response.model);
+
+    let response = Response {
+        model: Model::Gemini25Flash,
+    };
+    let serialized = serde_json::to_string(&response).unwrap();
+    let deserialized: Response = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(deserialized.model, response.model);
+}
 
 #[test]
 fn test_thought_signature_deserialization() {

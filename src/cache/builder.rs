@@ -119,7 +119,7 @@ impl CacheBuilder {
 
     /// Execute the cache creation request.
     pub async fn execute(self) -> Result<CachedContentHandle, Error> {
-        let model = self.client.model.to_string();
+        let model = self.client.model.clone();
         let expiration = self.expiration.ok_or(Error::MissingExpiration)?;
 
         let cached_content = CreateCachedContentRequest {

@@ -18,7 +18,7 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
     Client, ClientBuilder, Response,
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::json;
 use snafu::{ResultExt, Snafu};
 use std::{
@@ -35,13 +35,18 @@ static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
         .expect("unreachable error: failed to parse default base URL")
 });
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Model {
     #[default]
+    #[serde(rename = "models/gemini-2.5-flash")]
     Gemini25Flash,
+    #[serde(rename = "models/gemini-2.5-flash-lite")]
     Gemini25FlashLite,
+    #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
+    #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
+    #[serde(untagged)]
     Custom(String),
 }
 
