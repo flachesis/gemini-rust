@@ -130,6 +130,7 @@ pub struct PromptTokenDetails {
 #[serde(rename_all = "camelCase")]
 pub struct GenerationResponse {
     /// The candidates generated
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub candidates: Vec<Candidate>,
     /// The prompt feedback
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -168,6 +169,7 @@ pub enum BlockReason {
 #[serde(rename_all = "camelCase")]
 pub struct PromptFeedback {
     /// The safety ratings for the prompt
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub safety_ratings: Vec<SafetyRating>,
     /// The block reason if the prompt was blocked
     #[serde(skip_serializing_if = "Option::is_none")]

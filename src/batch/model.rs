@@ -198,6 +198,7 @@ pub struct BatchStats {
 
 /// Represents a long-running operation from the Gemini API.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct BatchOperation {
     /// The resource name of the operation
     pub name: String,
