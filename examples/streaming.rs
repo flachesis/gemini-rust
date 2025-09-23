@@ -18,6 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut stream = client
         .generate_content()
+        .with_thinking_budget(0)
         .with_system_prompt("You are a helpful, creative assistant.")
         .with_user_message("Write a short story about a robot who learns to feel emotions.")
         .execute_stream()
