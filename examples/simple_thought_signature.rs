@@ -1,8 +1,24 @@
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails,
-    ThinkingConfig, Tool,
+    FunctionCallingMode, FunctionDeclaration, Gemini, ThinkingConfig, Tool,
+    tools::GeminiSchema as _,
 };
+use schemars::{JsonSchema, SchemaGenerator};
+use serde::{Deserialize, Serialize};
 use std::env;
+
+#[derive(Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(description = "Get current weather for a location")]
+struct Weather {
+    /// City name
+    location: String,
+}
+
+impl std::fmt::Display for Weather {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let schema = SchemaGenerator::gemini().root_schema_for::<Self>();
+        write!(f, "{}", schema.to_value())
+    }
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -10,15 +26,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::pro(api_key)?;
 
     // Create a simple function tool
-    let weather_function = FunctionDeclaration::new(
-        "get_weather",
-        "Get current weather for a location",
-        FunctionParameters::object().with_property(
-            "location",
-            PropertyDetails::string("City name"),
-            true,
-        ),
-    );
+    let weather_function =
+        FunctionDeclaration::new("get_weather", "Get current weather for a location", None)
+            .with_parameters::<Weather>();
 
     // Configure thinking to enable thoughtSignature
     let thinking_config = ThinkingConfig::new()
@@ -39,7 +49,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for (function_call, thought_signature) in function_calls_with_thoughts {
         println!("Function called: {}", function_call.name);
-        println!("Arguments: {}", function_call.args);
+        println!(
+            "Arguments: {}",
+            serde_json::from_value::<Weather>(function_call.args.clone())?
+        );
 
         if let Some(signature) = thought_signature {
             println!("Thought signature present: {} characters", signature.len());

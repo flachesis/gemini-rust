@@ -1,9 +1,34 @@
+use gemini_rust::tools::Behavior;
 use gemini_rust::{
-    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini,
-    Message, PropertyDetails, Role, Tool,
+    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, Gemini, Message, Role, Tool,
 };
-use serde_json::json;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::env;
+
+#[derive(Serialize, JsonSchema, Deserialize, Clone, Debug)]
+#[schemars(description = "Schedules a meeting with specified attendees at a given time and date.")]
+struct Meeting {
+    /// List of people attending the meeting.
+    attendees: Vec<String>,
+    /// Date of the meeting (e.g., '2024-07-29').
+    date: String,
+    /// Time of the meeting (e.g., '15:00').
+    time: String,
+    /// The subject or topic of the meeting.
+    topic: String,
+}
+
+#[derive(Serialize, JsonSchema, Deserialize, Clone, Debug)]
+#[schemars(description = "The result of a scheduled meeting")]
+struct MeetingResult {
+    /// Whether the meeting was successfully scheduled
+    success: bool,
+    /// The unique ID of the scheduled meeting
+    meeting_id: String,
+    /// Confirmation or error message
+    message: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,31 +44,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schedule_meeting = FunctionDeclaration::new(
         "schedule_meeting",
         "Schedules a meeting with specified attendees at a given time and date.",
-        FunctionParameters::object()
-            .with_property(
-                "attendees",
-                PropertyDetails::array(
-                    "List of people attending the meeting.",
-                    PropertyDetails::string("Attendee name"),
-                ),
-                true,
-            )
-            .with_property(
-                "date",
-                PropertyDetails::string("Date of the meeting (e.g., '2024-07-29')"),
-                true,
-            )
-            .with_property(
-                "time",
-                PropertyDetails::string("Time of the meeting (e.g., '15:00')"),
-                true,
-            )
-            .with_property(
-                "topic",
-                PropertyDetails::string("The subject or topic of the meeting."),
-                true,
-            ),
-    );
+        Some(Behavior::default()),
+    )
+    .with_parameters::<Meeting>()
+    .with_response::<MeetingResult>();
 
     // Create function tool
     let function_tool = Tool::new(schedule_meeting);
@@ -66,16 +70,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Handle the schedule_meeting function
         if function_call.name == "schedule_meeting" {
-            let attendees: Vec<String> = function_call.get("attendees")?;
-            let date: String = function_call.get("date")?;
-            let time: String = function_call.get("time")?;
-            let topic: String = function_call.get("topic")?;
+            let meeting: Meeting = serde_json::from_value(function_call.args.clone())?;
+
+            let attendees: Vec<String> = meeting.attendees.clone();
+            let date: String = meeting.date.clone();
+            let time: String = meeting.time.clone();
+            let topic: String = meeting.topic.clone();
 
             println!("Scheduling meeting:");
-            println!("  Attendees: {:?}", attendees);
-            println!("  Date: {}", date);
-            println!("  Time: {}", time);
-            println!("  Topic: {}", topic);
+            println!("{}", serde_json::to_string_pretty(&(meeting.clone()))?);
 
             // Simulate scheduling the meeting
             let meeting_id = format!(
@@ -86,11 +89,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .as_secs()
             );
 
-            let function_response = json!({
-                "success": true,
-                "meeting_id": meeting_id,
-                "message": format!("Meeting '{}' scheduled for {} at {} with {:?}", topic, date, time, attendees)
-            });
+            let function_response = MeetingResult {
+                success: true,
+                meeting_id,
+                message: format!(
+                    "Meeting '{}' scheduled for {} at {} with {:?}",
+                    topic, date, time, attendees
+                ),
+            };
 
             // Create conversation with function response
             let mut conversation = client.generate_content();

@@ -15,8 +15,8 @@ use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
 use mime::Mime;
 use reqwest::{
-    header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
     Client, ClientBuilder, Response,
+    header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
 };
 use serde::de::DeserializeOwned;
 use serde_json::json;
@@ -192,7 +192,8 @@ impl GeminiClient {
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
-    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send, Error> {
+    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send + use<>, Error>
+    {
         let mut url = self.build_url("streamGenerateContent")?;
         url.query_pairs_mut().append_pair("alt", "sse");
 

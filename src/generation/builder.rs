@@ -2,12 +2,12 @@ use futures::TryStream;
 use std::sync::Arc;
 
 use crate::{
+    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
+    Message, Role, Tool,
     cache::CachedContentHandle,
     client::{Error as ClientError, GeminiClient},
     generation::{GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig, ThinkingConfig},
     tools::{FunctionCallingConfig, ToolConfig},
-    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Role, Tool,
 };
 
 /// Builder for content generation requests
@@ -82,12 +82,19 @@ impl ContentBuilder {
     /// Adds a function response to the request using a `serde_json::Value`.
     ///
     /// This is used to provide the model with the result of a function call it has requested.
-    pub fn with_function_response(
+    pub fn with_function_response<Response>(
         mut self,
         name: impl Into<String>,
-        response: serde_json::Value,
-    ) -> Self {
-        let content = Content::function_response_json(name, response).with_role(Role::User);
+        response: Response,
+    ) -> Self
+    where
+        Response: serde::Serialize,
+    {
+        let content = Content::function_response_json(
+            name,
+            serde_json::to_value(response).unwrap_or_default(),
+        )
+        .with_role(Role::User);
         self.contents.push(content);
         self
     }

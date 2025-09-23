@@ -1,8 +1,61 @@
 use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Part,
-    PropertyDetails,
+    Content, FunctionCallingMode, FunctionDeclaration, Gemini, Part, tools::GeminiSchema as _,
 };
+use schemars::{JsonSchema, SchemaGenerator};
+use serde::{Deserialize, Serialize};
 use std::env;
+use termion::color;
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(description = "The unit of temperature")]
+#[serde(rename_all = "lowercase")]
+enum Unit {
+    #[default]
+    Celsius,
+    Fahrenheit,
+}
+
+impl std::fmt::Display for Unit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Unit::Celsius => write!(f, "Celsius"),
+            Unit::Fahrenheit => write!(f, "Fahrenheit"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct Weather {
+    /// The city and state, e.g., San Francisco, CA
+    location: String,
+    /// The unit of temperature
+    unit: Option<Unit>,
+}
+
+impl Default for Weather {
+    fn default() -> Self {
+        Weather {
+            location: "".to_string(),
+            unit: Some(Unit::Celsius),
+        }
+    }
+}
+
+impl std::fmt::Display for Weather {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let schema = SchemaGenerator::gemini().root_schema_for::<Self>();
+        write!(f, "{}", schema.to_value())
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct WeatherResponse {
+    temperature: i32,
+    unit: Unit,
+    condition: String,
+    location: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -15,18 +68,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let get_weather = FunctionDeclaration::new(
         "get_weather",
         "Get the current weather for a location",
-        FunctionParameters::object()
-            .with_property(
-                "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
-                true,
-            )
-            .with_property(
-                "unit",
-                PropertyDetails::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
-                false,
-            ),
-    );
+        None,
+    )
+    .with_parameters::<Weather>()
+    .with_response::<WeatherResponse>();
 
     // Create a request with function calling
     println!("Sending function call request...");
@@ -38,60 +83,77 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    // Check if there are function calls
-    if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call received: {} with args: {}",
-            function_call.name, function_call.args
+    let Some(function_call) = response.function_calls().first().cloned() else {
+        eprintln!("No function calls in the response.");
+        eprintln!(
+            "{}Response:{} {}",
+            color::Fg(color::LightBlack),
+            color::Fg(color::Reset),
+            response.text(),
         );
+        return Ok(());
+    };
 
-        // Get parameters from the function call
-        let location: String = function_call.get("location")?;
-        let unit = function_call
-            .get::<String>("unit")
-            .unwrap_or_else(|_| String::from("celsius"));
+    let result = serde_json::from_value::<Weather>(function_call.args.clone())?;
 
-        println!("Location: {}, Unit: {}", location, unit);
+    println!(
+        "{}Function call received:{} {} {}with args:{}\n{}",
+        color::Fg(color::LightBlack),
+        color::Fg(color::Reset),
+        function_call.name,
+        color::Fg(color::LightBlack),
+        color::Fg(color::Reset),
+        serde_json::to_string_pretty(&result)?
+    );
 
-        // Simulate function execution (in a real app, this would call a weather API)
-        // Create a JSON response object
-        let weather_response = serde_json::json!({
-            "temperature": 22,
-            "unit": unit,
-            "condition": "sunny",
-            "location": location
-        });
+    // Get parameters from the function call
+    let location = result.location;
+    let unit = result.unit.unwrap_or_default();
 
-        // Continue the conversation with the function result
-        // We need to replay the entire conversation with the function response
-        println!("Sending function response...");
+    // Simulate function execution (in a real app, this would call a weather API)
+    // Create a JSON response object
+    let weather_response = WeatherResponse {
+        temperature: 22,
+        unit,
+        condition: "sunny".to_string(),
+        location: location.clone(),
+    };
 
-        // First, need to recreate the original prompt and the model's response
-        let mut final_request = client
-            .generate_content()
-            .with_user_message("What's the weather like in Tokyo right now?");
+    // Continue the conversation with the function result
+    // We need to replay the entire conversation with the function response
+    println!(
+        "{}Sending function response...{}",
+        color::Fg(color::LightBlack),
+        color::Fg(color::Reset)
+    );
 
-        // Add the function call from the model's response
-        let call_content = Content {
-            parts: Some(vec![Part::FunctionCall {
-                function_call: (*function_call).clone(),
-                thought_signature: None,
-            }]),
-            ..Default::default()
-        };
-        final_request.contents.push(call_content);
+    // First, need to recreate the original prompt and the model's response
+    let mut final_request = client
+        .generate_content()
+        .with_user_message("What's the weather like in Tokyo right now?");
 
-        // Now add the function response using the JSON value
-        final_request = final_request.with_function_response("get_weather", weather_response);
+    // Add the function call from the model's response
+    let call_content = Content {
+        parts: Some(vec![Part::FunctionCall {
+            function_call: (*function_call).clone(),
+            thought_signature: None,
+        }]),
+        ..Default::default()
+    };
+    final_request.contents.push(call_content);
 
-        // Execute the request
-        let final_response = final_request.execute().await?;
+    // Now add the function response using the JSON value
+    final_request = final_request.with_function_response("get_weather", weather_response);
 
-        println!("Final response: {}", final_response.text());
-    } else {
-        println!("No function calls in the response.");
-        println!("Response text: {}", response.text());
-    }
+    // Execute the request
+    let final_response = final_request.execute().await?;
+
+    println!(
+        "{}Final response:{} {}",
+        color::Fg(color::LightBlack),
+        color::Fg(color::Reset),
+        final_response.text()
+    );
 
     Ok(())
 }

@@ -69,9 +69,9 @@ use std::{result::Result, sync::Arc};
 
 use super::model::*;
 use crate::{
+    GenerationResponse,
     client::{Error as ClientError, GeminiClient},
     files::handle::FileHandle,
-    GenerationResponse,
 };
 
 #[derive(Debug, Snafu)]

@@ -14,11 +14,36 @@
 /// Thought signatures are encrypted representations of the model's internal
 /// thought process that help maintain context across conversation turns.
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, FunctionResponse, Gemini,
-    PropertyDetails, ThinkingConfig, Tool,
+    FunctionCallingMode, FunctionDeclaration, FunctionResponse, Gemini, ThinkingConfig, Tool,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct WeatherRequest {
+    /// City and region, e.g., Kaohsiung Zuoying District
+    location: String,
+}
+
+impl Default for WeatherRequest {
+    fn default() -> Self {
+        WeatherRequest {
+            location: "".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct WeatherResponse {
+    temperature: String,
+    condition: String,
+    humidity: String,
+    wind: String,
+    location: String,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -34,12 +59,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weather_function = FunctionDeclaration::new(
         "get_current_weather",
         "Get current weather information for a specified location",
-        FunctionParameters::object().with_property(
-            "location",
-            PropertyDetails::string("City and region, e.g., Kaohsiung Zuoying District"),
-            true,
-        ),
-    );
+        None,
+    )
+    .with_parameters::<WeatherRequest>()
+    .with_response::<WeatherResponse>();
 
     let weather_tool = Tool::new(weather_function);
 
@@ -78,13 +101,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
             println!();
 
+            // Parse the function call arguments
+            let weather_request: WeatherRequest =
+                serde_json::from_value(function_call.args.clone())?;
+
             // Mock function response
             let weather_data = json!({
                 "temperature": "25°C",
                 "condition": "sunny",
                 "humidity": "60%",
                 "wind": "light breeze",
-                "location": function_call.get::<String>("location").unwrap_or_default()
+                "location": weather_request.location
             });
 
             println!("Mock weather response: {}", weather_data);
@@ -164,7 +191,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "condition": "sunny",
                     "humidity": "60%",
                     "wind": "light breeze",
-                    "location": function_call.get::<String>("location").unwrap_or_default()
+                    "location": weather_request.location
                 }),
             );
 
@@ -184,15 +211,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             conversation_builder = conversation_builder.with_user_message("Is this weather suitable for outdoor sports? Please recommend some appropriate activities.");
 
             // Add the weather tool again for potential follow-up function calls
-            let weather_tool_followup = Tool::new(FunctionDeclaration::new(
-                "get_current_weather",
-                "Get current weather information for a specified location",
-                FunctionParameters::object().with_property(
-                    "location",
-                    PropertyDetails::string("City and region, e.g., Kaohsiung Zuoying District"),
-                    true,
-                ),
-            ));
+            let weather_tool_followup = Tool::new(
+                FunctionDeclaration::new(
+                    "get_current_weather",
+                    "Get current weather information for a specified location",
+                    None,
+                )
+                .with_parameters::<WeatherRequest>()
+                .with_response::<WeatherResponse>(),
+            );
 
             conversation_builder = conversation_builder
                 .with_tool(weather_tool_followup)
@@ -205,7 +232,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let followup_response = conversation_builder.execute().await?;
 
-            println!("Follow-up question: Is this weather suitable for outdoor sports? Please recommend some appropriate activities.");
+            println!(
+                "Follow-up question: Is this weather suitable for outdoor sports? Please recommend some appropriate activities."
+            );
             println!("Follow-up response: {}", followup_response.text());
 
             // Check if there are any new function calls with thought signatures in the follow-up
