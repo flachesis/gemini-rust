@@ -1,7 +1,5 @@
 use futures::TryStreamExt;
-use gemini_rust::{
-    FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails, ThinkingConfig,
-};
+use gemini_rust::{FunctionDeclaration, Gemini, Schema, ThinkingConfig};
 use std::env;
 
 #[tokio::main]
@@ -53,17 +51,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let calculator = FunctionDeclaration::new(
         "calculate",
         "Perform basic mathematical calculations",
-        FunctionParameters::object()
+        Schema::object()
             .with_property(
                 "expression",
-                PropertyDetails::string(
-                    "The mathematical expression to calculate, e.g., '2 + 3 * 4'",
-                ),
+                Schema::string("The mathematical expression to calculate, e.g., '2 + 3 * 4'"),
                 true,
             )
             .with_property(
                 "operation_type",
-                PropertyDetails::enum_type("Type of calculation", ["arithmetic", "advanced"]),
+                Schema::enum_type("Type of calculation", ["arithmetic", "advanced"]),
                 false,
             ),
     );

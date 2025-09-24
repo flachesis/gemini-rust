@@ -1,7 +1,4 @@
-use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails,
-    ThinkingConfig, Tool,
-};
+use gemini_rust::{FunctionCallingMode, FunctionDeclaration, Gemini, Schema, ThinkingConfig, Tool};
 use std::env;
 
 #[tokio::main]
@@ -13,11 +10,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weather_function = FunctionDeclaration::new(
         "get_weather",
         "Get current weather for a location",
-        FunctionParameters::object().with_property(
-            "location",
-            PropertyDetails::string("City name"),
-            true,
-        ),
+        Schema::object().with_property("location", Schema::string("City name"), true),
     );
 
     // Configure thinking to enable thoughtSignature

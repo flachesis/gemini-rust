@@ -1,6 +1,6 @@
 use gemini_rust::{
-    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini,
-    Message, PropertyDetails, Role, Tool,
+    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, Gemini, Message, Role, Schema,
+    Tool,
 };
 use serde_json::json;
 use std::env;
@@ -19,28 +19,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schedule_meeting = FunctionDeclaration::new(
         "schedule_meeting",
         "Schedules a meeting with specified attendees at a given time and date.",
-        FunctionParameters::object()
+        Schema::object()
             .with_property(
                 "attendees",
-                PropertyDetails::array(
+                Schema::array(
                     "List of people attending the meeting.",
-                    PropertyDetails::string("Attendee name"),
+                    Schema::string("Attendee name"),
                 ),
                 true,
             )
             .with_property(
                 "date",
-                PropertyDetails::string("Date of the meeting (e.g., '2024-07-29')"),
+                Schema::string("Date of the meeting (e.g., '2024-07-29')"),
                 true,
             )
             .with_property(
                 "time",
-                PropertyDetails::string("Time of the meeting (e.g., '15:00')"),
+                Schema::string("Time of the meeting (e.g., '15:00')"),
                 true,
             )
             .with_property(
                 "topic",
-                PropertyDetails::string("The subject or topic of the meeting."),
+                Schema::string("The subject or topic of the meeting."),
                 true,
             ),
     );

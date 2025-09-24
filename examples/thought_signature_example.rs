@@ -14,8 +14,8 @@
 /// Thought signatures are encrypted representations of the model's internal
 /// thought process that help maintain context across conversation turns.
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, FunctionResponse, Gemini,
-    PropertyDetails, ThinkingConfig, Tool,
+    FunctionCallingMode, FunctionDeclaration, FunctionResponse, Gemini, Schema, ThinkingConfig,
+    Tool,
 };
 use serde_json::json;
 use std::env;
@@ -34,9 +34,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weather_function = FunctionDeclaration::new(
         "get_current_weather",
         "Get current weather information for a specified location",
-        FunctionParameters::object().with_property(
+        Schema::object().with_property(
             "location",
-            PropertyDetails::string("City and region, e.g., Kaohsiung Zuoying District"),
+            Schema::string("City and region, e.g., Kaohsiung Zuoying District"),
             true,
         ),
     );
@@ -187,9 +187,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let weather_tool_followup = Tool::new(FunctionDeclaration::new(
                 "get_current_weather",
                 "Get current weather information for a specified location",
-                FunctionParameters::object().with_property(
+                Schema::object().with_property(
                     "location",
-                    PropertyDetails::string("City and region, e.g., Kaohsiung Zuoying District"),
+                    Schema::string("City and region, e.g., Kaohsiung Zuoying District"),
                     true,
                 ),
             ));

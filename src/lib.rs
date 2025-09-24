@@ -108,8 +108,8 @@ pub use safety::model::{
 // Types for integrating external tools and function calling
 
 pub use tools::model::{
-    FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
-    FunctionParameters, FunctionResponse, PropertyDetails, Tool, ToolConfig,
+    FunctionBehavior, FunctionCall, FunctionCallingConfig, FunctionCallingMode,
+    FunctionDeclaration, FunctionResponse, Schema, SchemaType, Tool, ToolConfig,
 };
 
 // ========== Batch Processing ==========

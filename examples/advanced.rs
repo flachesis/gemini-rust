@@ -1,7 +1,4 @@
-use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Part,
-    PropertyDetails,
-};
+use gemini_rust::{Content, FunctionCallingMode, FunctionDeclaration, Gemini, Part, Schema};
 use std::env;
 
 #[tokio::main]
@@ -15,15 +12,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let get_weather = FunctionDeclaration::new(
         "get_weather",
         "Get the current weather for a location",
-        FunctionParameters::object()
+        Schema::object()
             .with_property(
                 "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
+                Schema::string("The city and state, e.g., San Francisco, CA"),
                 true,
             )
             .with_property(
                 "unit",
-                PropertyDetails::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
+                Schema::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
                 false,
             ),
     );
