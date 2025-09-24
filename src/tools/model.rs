@@ -53,7 +53,7 @@ pub struct FunctionDeclaration {
     /// The description of the function
     pub description: String,
     /// The parameters for the function
-    pub parameters: FunctionParameters,
+    pub parameters: FunctionParameter,
 }
 
 impl FunctionDeclaration {
@@ -61,141 +61,178 @@ impl FunctionDeclaration {
     pub fn new(
         name: impl Into<String>,
         description: impl Into<String>,
-        parameters: FunctionParameters,
+        // Parameters are properties of an object data type, so we use the builder to ensure that
+        parameters: FunctionParameterObjectBuilder,
     ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
-            parameters,
+            parameters: parameters.build(),
         }
     }
 }
 
-/// Parameters for a function
+/// Function parameter, used in function declarations
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct FunctionParameters {
-    /// The type of the parameters
+pub struct FunctionParameter {
+    /// Data type of the parameter
     #[serde(rename = "type")]
-    pub param_type: String,
-    /// The properties of the parameters
+    pub data_type: String,
+
+    /// Brief description of the parameter
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<HashMap<String, PropertyDetails>>,
-    /// The required properties
+    pub description: Option<String>,
+
+    /// Enum values, only applicable for enums
+    #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
+    pub enum_values: Option<Vec<String>>,
+
+    /// Array items, only applicable for arrays
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub items: Option<Box<FunctionParameter>>,
+
+    /// Object properties, only applicable for objects
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub properties: Option<HashMap<String, FunctionParameter>>,
+
+    /// Required properties, only applicable for objects
     #[serde(skip_serializing_if = "Option::is_none")]
     pub required: Option<Vec<String>>,
 }
 
-impl FunctionParameters {
-    /// Create a new object parameter set
-    pub fn object() -> Self {
-        Self {
-            param_type: "object".to_string(),
-            properties: Some(HashMap::new()),
-            required: Some(Vec::new()),
-        }
-    }
-
-    /// Add a property to the parameters
-    pub fn with_property(
-        mut self,
-        name: impl Into<String>,
-        details: PropertyDetails,
-        required: bool,
-    ) -> Self {
-        let name = name.into();
-        if let Some(props) = &mut self.properties {
-            props.insert(name.clone(), details);
-        }
-        if required {
-            if let Some(req) = &mut self.required {
-                req.push(name);
-            }
-        }
-        self
-    }
-}
-
-/// Details about a property
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PropertyDetails {
-    /// The type of the property
-    #[serde(rename = "type")]
-    pub property_type: String,
-    /// The description of the property
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// The enum values if the property is an enum
-    #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
-    pub enum_values: Option<Vec<String>>,
-    /// The items if the property is an array
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub items: Option<Box<PropertyDetails>>,
-}
-
-impl PropertyDetails {
-    /// Create a new string property
+impl FunctionParameter {
+    /// Create a new string parameter
     pub fn string(description: impl Into<String>) -> Self {
         Self {
-            property_type: "string".to_string(),
+            data_type: "string".to_string(),
             description: Some(description.into()),
             enum_values: None,
             items: None,
+            properties: None,
+            required: None,
         }
     }
 
-    /// Create a new number property
+    /// Create a new number parameter
     pub fn number(description: impl Into<String>) -> Self {
         Self {
-            property_type: "number".to_string(),
+            data_type: "number".to_string(),
             description: Some(description.into()),
             enum_values: None,
             items: None,
+            properties: None,
+            required: None,
         }
     }
 
-    /// Create a new integer property
+    /// Create a new integer parameter
     pub fn integer(description: impl Into<String>) -> Self {
         Self {
-            property_type: "integer".to_string(),
+            data_type: "integer".to_string(),
             description: Some(description.into()),
             enum_values: None,
             items: None,
+            properties: None,
+            required: None,
         }
     }
 
-    /// Create a new boolean property
+    /// Create a new boolean parameter
     pub fn boolean(description: impl Into<String>) -> Self {
         Self {
-            property_type: "boolean".to_string(),
+            data_type: "boolean".to_string(),
             description: Some(description.into()),
             enum_values: None,
             items: None,
+            properties: None,
+            required: None,
         }
     }
 
-    /// Create a new array property
-    pub fn array(description: impl Into<String>, items: PropertyDetails) -> Self {
+    /// Create a new array parameter
+    pub fn array(description: impl Into<String>, items: FunctionParameter) -> Self {
         Self {
-            property_type: "array".to_string(),
+            data_type: "array".to_string(),
             description: Some(description.into()),
             enum_values: None,
             items: Some(Box::new(items)),
+            properties: None,
+            required: None,
         }
     }
 
-    /// Create a new enum property
+    /// Create a new enum parameter
     pub fn enum_type(
         description: impl Into<String>,
         enum_values: impl IntoIterator<Item = impl Into<String>>,
     ) -> Self {
         Self {
-            property_type: "string".to_string(),
+            data_type: "string".to_string(),
             description: Some(description.into()),
             enum_values: Some(enum_values.into_iter().map(|s| s.into()).collect()),
             items: None,
+            properties: None,
+            required: None,
+        }
+    }
+
+    /// Get a `FunctionParameterObjectBuilder` to create an object parameter
+    pub fn object_builder() -> FunctionParameterObjectBuilder {
+        // The only reason to use a builder is to have a function to add properties to the object
+        // that is not available on the other data types.
+        FunctionParameterObjectBuilder::new()
+    }
+}
+
+/// A builder to construct an object `FunctionParameter`.
+pub struct FunctionParameterObjectBuilder {
+    properties: HashMap<String, FunctionParameter>,
+    required: Vec<String>,
+}
+
+impl FunctionParameterObjectBuilder {
+    /// Create a new, empty object builder.
+    pub fn new() -> Self {
+        Self {
+            properties: HashMap::new(),
+            required: Vec::new(),
+        }
+    }
+
+    // Add a property to the object.
+    pub fn with_property(
+        mut self,
+        name: impl Into<String>,
+        function_parameter: FunctionParameter,
+        required: bool,
+    ) -> Self {
+        let name = name.into();
+        self.properties.insert(name.clone(), function_parameter);
+        if required {
+            self.required.push(name);
+        }
+        self
+    }
+
+    /// Build the object `FunctionParameter`.
+    pub fn build(self) -> FunctionParameter {
+        FunctionParameter {
+            data_type: "object".to_string(),
+            description: None,
+            properties: Some(self.properties),
+            required: Some(self.required),
+            items: None,
+            enum_values: None,
         }
     }
 }
+
+impl Default for FunctionParameterObjectBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// A function call made by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionCall {

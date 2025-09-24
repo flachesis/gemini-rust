@@ -1,6 +1,6 @@
 use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Message,
-    PropertyDetails, Role, Tool,
+    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameter, Gemini, Message, Role,
+    Tool,
 };
 use serde_json::json;
 use std::env;
@@ -19,15 +19,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let get_weather = FunctionDeclaration::new(
         "get_weather",
         "Get the current weather for a location",
-        FunctionParameters::object()
+        FunctionParameter::object_builder()
             .with_property(
                 "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
+                FunctionParameter::string("The city and state, e.g., San Francisco, CA"),
                 true,
             )
             .with_property(
                 "unit",
-                PropertyDetails::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
+                FunctionParameter::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
                 false,
             ),
     );
@@ -36,17 +36,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let calculate = FunctionDeclaration::new(
         "calculate",
         "Perform a calculation",
-        FunctionParameters::object()
+        FunctionParameter::object_builder()
             .with_property(
                 "operation",
-                PropertyDetails::enum_type(
+                FunctionParameter::enum_type(
                     "The mathematical operation to perform",
                     ["add", "subtract", "multiply", "divide"],
                 ),
                 true,
             )
-            .with_property("a", PropertyDetails::number("The first number"), true)
-            .with_property("b", PropertyDetails::number("The second number"), true),
+            .with_property("a", FunctionParameter::number("The first number"), true)
+            .with_property("b", FunctionParameter::number("The second number"), true),
     );
 
     // Create a tool with multiple functions

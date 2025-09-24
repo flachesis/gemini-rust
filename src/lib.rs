@@ -109,7 +109,7 @@ pub use safety::model::{
 
 pub use tools::model::{
     FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
-    FunctionParameters, FunctionResponse, PropertyDetails, Tool, ToolConfig,
+    FunctionParameter, FunctionParameterObjectBuilder, FunctionResponse, Tool, ToolConfig,
 };
 
 // ========== Batch Processing ==========

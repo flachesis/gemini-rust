@@ -1,6 +1,5 @@
 use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails,
-    ThinkingConfig, Tool,
+    FunctionCallingMode, FunctionDeclaration, FunctionParameter, Gemini, ThinkingConfig, Tool,
 };
 use std::env;
 
@@ -13,9 +12,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weather_function = FunctionDeclaration::new(
         "get_weather",
         "Get current weather for a location",
-        FunctionParameters::object().with_property(
+        FunctionParameter::object_builder().with_property(
             "location",
-            PropertyDetails::string("City name"),
+            FunctionParameter::string("City name"),
             true,
         ),
     );

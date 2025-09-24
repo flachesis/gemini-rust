@@ -316,3 +316,157 @@ fn test_content_creation_with_thought_signature() {
     assert!(serialized_thought.contains("thought_signature_456"));
     assert!(serialized_thought.contains("\"thought\":true"));
 }
+
+#[test]
+fn test_function_declaration() {
+    // Test function declarations serialize correctly to the API JSON format
+    use crate::{FunctionDeclaration, FunctionParameter};
+
+    let get_weather_dec = FunctionDeclaration::new(
+        "get_weather",
+        "Get the current weather for a location",
+        FunctionParameter::object_builder()
+            .with_property(
+                "location",
+                FunctionParameter::string("The city and state, e.g., San Francisco, CA"),
+                true,
+            )
+            .with_property(
+                "unit",
+                FunctionParameter::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
+                false,
+            ),
+    );
+
+    let get_weather_json = r#"
+{
+  "name": "get_weather",
+  "description": "Get the current weather for a location",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "The city and state, e.g., San Francisco, CA"
+      },
+      "unit": {
+        "type": "string",
+        "description": "The unit of temperature",
+        "enum": [
+          "celsius",
+          "fahrenheit"
+        ]
+      }
+    },
+    "required": [
+      "location"
+    ]
+  }
+}
+        "#;
+
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(get_weather_json).unwrap(),
+        serde_json::to_value(&get_weather_dec).unwrap()
+    );
+
+    // Test an array of objects parameter
+    let add_widgets_json = r#"
+{
+  "name": "addToList",
+  "description": "Add widgets to a list.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "widgets": {
+        "type": "array",
+        "description": "The widgets to add.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Name of the widget."
+            },
+            "quantity": {
+              "type": "integer",
+              "description": "Qauntity to add."
+            }
+          },
+          "required": [
+            "name",
+            "quantity"
+          ]
+        }
+      }
+    },
+    "required": [
+      "widgets"
+    ]
+  }
+}
+    "#;
+
+    let add_widgets_dec = FunctionDeclaration::new(
+        "addToList",
+        "Add widgets to a list.",
+        FunctionParameter::object_builder().with_property(
+            "widgets",
+            FunctionParameter::array(
+                "The widgets to add.",
+                FunctionParameter::object_builder()
+                    .with_property(
+                        "name",
+                        FunctionParameter::string("Name of the widget."),
+                        true,
+                    )
+                    .with_property(
+                        "quantity",
+                        FunctionParameter::integer("Qauntity to add."),
+                        true,
+                    )
+                    .build(),
+            ),
+            true,
+        ),
+    );
+
+    assert_eq!(
+        serde_json::from_str::<serde_json::Value>(add_widgets_json).unwrap(),
+        serde_json::to_value(&add_widgets_dec).unwrap()
+    );
+}
+
+#[test]
+fn test_function_call_args() {
+    // Test extracting an array of objects from function call args
+    let args = json!({
+      "widgets": [
+        {
+          "quantity": 2,
+          "name": "pens"
+        },
+        {
+          "name": "calculator",
+          "quantity": 1
+        }
+      ]
+    });
+
+    #[derive(Debug, PartialEq, serde::Deserialize)]
+    struct Item {
+        name: String,
+        quantity: u32,
+    }
+
+    fn item(name: &str, quantity: u32) -> Item {
+        Item {
+            name: name.to_string(),
+            quantity,
+        }
+    }
+
+    let expected = vec![item("pens", 2), item("calculator", 1)];
+    let items: Vec<Item> = FunctionCall::new("addToList", args).get("widgets").unwrap();
+    assert_eq!(expected, items);
+}
