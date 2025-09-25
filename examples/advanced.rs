@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     final_request.contents.push(call_content);
 
     // Now add the function response using the JSON value
-    final_request = final_request.with_function_response("get_weather", weather_response);
+    final_request = final_request.with_function_response("get_weather", weather_response)?;
 
     // Execute the request
     let final_response = final_request.execute().await?;

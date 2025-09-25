@@ -163,7 +163,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 conversation = conversation.with_message(model_message);
 
                 // 3. Add user message with function response
-                conversation = conversation.with_function_response("calculate", function_response);
+                conversation =
+                    conversation.with_function_response("calculate", function_response)?;
 
                 // Execute the request
                 let final_response = conversation.execute().await?;
@@ -213,7 +214,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 conversation = conversation.with_message(model_message);
 
                 // 3. Add user message with function response
-                conversation = conversation.with_function_response("get_weather", weather_response);
+                conversation =
+                    conversation.with_function_response("get_weather", weather_response)?;
 
                 // Execute the request
                 let final_response = conversation.execute().await?;

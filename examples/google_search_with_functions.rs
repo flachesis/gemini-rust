@@ -117,7 +117,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             // 3. Add function response
             conversation =
-                conversation.with_function_response("schedule_meeting", function_response);
+                conversation.with_function_response("schedule_meeting", function_response)?;
 
             // Execute final request
             let final_response = conversation.execute().await?;

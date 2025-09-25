@@ -130,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_function_response(
                     &function_call.name,
                     function_response.response.unwrap_or_default(),
-                )
+                )?
                 .execute()
                 .await?;
 
@@ -193,7 +193,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "wind": "light breeze",
                     "location": weather_request.location
                 }),
-            );
+            )?;
 
             // Add the model's text response (complete the conversation history)
             let model_text_content = gemini_rust::Content {
