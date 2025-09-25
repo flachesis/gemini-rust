@@ -15,8 +15,8 @@ use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
 use mime::Mime;
 use reqwest::{
-    Client, ClientBuilder, Response,
     header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
+    Client, ClientBuilder, Response,
 };
 use serde::de::DeserializeOwned;
 use serde_json::json;

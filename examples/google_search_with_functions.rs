@@ -72,13 +72,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if function_call.name == "schedule_meeting" {
             let meeting: Meeting = serde_json::from_value(function_call.args.clone())?;
 
-            let attendees: Vec<String> = meeting.attendees.clone();
-            let date: String = meeting.date.clone();
-            let time: String = meeting.time.clone();
-            let topic: String = meeting.topic.clone();
-
             println!("Scheduling meeting:");
-            println!("{}", serde_json::to_string_pretty(&(meeting.clone()))?);
+            println!("{}", serde_json::to_string_pretty(&(meeting))?);
+
+            let attendees: Vec<String> = meeting.attendees;
+            let date: String = meeting.date;
+            let time: String = meeting.time;
+            let topic: String = meeting.topic;
 
             // Simulate scheduling the meeting
             let meeting_id = format!(

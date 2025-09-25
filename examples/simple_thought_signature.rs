@@ -1,8 +1,5 @@
-use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, Gemini, ThinkingConfig, Tool,
-    tools::GeminiSchema as _,
-};
-use schemars::{JsonSchema, SchemaGenerator};
+use gemini_rust::{FunctionCallingMode, FunctionDeclaration, Gemini, ThinkingConfig, Tool};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -15,8 +12,11 @@ struct Weather {
 
 impl std::fmt::Display for Weather {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let schema = SchemaGenerator::gemini().root_schema_for::<Self>();
-        write!(f, "{}", schema.to_value())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string_pretty(self).unwrap_or_default()
+        )
     }
 }
 

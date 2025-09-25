@@ -109,25 +109,24 @@ pub use safety::model::{
 
 pub use tools::model::{
     FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
-    FunctionResponse, GeminiSchema, Tool, ToolConfig,
+    FunctionResponse, Tool, ToolConfig,
 };
 
 // ========== Batch Processing ==========
 // Types for processing multiple requests in batch operations
 
 pub use batch::{
-    Error as BatchError, builder::BatchBuilder, handle::BatchGenerationResponseItem,
-    handle::BatchHandle, handle::BatchHandle as Batch, handle::BatchStatus,
-    handle::Error as BatchHandleError, model::BatchConfig, model::BatchGenerateContentRequest,
-    model::BatchOperation, model::BatchStats, model::IndividualRequestError,
-    model::RequestMetadata,
+    builder::BatchBuilder, handle::BatchGenerationResponseItem, handle::BatchHandle,
+    handle::BatchHandle as Batch, handle::BatchStatus, handle::Error as BatchHandleError,
+    model::BatchConfig, model::BatchGenerateContentRequest, model::BatchOperation,
+    model::BatchStats, model::IndividualRequestError, model::RequestMetadata, Error as BatchError,
 };
 
 // ========== File Management ==========
 // Types for uploading and managing files
 
 pub use files::{
-    Error as FilesError, builder::FileBuilder, handle::FileHandle, model::File, model::FileState,
+    builder::FileBuilder, handle::FileHandle, model::File, model::FileState, Error as FilesError,
 };
 
 // ========== Content Caching ==========

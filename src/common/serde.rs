@@ -1,6 +1,6 @@
 /// Custom serialization/deserialization for i64 as a string.
 pub(crate) mod i64_as_string {
-    use serde::{self, Deserialize, Deserializer, Serializer, de};
+    use serde::{self, de, Deserialize, Deserializer, Serializer};
 
     /// Serializes an `i64` as a string.
     pub fn serialize<S>(value: &i64, serializer: S) -> Result<S::Ok, S::Error>
@@ -22,7 +22,7 @@ pub(crate) mod i64_as_string {
 
     /// Optional `i64` as string.
     pub(crate) mod optional {
-        use serde::{self, Deserialize, Deserializer, Serializer, de};
+        use serde::{self, de, Deserialize, Deserializer, Serializer};
 
         /// Serializes an `Option<i64>` as a string or `None`.
         pub fn serialize<S>(value: &Option<i64>, serializer: S) -> Result<S::Ok, S::Error>

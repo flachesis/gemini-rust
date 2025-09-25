@@ -1,11 +1,11 @@
 use std::{collections::VecDeque, env};
 
 use gemini_rust::{
-    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, FunctionResponse, Gemini, Part, Role, ThinkingConfig,
+    Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, FunctionResponse, Gemini,
+    Part, Role, ThinkingConfig,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use termion::color;
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 struct Command {
@@ -44,11 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_parameters::<RootCommander>()
     .with_response::<StatusResponse>();
 
-    println!(
-        "{}Sending function response...{}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset)
-    );
+    println!("Sending function response...",);
 
     let response = client
         .generate_content()
@@ -101,12 +97,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for function_call in function_queue {
         println!(
-            "{}Function call received:{} {} {}with args:{}\n{}",
-            color::Fg(color::LightBlack),
-            color::Fg(color::Reset),
+            "Function call received: {} with args:\n{}",
             function_call.name,
-            color::Fg(color::LightBlack),
-            color::Fg(color::Reset),
             serde_json::to_string_pretty(&function_call.args)?
         );
         let result = serde_json::from_value::<RootCommander>(function_call.args.clone())?;
@@ -129,20 +121,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         reply.contents.push(content);
     }
 
-    println!(
-        "{}Sending function response...{}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset)
-    );
+    println!("Sending function response...",);
 
     let final_response = reply.execute().await?;
 
-    println!(
-        "{}Final response from model:{} {}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset),
-        final_response.text(),
-    );
+    println!("Final response from model: {}", final_response.text(),);
 
     Ok(())
 }

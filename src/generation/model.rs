@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::{
-    Content, Modality, Part,
     safety::{SafetyRating, SafetySetting},
+    Content, Modality, Part,
 };
 
 /// Reason why generation finished

@@ -1,9 +1,9 @@
-use schemars::{JsonSchema, SchemaGenerator, generate::SchemaSettings};
+use schemars::{generate::SchemaSettings, JsonSchema, SchemaGenerator};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
 
-pub trait GeminiSchema {
+trait GeminiSchema {
     /// Create a new SchemaGenerator with Gemini-optimized settings
     fn gemini() -> Self;
 }

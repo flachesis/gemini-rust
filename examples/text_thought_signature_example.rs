@@ -117,33 +117,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("with their thought signatures to maintain context:");
 
     // Extract the original parts for context preservation
-    if let Some(candidate) = response.candidates.first()
-        && let Some(parts) = &candidate.content.parts
-    {
-        for (i, part) in parts.iter().enumerate() {
-            if let Part::Text {
-                text: _,
-                thought,
-                thought_signature,
-            } = part
-            {
-                println!(
-                    "\nPart {}: {} text{}",
-                    i + 1,
-                    if *thought == Some(true) {
-                        "Thought"
-                    } else {
-                        "Regular"
-                    },
-                    if thought_signature.is_some() {
-                        " with signature"
-                    } else {
-                        ""
-                    }
-                );
+    if let Some(candidate) = response.candidates.first() {
+        if let Some(parts) = &candidate.content.parts {
+            for (i, part) in parts.iter().enumerate() {
+                if let Part::Text {
+                    text: _,
+                    thought,
+                    thought_signature,
+                } = part
+                {
+                    println!(
+                        "\nPart {}: {} text{}",
+                        i + 1,
+                        if *thought == Some(true) {
+                            "Thought"
+                        } else {
+                            "Regular"
+                        },
+                        if thought_signature.is_some() {
+                            " with signature"
+                        } else {
+                            ""
+                        }
+                    );
 
-                if let Some(sig) = thought_signature {
-                    println!("  ↳ Preserve signature: {}...", &sig[..10.min(sig.len())]);
+                    if let Some(sig) = thought_signature {
+                        println!("  ↳ Preserve signature: {}...", &sig[..10.min(sig.len())]);
+                    }
                 }
             }
         }

@@ -1,10 +1,7 @@
-use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, Gemini, Part, tools::GeminiSchema as _,
-};
-use schemars::{JsonSchema, SchemaGenerator};
+use gemini_rust::{Content, FunctionCallingMode, FunctionDeclaration, Gemini, Part};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
-use termion::color;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[schemars(description = "The unit of temperature")]
@@ -44,8 +41,11 @@ impl Default for Weather {
 
 impl std::fmt::Display for Weather {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let schema = SchemaGenerator::gemini().root_schema_for::<Self>();
-        write!(f, "{}", schema.to_value())
+        write!(
+            f,
+            "{}",
+            serde_json::to_string_pretty(self).unwrap_or_default()
+        )
     }
 }
 
@@ -85,24 +85,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let Some(function_call) = response.function_calls().first().cloned() else {
         eprintln!("No function calls in the response.");
-        eprintln!(
-            "{}Response:{} {}",
-            color::Fg(color::LightBlack),
-            color::Fg(color::Reset),
-            response.text(),
-        );
+        eprintln!("Response: {}", response.text(),);
         return Ok(());
     };
 
     let result = serde_json::from_value::<Weather>(function_call.args.clone())?;
 
     println!(
-        "{}Function call received:{} {} {}with args:{}\n{}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset),
+        "Function call received: {} with args:\n{}",
         function_call.name,
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset),
         serde_json::to_string_pretty(&result)?
     );
 
@@ -121,11 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Continue the conversation with the function result
     // We need to replay the entire conversation with the function response
-    println!(
-        "{}Sending function response...{}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset)
-    );
+    println!("Sending function response...",);
 
     // First, need to recreate the original prompt and the model's response
     let mut final_request = client
@@ -148,12 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute the request
     let final_response = final_request.execute().await?;
 
-    println!(
-        "{}Final response:{} {}",
-        color::Fg(color::LightBlack),
-        color::Fg(color::Reset),
-        final_response.text()
-    );
+    println!("Final response: {}", final_response.text());
 
     Ok(())
 }
