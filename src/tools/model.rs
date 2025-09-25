@@ -229,6 +229,21 @@ impl FunctionResponse {
         }
     }
 
+    /// Create a new function response from a serializable type that will be parsed as JSON
+    pub fn from_schema<Response>(
+        name: impl Into<String>,
+        response: Response,
+    ) -> Result<Self, serde_json::Error>
+    where
+        Response: JsonSchema + Serialize,
+    {
+        let json = serde_json::to_value(&response)?;
+        Ok(Self {
+            name: name.into(),
+            response: Some(json),
+        })
+    }
+
     /// Create a new function response with a string that will be parsed as JSON
     pub fn from_str(
         name: impl Into<String>,
