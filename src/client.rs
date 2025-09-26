@@ -24,7 +24,7 @@ use std::{
     fmt::{self, Formatter},
     sync::{Arc, LazyLock},
 };
-use tracing::{instrument, Level};
+use tracing::{instrument, Level, Span};
 use url::Url;
 
 use crate::batch::model::*;
@@ -292,6 +292,11 @@ impl GeminiClient {
         tools.present = request.tools.is_some(),
         system.instruction.present = request.system_instruction.is_some(),
         cached.content.present = request.cached_content.is_some(),
+        usage.prompt_tokens,
+        usage.candidates_tokens,
+        usage.thoughts_tokens,
+        usage.cached_content_tokens,
+        usage.total_tokens,
     ), ret(level = Level::TRACE), err)]
     pub(crate) async fn generate_content_raw(
         &self,
@@ -307,14 +312,15 @@ impl GeminiClient {
 
         // Record usage metadata
         if let Some(usage) = &response.usage_metadata {
-            tracing::debug!(
-                usage.tokens.prompt = usage.prompt_token_count,
-                usage.tokens.candidates = usage.candidates_token_count,
-                usage.tokens.total = usage.total_token_count,
-                usage.tokens.thoughts = usage.thoughts_token_count,
-                usage.tokens.cached = usage.cached_content_token_count,
-                "generation usage evaluated"
-            );
+            #[rustfmt::skip]
+            Span::current()
+                .record("usage.prompt_tokens", usage.prompt_token_count)
+                .record("usage.candidates_tokens", usage.candidates_token_count)
+                .record("usage.thoughts_tokens", usage.thoughts_token_count)
+                .record("usage.cached_content_tokens", usage.cached_content_token_count)
+                .record("usage.total_tokens", usage.total_token_count);
+
+            tracing::debug!("generation usage evaluated");
         }
 
         Ok(response)
@@ -346,21 +352,7 @@ impl GeminiClient {
             .eventsource()
             .map(|event| event.context(BadPartSnafu))
             .map_ok(|event| {
-                let response = serde_json::from_str::<GenerationResponse>(&event.data)
-                    .context(DeserializeSnafu)?;
-
-                if let Some(usage) = &response.usage_metadata {
-                    tracing::debug!(
-                        usage.tokens.prompt = usage.prompt_token_count,
-                        usage.tokens.candidates = usage.candidates_token_count,
-                        usage.tokens.total = usage.total_token_count,
-                        usage.tokens.thoughts = usage.thoughts_token_count,
-                        usage.tokens.cached = usage.cached_content_token_count,
-                        "generation usage evaluated"
-                    );
-                }
-
-                Ok(response)
+                serde_json::from_str::<GenerationResponse>(&event.data).context(DeserializeSnafu)
             })
             .map(|r| r.flatten()))
     }
