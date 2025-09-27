@@ -1,9 +1,7 @@
-use schemars::{JsonSchema, SchemaGenerator};
+use schemars::{generate::SchemaSettings, JsonSchema, SchemaGenerator};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use snafu::{ResultExt, Snafu};
-
-use crate::tools::schema::GeminiSchemaGenerator as _;
 
 /// Tool that can be used by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -82,6 +80,24 @@ pub struct FunctionDeclaration {
     pub(crate) response: Option<Value>,
 }
 
+/// Returns JSON Schema for the given response
+fn generate_parameters_schema<Parameters>() -> Value
+where
+    Parameters: JsonSchema + Serialize,
+{
+    // Create SchemaSettings with Gemini-optimized settings, see: https://ai.google.dev/api/caching#Schema
+    let schema_generator = SchemaGenerator::new(SchemaSettings::openapi3().with(|s| {
+        s.inline_subschemas = true;
+        s.meta_schema = None;
+    }));
+
+    let mut schema = schema_generator.into_root_schema_for::<Parameters>();
+
+    // Root schemas always include a title field, which we don't want or need
+    schema.remove("title");
+    schema.to_value()
+}
+
 impl FunctionDeclaration {
     /// Create a new function declaration
     pub fn new(
@@ -102,7 +118,7 @@ impl FunctionDeclaration {
     where
         Parameters: JsonSchema + Serialize,
     {
-        self.parameters = Some(SchemaGenerator::generate_parameters_schema::<Parameters>());
+        self.parameters = Some(generate_parameters_schema::<Parameters>());
         self
     }
 
@@ -111,7 +127,7 @@ impl FunctionDeclaration {
     where
         Response: JsonSchema + Serialize,
     {
-        self.response = Some(SchemaGenerator::generate_parameters_schema::<Response>());
+        self.response = Some(generate_parameters_schema::<Response>());
         self
     }
 }
