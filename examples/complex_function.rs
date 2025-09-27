@@ -34,7 +34,7 @@ struct StatusResponse {
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY")?;
-    let client = Gemini::pro(api_key).expect("unable to cheate Gemini API client");
+    let client = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
     let commander_tool = FunctionDeclaration::new(
         "execute_command",
