@@ -80,7 +80,7 @@ pub struct FunctionDeclaration {
     pub(crate) response: Option<Value>,
 }
 
-/// Returns JSON Schema for the given response
+/// Returns JSON Schema for the given parameters
 fn generate_parameters_schema<Parameters>() -> Value
 where
     Parameters: JsonSchema + Serialize,
