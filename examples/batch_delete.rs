@@ -46,13 +46,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     match batch.delete().await {
                         Ok(()) => println!("Batch deleted successfully!"),
                         Err((_batch, e)) => {
-                            println!("Failed to delete batch: {}. You can retry with the returned batch.", e);
+                            println!(
+                                "Failed to delete batch: {}. You can retry with the returned batch.",
+                                e
+                            );
                             // Here you could retry: batch.delete().await, etc.
                         }
                     }
                 }
                 _ => {
-                    println!("Batch is still running or pending. Use cancel() to stop it, or wait for completion before deleting.");
+                    println!(
+                        "Batch is still running or pending. Use cancel() to stop it, or wait for completion before deleting."
+                    );
                 }
             }
         }

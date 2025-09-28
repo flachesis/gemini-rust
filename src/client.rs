@@ -192,7 +192,8 @@ impl GeminiClient {
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
-    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send, Error> {
+    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send + use<>, Error>
+    {
         let mut url = self.build_url("streamGenerateContent")?;
         url.query_pairs_mut().append_pair("alt", "sse");
 

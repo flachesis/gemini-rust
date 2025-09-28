@@ -412,6 +412,14 @@ impl ThinkingConfig {
         self.include_thoughts = Some(include);
         self
     }
+
+    /// Create a thinking config that enables dynamic thinking with thoughts included
+    pub fn dynamic_thinking() -> Self {
+        Self {
+            thinking_budget: Some(-1),
+            include_thoughts: Some(true),
+        }
+    }
 }
 
 impl Default for ThinkingConfig {

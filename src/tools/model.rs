@@ -1,6 +1,7 @@
+use schemars::{generate::SchemaSettings, JsonSchema, SchemaGenerator};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use snafu::{ResultExt, Snafu};
-use std::collections::HashMap;
 
 /// Tool that can be used by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -45,15 +46,56 @@ impl Tool {
     }
 }
 
+/// Defines the function behavior
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Behavior {
+    /// `default` If set, the system will wait to receive the function response before
+    /// continuing the conversation.
+    #[default]
+    Blocking,
+    /// If set, the system will not wait to receive the function response. Instead, it will
+    /// attempt to handle function responses as they become available while maintaining the
+    /// conversation between the user and the model.
+    NonBlocking,
+}
+
 /// Declaration of a function that can be called by the model
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionDeclaration {
     /// The name of the function
     pub name: String,
     /// The description of the function
     pub description: String,
-    /// The parameters for the function
-    pub parameters: FunctionParameters,
+    /// `Optional` Specifies the function Behavior. Currently only supported by the BidiGenerateContent method.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub behavior: Option<Behavior>,
+    /// `Optional` The parameters for the function
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) parameters: Option<Value>,
+    /// `Optional` Describes the output from this function in JSON Schema format. Reflects the
+    /// Open API 3.03 Response Object. The Schema defines the type used for the response value
+    /// of the function.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) response: Option<Value>,
+}
+
+/// Returns JSON Schema for the given parameters
+fn generate_parameters_schema<Parameters>() -> Value
+where
+    Parameters: JsonSchema + Serialize,
+{
+    // Create SchemaSettings with Gemini-optimized settings, see: https://ai.google.dev/api/caching#Schema
+    let schema_generator = SchemaGenerator::new(SchemaSettings::openapi3().with(|s| {
+        s.inline_subschemas = true;
+        s.meta_schema = None;
+    }));
+
+    let mut schema = schema_generator.into_root_schema_for::<Parameters>();
+
+    // Root schemas always include a title field, which we don't want or need
+    schema.remove("title");
+    schema.to_value()
 }
 
 impl FunctionDeclaration {
@@ -61,141 +103,35 @@ impl FunctionDeclaration {
     pub fn new(
         name: impl Into<String>,
         description: impl Into<String>,
-        parameters: FunctionParameters,
+        behavior: Option<Behavior>,
     ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
-            parameters,
-        }
-    }
-}
-
-/// Parameters for a function
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct FunctionParameters {
-    /// The type of the parameters
-    #[serde(rename = "type")]
-    pub param_type: String,
-    /// The properties of the parameters
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub properties: Option<HashMap<String, PropertyDetails>>,
-    /// The required properties
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub required: Option<Vec<String>>,
-}
-
-impl FunctionParameters {
-    /// Create a new object parameter set
-    pub fn object() -> Self {
-        Self {
-            param_type: "object".to_string(),
-            properties: Some(HashMap::new()),
-            required: Some(Vec::new()),
+            behavior,
+            ..Default::default()
         }
     }
 
-    /// Add a property to the parameters
-    pub fn with_property(
-        mut self,
-        name: impl Into<String>,
-        details: PropertyDetails,
-        required: bool,
-    ) -> Self {
-        let name = name.into();
-        if let Some(props) = &mut self.properties {
-            props.insert(name.clone(), details);
-        }
-        if required {
-            if let Some(req) = &mut self.required {
-                req.push(name);
-            }
-        }
+    /// Set the parameters for the function using a struct that implements `JsonSchema`
+    pub fn with_parameters<Parameters>(mut self) -> Self
+    where
+        Parameters: JsonSchema + Serialize,
+    {
+        self.parameters = Some(generate_parameters_schema::<Parameters>());
+        self
+    }
+
+    /// Set the response schema for the function using a struct that implements `JsonSchema`
+    pub fn with_response<Response>(mut self) -> Self
+    where
+        Response: JsonSchema + Serialize,
+    {
+        self.response = Some(generate_parameters_schema::<Response>());
         self
     }
 }
 
-/// Details about a property
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct PropertyDetails {
-    /// The type of the property
-    #[serde(rename = "type")]
-    pub property_type: String,
-    /// The description of the property
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    /// The enum values if the property is an enum
-    #[serde(rename = "enum", skip_serializing_if = "Option::is_none")]
-    pub enum_values: Option<Vec<String>>,
-    /// The items if the property is an array
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub items: Option<Box<PropertyDetails>>,
-}
-
-impl PropertyDetails {
-    /// Create a new string property
-    pub fn string(description: impl Into<String>) -> Self {
-        Self {
-            property_type: "string".to_string(),
-            description: Some(description.into()),
-            enum_values: None,
-            items: None,
-        }
-    }
-
-    /// Create a new number property
-    pub fn number(description: impl Into<String>) -> Self {
-        Self {
-            property_type: "number".to_string(),
-            description: Some(description.into()),
-            enum_values: None,
-            items: None,
-        }
-    }
-
-    /// Create a new integer property
-    pub fn integer(description: impl Into<String>) -> Self {
-        Self {
-            property_type: "integer".to_string(),
-            description: Some(description.into()),
-            enum_values: None,
-            items: None,
-        }
-    }
-
-    /// Create a new boolean property
-    pub fn boolean(description: impl Into<String>) -> Self {
-        Self {
-            property_type: "boolean".to_string(),
-            description: Some(description.into()),
-            enum_values: None,
-            items: None,
-        }
-    }
-
-    /// Create a new array property
-    pub fn array(description: impl Into<String>, items: PropertyDetails) -> Self {
-        Self {
-            property_type: "array".to_string(),
-            description: Some(description.into()),
-            enum_values: None,
-            items: Some(Box::new(items)),
-        }
-    }
-
-    /// Create a new enum property
-    pub fn enum_type(
-        description: impl Into<String>,
-        enum_values: impl IntoIterator<Item = impl Into<String>>,
-    ) -> Self {
-        Self {
-            property_type: "string".to_string(),
-            description: Some(description.into()),
-            enum_values: Some(enum_values.into_iter().map(|s| s.into()).collect()),
-            items: None,
-        }
-    }
-}
 /// A function call made by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionCall {
@@ -291,6 +227,21 @@ impl FunctionResponse {
             name: name.into(),
             response: Some(response),
         }
+    }
+
+    /// Create a new function response from a serializable type that will be parsed as JSON
+    pub fn from_schema<Response>(
+        name: impl Into<String>,
+        response: Response,
+    ) -> Result<Self, serde_json::Error>
+    where
+        Response: JsonSchema + Serialize,
+    {
+        let json = serde_json::to_value(&response)?;
+        Ok(Self {
+            name: name.into(),
+            response: Some(json),
+        })
     }
 
     /// Create a new function response with a string that will be parsed as JSON

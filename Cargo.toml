@@ -37,6 +37,7 @@ mime_guess = "2.0"
 mime = "0.3"
 tokio = { version = "1", features = ["io-util"] }
 time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
+schemars = { version = "1.0" }
 
 [dev-dependencies]
 display-error-chain = "0.2"

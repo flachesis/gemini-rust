@@ -1,9 +1,78 @@
-use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, Message,
-    PropertyDetails, Role, Tool,
-};
-use serde_json::json;
+use gemini_rust::{Content, FunctionCallingMode, FunctionDeclaration, Gemini, Message, Role, Tool};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::env;
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(description = "The unit of temperature")]
+#[serde(rename_all = "lowercase")]
+enum Unit {
+    #[default]
+    Celsius,
+    Fahrenheit,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct Weather {
+    /// The city and state, e.g., San Francisco, CA
+    location: String,
+    /// The unit of temperature
+    unit: Option<Unit>,
+}
+
+impl Default for Weather {
+    fn default() -> Self {
+        Weather {
+            location: "".to_string(),
+            unit: Some(Unit::Celsius),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct WeatherResponse {
+    temperature: i32,
+    unit: String,
+    condition: String,
+}
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(description = "The mathematical operation to perform")]
+#[serde(rename_all = "lowercase")]
+enum Operation {
+    #[default]
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct Calculation {
+    /// The mathematical operation to perform
+    operation: Operation,
+    /// The first number
+    a: f64,
+    /// The second number
+    b: f64,
+}
+
+impl Default for Calculation {
+    fn default() -> Self {
+        Calculation {
+            operation: Operation::Add,
+            a: 0.0,
+            b: 0.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct CalculationResponse {
+    result: f64,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,35 +88,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let get_weather = FunctionDeclaration::new(
         "get_weather",
         "Get the current weather for a location",
-        FunctionParameters::object()
-            .with_property(
-                "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
-                true,
-            )
-            .with_property(
-                "unit",
-                PropertyDetails::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
-                false,
-            ),
-    );
+        None,
+    )
+    .with_parameters::<Weather>()
+    .with_response::<WeatherResponse>();
 
     // Define a calculator function
-    let calculate = FunctionDeclaration::new(
-        "calculate",
-        "Perform a calculation",
-        FunctionParameters::object()
-            .with_property(
-                "operation",
-                PropertyDetails::enum_type(
-                    "The mathematical operation to perform",
-                    ["add", "subtract", "multiply", "divide"],
-                ),
-                true,
-            )
-            .with_property("a", PropertyDetails::number("The first number"), true)
-            .with_property("b", PropertyDetails::number("The second number"), true),
-    );
+    let calculate = FunctionDeclaration::new("calculate", "Perform a calculation", None)
+        .with_parameters::<Calculation>()
+        .with_response::<CalculationResponse>();
 
     // Create a tool with multiple functions
     let tool = Tool::with_functions(vec![get_weather, calculate]);
@@ -74,24 +123,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Handle different function calls
         match function_call.name.as_str() {
             "calculate" => {
-                let operation: String = function_call.get("operation")?;
-                let a: f64 = function_call.get("a")?;
-                let b: f64 = function_call.get("b")?;
+                let calculation: Calculation = serde_json::from_value(function_call.args.clone())?;
 
-                println!("Calculation: {} {} {}", a, operation, b);
+                println!(
+                    "Calculation: {:?} {} {}",
+                    calculation.operation, calculation.a, calculation.b
+                );
 
-                let result = match operation.as_str() {
-                    "add" => a + b,
-                    "subtract" => a - b,
-                    "multiply" => a * b,
-                    "divide" => a / b,
-                    _ => panic!("Unknown operation"),
+                let result = match calculation.operation {
+                    Operation::Add => calculation.a + calculation.b,
+                    Operation::Subtract => calculation.a - calculation.b,
+                    Operation::Multiply => calculation.a * calculation.b,
+                    Operation::Divide => calculation.a / calculation.b,
                 };
 
-                let function_response = json!({
-                    "result": result,
-                })
-                .to_string();
+                let function_response = CalculationResponse { result };
 
                 // Based on the curl example, we need to structure the conversation properly:
                 // 1. A user message with the original query
@@ -118,7 +164,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // 3. Add user message with function response
                 conversation =
-                    conversation.with_function_response_str("calculate", function_response)?;
+                    conversation.with_function_response("calculate", function_response)?;
 
                 // Execute the request
                 let final_response = conversation.execute().await?;
@@ -126,19 +172,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 println!("Final response: {}", final_response.text());
             }
             "get_weather" => {
-                let location: String = function_call.get("location")?;
-                let unit = function_call
-                    .get::<String>("unit")
-                    .unwrap_or_else(|_| String::from("celsius"));
+                let weather: Weather = serde_json::from_value(function_call.args.clone())?;
 
-                println!("Weather request for: {}, Unit: {}", location, unit);
+                println!(
+                    "Weather request for: {}, Unit: {:?}",
+                    weather.location, weather.unit
+                );
 
-                let weather_response = json!({
-                    "temperature": 22,
-                    "unit": unit,
-                    "condition": "sunny"
-                })
-                .to_string();
+                let unit_str = match weather.unit.unwrap_or_default() {
+                    Unit::Celsius => "celsius",
+                    Unit::Fahrenheit => "fahrenheit",
+                };
+
+                let weather_response = WeatherResponse {
+                    temperature: 22,
+                    unit: unit_str.to_string(),
+                    condition: "sunny".to_string(),
+                };
 
                 // Based on the curl example, we need to structure the conversation properly:
                 // 1. A user message with the original query
@@ -165,7 +215,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                 // 3. Add user message with function response
                 conversation =
-                    conversation.with_function_response_str("get_weather", weather_response)?;
+                    conversation.with_function_response("get_weather", weather_response)?;
 
                 // Execute the request
                 let final_response = conversation.execute().await?;

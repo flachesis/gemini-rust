@@ -79,17 +79,21 @@ impl ContentBuilder {
         self
     }
 
-    /// Adds a function response to the request using a `serde_json::Value`.
+    /// Adds a function response to the request using a `Serialize` response.
     ///
     /// This is used to provide the model with the result of a function call it has requested.
-    pub fn with_function_response(
+    pub fn with_function_response<Response>(
         mut self,
         name: impl Into<String>,
-        response: serde_json::Value,
-    ) -> Self {
-        let content = Content::function_response_json(name, response).with_role(Role::User);
+        response: Response,
+    ) -> std::result::Result<Self, serde_json::Error>
+    where
+        Response: serde::Serialize,
+    {
+        let content = Content::function_response_json(name, serde_json::to_value(response)?)
+            .with_role(Role::User);
         self.contents.push(content);
-        self
+        Ok(self)
     }
 
     /// Adds a function response to the request using a JSON string.
