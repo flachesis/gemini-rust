@@ -69,7 +69,7 @@ impl EmbedBuilder {
     /// Execute the request
     pub async fn execute(self) -> Result<ContentEmbeddingResponse, ClientError> {
         let request = EmbedContentRequest {
-            model: self.client.model.to_string(),
+            model: self.client.model.clone(),
             content: self.contents.first().expect("No content set").clone(),
             task_type: self.task_type,
             title: self.title,
@@ -87,7 +87,7 @@ impl EmbedBuilder {
 
         for content in self.contents {
             let request = EmbedContentRequest {
-                model: self.client.model.to_string(),
+                model: self.client.model.clone(),
                 content: content.clone(),
                 task_type: self.task_type.clone(),
                 title: self.title.clone(),
