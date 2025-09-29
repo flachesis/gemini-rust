@@ -204,8 +204,8 @@ impl GeminiClient {
     /// - Deserializing the response using a provided deserializer function
     ///
     /// # Type Parameters
-    /// * `B` - A function that takes a reference to the HTTP client and returns a RequestBuilder
-    /// * `D` - An async function that takes a Response and returns a Result<T, Error>
+    /// * `B` - A function that takes a `&Client` and returns a `RequestBuilder`
+    /// * `D` - An async function that takes ownership of a `Response` and returns a `Result<T, Error>`
     /// * `T` - The type of the deserialized response
     ///
     /// # Note
