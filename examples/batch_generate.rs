@@ -34,7 +34,7 @@ pub async fn wait_for_completion(
             Ok(status) => match status {
                 BatchStatus::Succeeded { .. } | BatchStatus::Cancelled => return Ok(status),
                 BatchStatus::Expired => {
-                    return Err((batch, BatchHandleError::BatchExpired { name: batch_name }))
+                    return Err((batch, BatchHandleError::BatchExpired { name: batch_name }));
                 }
                 _ => tokio::time::sleep(delay).await,
             },

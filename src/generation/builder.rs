@@ -23,7 +23,7 @@ pub struct ContentBuilder {
 }
 
 impl ContentBuilder {
-    /// Create a new content builder
+    /// Creates a new `ContentBuilder`.
     pub(crate) fn new(client: Arc<GeminiClient>) -> Self {
         Self {
             client,
@@ -36,37 +36,40 @@ impl ContentBuilder {
         }
     }
 
-    /// Add a system prompt to the request
+    /// Sets the system prompt for the request.
+    ///
+    /// This is an alias for [`with_system_instruction()`](Self::with_system_instruction).
     pub fn with_system_prompt(self, text: impl Into<String>) -> Self {
-        // Create a Content with text parts specifically for system_instruction field
         self.with_system_instruction(text)
     }
 
-    /// Set the system instruction directly (matching the API format in the curl example)
+    /// Sets the system instruction for the request.
+    ///
+    /// System instructions are used to provide high-level guidance to the model, such as
+    /// setting a persona, providing context, or defining the desired output format.
     pub fn with_system_instruction(mut self, text: impl Into<String>) -> Self {
-        // Create a Content with text parts specifically for system_instruction field
         let content = Content::text(text);
         self.system_instruction = Some(content);
         self
     }
 
-    /// Add a user message to the request
+    /// Adds a user message to the conversation history.
     pub fn with_user_message(mut self, text: impl Into<String>) -> Self {
         let message = Message::user(text);
-        let content = message.content;
-        self.contents.push(content);
+        self.contents.push(message.content);
         self
     }
 
-    /// Add a model message to the request
+    /// Adds a model message to the conversation history.
     pub fn with_model_message(mut self, text: impl Into<String>) -> Self {
         let message = Message::model(text);
-        let content = message.content;
-        self.contents.push(content);
+        self.contents.push(message.content);
         self
     }
 
-    /// Add a inline data (blob data) to the request
+    /// Adds inline data (e.g., an image) to the request.
+    ///
+    /// The data should be base64-encoded.
     pub fn with_inline_data(
         mut self,
         data: impl Into<String>,
@@ -77,18 +80,26 @@ impl ContentBuilder {
         self
     }
 
-    /// Add a function response to the request using a JSON value
-    pub fn with_function_response(
+    /// Adds a function response to the request using a `Serialize` response.
+    ///
+    /// This is used to provide the model with the result of a function call it has requested.
+    pub fn with_function_response<Response>(
         mut self,
         name: impl Into<String>,
-        response: serde_json::Value,
-    ) -> Self {
-        let content = Content::function_response_json(name, response).with_role(Role::User);
+        response: Response,
+    ) -> std::result::Result<Self, serde_json::Error>
+    where
+        Response: serde::Serialize,
+    {
+        let content = Content::function_response_json(name, serde_json::to_value(response)?)
+            .with_role(Role::User);
         self.contents.push(content);
-        self
+        Ok(self)
     }
 
-    /// Add a function response to the request using a JSON string
+    /// Adds a function response to the request using a JSON string.
+    ///
+    /// This is a convenience method that parses the string into a `serde_json::Value`.
     pub fn with_function_response_str(
         mut self,
         name: impl Into<String>,
@@ -101,29 +112,24 @@ impl ContentBuilder {
         Ok(self)
     }
 
-    /// Add a message to the request
+    /// Adds a `Message` to the conversation history.
     pub fn with_message(mut self, message: Message) -> Self {
         let content = message.content.clone();
-        match &content.role {
-            Some(role) => {
-                let role_clone = role.clone();
-                self.contents.push(content.with_role(role_clone));
-            }
-            None => {
-                self.contents.push(content.with_role(message.role));
-            }
-        }
+        let role = content.role.clone().unwrap_or(message.role);
+        self.contents.push(content.with_role(role));
         self
     }
 
-    /// Use cached content for this request.
-    /// This allows reusing previously cached system instructions and conversation history.
+    /// Uses cached content for this request.
+    ///
+    /// This allows reusing previously cached system instructions and conversation history,
+    /// which can reduce latency and cost.
     pub fn with_cached_content(mut self, cached_content: &CachedContentHandle) -> Self {
         self.cached_content = Some(cached_content.name().to_string());
         self
     }
 
-    /// Add multiple messages to the request
+    /// Adds multiple messages to the conversation history.
     pub fn with_messages(mut self, messages: impl IntoIterator<Item = Message>) -> Self {
         for message in messages {
             self = self.with_message(message);
@@ -131,212 +137,186 @@ impl ContentBuilder {
         self
     }
 
-    /// Set the generation config for the request
+    /// Sets the generation configuration for the request.
     pub fn with_generation_config(mut self, config: GenerationConfig) -> Self {
         self.generation_config = Some(config);
         self
     }
 
-    /// Set the temperature for the request
+    /// Sets the temperature for the request.
+    ///
+    /// Temperature controls the randomness of the output. Higher values (e.g., 1.0) produce
+    /// more creative results, while lower values (e.g., 0.2) produce more deterministic results.
     pub fn with_temperature(mut self, temperature: f32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.temperature = Some(temperature);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .temperature = Some(temperature);
         self
     }
 
-    /// Set the top-p value for the request
+    /// Sets the top-p value for the request.
+    ///
+    /// Top-p is a sampling method that selects the next token from a cumulative probability
+    /// distribution. It can be used to control the diversity of the output.
     pub fn with_top_p(mut self, top_p: f32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.top_p = Some(top_p);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .top_p = Some(top_p);
         self
     }
 
-    /// Set the top-k value for the request
+    /// Sets the top-k value for the request.
+    ///
+    /// Top-k is a sampling method that selects the next token from the `k` most likely candidates.
     pub fn with_top_k(mut self, top_k: i32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.top_k = Some(top_k);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .top_k = Some(top_k);
         self
     }
 
-    /// Set the maximum output tokens for the request
+    /// Sets the maximum number of output tokens for the request.
     pub fn with_max_output_tokens(mut self, max_output_tokens: i32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.max_output_tokens = Some(max_output_tokens);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .max_output_tokens = Some(max_output_tokens);
         self
     }
 
-    /// Set the candidate count for the request
+    /// Sets the number of candidate responses to generate.
     pub fn with_candidate_count(mut self, candidate_count: i32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.candidate_count = Some(candidate_count);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .candidate_count = Some(candidate_count);
         self
     }
 
-    /// Set the stop sequences for the request
+    /// Sets the stop sequences for the request.
+    ///
+    /// The model will stop generating text when it encounters one of these sequences.
     pub fn with_stop_sequences(mut self, stop_sequences: Vec<String>) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.stop_sequences = Some(stop_sequences);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .stop_sequences = Some(stop_sequences);
         self
     }
 
-    /// Set the response mime type for the request
+    /// Sets the response MIME type for the request.
+    ///
+    /// This can be used to request structured output, such as JSON.
     pub fn with_response_mime_type(mut self, mime_type: impl Into<String>) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.response_mime_type = Some(mime_type.into());
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .response_mime_type = Some(mime_type.into());
         self
     }
 
-    /// Set the response schema for structured output
+    /// Sets the response schema for structured output.
+    ///
+    /// When used with a JSON MIME type, this schema will be used to validate the model's
+    /// output.
     pub fn with_response_schema(mut self, schema: serde_json::Value) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.response_schema = Some(schema);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .response_schema = Some(schema);
         self
     }
 
-    /// Add a tool to the request
+    /// Adds a tool to the request.
+    ///
+    /// Tools allow the model to interact with external systems, such as APIs or databases.
     pub fn with_tool(mut self, tool: Tool) -> Self {
-        if self.tools.is_none() {
-            self.tools = Some(Vec::new());
-        }
-        if let Some(tools) = &mut self.tools {
-            tools.push(tool);
-        }
+        self.tools.get_or_insert_with(Vec::new).push(tool);
         self
     }
 
-    /// Add a function declaration as a tool
+    /// Adds a function declaration as a tool.
+    ///
+    /// This is a convenience method for creating a `Tool` from a `FunctionDeclaration`.
     pub fn with_function(mut self, function: FunctionDeclaration) -> Self {
         let tool = Tool::new(function);
         self = self.with_tool(tool);
         self
     }
 
-    /// Set the function calling mode for the request
+    /// Sets the function calling mode for the request.
     pub fn with_function_calling_mode(mut self, mode: FunctionCallingMode) -> Self {
-        if self.tool_config.is_none() {
-            self.tool_config = Some(ToolConfig {
-                function_calling_config: Some(FunctionCallingConfig { mode }),
-            });
-        } else if let Some(tool_config) = &mut self.tool_config {
-            tool_config.function_calling_config = Some(FunctionCallingConfig { mode });
-        }
+        self.tool_config
+            .get_or_insert_with(Default::default)
+            .function_calling_config = Some(FunctionCallingConfig { mode });
         self
     }
 
-    /// Set the thinking configuration for the request (Gemini 2.5 series only)
+    /// Sets the thinking configuration for the request (Gemini 2.5 series only).
     pub fn with_thinking_config(mut self, thinking_config: ThinkingConfig) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.thinking_config = Some(thinking_config);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .thinking_config = Some(thinking_config);
         self
     }
 
-    /// Set the thinking budget for the request (Gemini 2.5 series only)
+    /// Sets the thinking budget for the request (Gemini 2.5 series only).
+    ///
+    /// A budget of -1 enables dynamic thinking.
     pub fn with_thinking_budget(mut self, budget: i32) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            if config.thinking_config.is_none() {
-                config.thinking_config = Some(ThinkingConfig::default());
-            }
-            if let Some(thinking_config) = &mut config.thinking_config {
-                thinking_config.thinking_budget = Some(budget);
-            }
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .thinking_config
+            .get_or_insert_with(Default::default)
+            .thinking_budget = Some(budget);
         self
     }
 
-    /// Enable dynamic thinking (model decides the budget) (Gemini 2.5 series only)
+    /// Enables dynamic thinking, which allows the model to decide its own thinking budget
+    /// (Gemini 2.5 series only).
+    ///
+    /// Note: This only enables the *capability*. To receive thoughts in the response,
+    /// you must also call `[.with_thoughts_included(true)](Self::with_thoughts_included)`.
     pub fn with_dynamic_thinking(self) -> Self {
         self.with_thinking_budget(-1)
     }
 
-    /// Include thought summaries in the response (Gemini 2.5 series only)
+    /// Includes thought summaries in the response (Gemini 2.5 series only).
+    ///
+    /// This requires `with_dynamic_thinking()` or `with_thinking_budget()` to be enabled.
     pub fn with_thoughts_included(mut self, include: bool) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            if config.thinking_config.is_none() {
-                config.thinking_config = Some(ThinkingConfig::default());
-            }
-            if let Some(thinking_config) = &mut config.thinking_config {
-                thinking_config.include_thoughts = Some(include);
-            }
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .thinking_config
+            .get_or_insert_with(Default::default)
+            .include_thoughts = Some(include);
         self
     }
 
-    /// Enable audio output (text-to-speech)
+    /// Enables audio output (text-to-speech).
     pub fn with_audio_output(mut self) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.response_modalities = Some(vec!["AUDIO".to_string()]);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .response_modalities = Some(vec!["AUDIO".to_string()]);
         self
     }
 
-    /// Set speech configuration for text-to-speech generation
+    /// Sets the speech configuration for text-to-speech generation.
     pub fn with_speech_config(mut self, speech_config: SpeechConfig) -> Self {
-        if self.generation_config.is_none() {
-            self.generation_config = Some(GenerationConfig::default());
-        }
-        if let Some(config) = &mut self.generation_config {
-            config.speech_config = Some(speech_config);
-        }
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .speech_config = Some(speech_config);
         self
     }
 
-    /// Set a single voice for text-to-speech generation
+    /// Sets a single voice for text-to-speech generation.
     pub fn with_voice(self, voice_name: impl Into<String>) -> Self {
         let speech_config = SpeechConfig::single_voice(voice_name);
         self.with_speech_config(speech_config).with_audio_output()
     }
 
-    /// Set multi-speaker configuration for text-to-speech generation
+    /// Sets multi-speaker configuration for text-to-speech generation.
     pub fn with_multi_speaker_config(self, speakers: Vec<SpeakerVoiceConfig>) -> Self {
         let speech_config = SpeechConfig::multi_speaker(speakers);
         self.with_speech_config(speech_config).with_audio_output()
     }
 
+    /// Builds the `GenerateContentRequest`.
     pub fn build(self) -> GenerateContentRequest {
         GenerateContentRequest {
             contents: self.contents,
@@ -349,7 +329,7 @@ impl ContentBuilder {
         }
     }
 
-    /// Execute the request
+    /// Executes the content generation request.
     #[instrument(skip_all, fields(
         messages.parts.count = self.contents.len(),
         tools.present = self.tools.is_some(),
@@ -362,7 +342,7 @@ impl ContentBuilder {
         client.generate_content_raw(request).await
     }
 
-    /// Execute the request with streaming
+    /// Executes the content generation request as a stream.
     #[instrument(skip_all, fields(
         messages.parts.count = self.contents.len(),
         tools.present = self.tools.is_some(),
@@ -373,16 +353,8 @@ impl ContentBuilder {
         self,
     ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>
     {
-        let request = GenerateContentRequest {
-            contents: self.contents,
-            generation_config: self.generation_config,
-            safety_settings: None,
-            tools: self.tools,
-            tool_config: self.tool_config,
-            system_instruction: self.system_instruction,
-            cached_content: self.cached_content,
-        };
-
-        self.client.generate_content_stream(request).await
+        let client = self.client.clone();
+        let request = self.build();
+        client.generate_content_stream(request).await
     }
 }

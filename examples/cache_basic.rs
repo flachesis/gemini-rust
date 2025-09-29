@@ -54,7 +54,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     info!(
         cache_name = cached_content.name,
         display_name = cached_content.display_name.as_ref().unwrap_or(&"N/A".to_string()),
-        model = cached_content.model,
+        model = %cached_content.model,
         create_time = %cached_content.create_time,
         update_time = %cached_content.update_time,
         total_tokens = cached_content.usage_metadata.total_token_count,

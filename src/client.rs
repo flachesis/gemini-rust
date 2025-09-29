@@ -18,6 +18,7 @@ use reqwest::{
     header::{HeaderMap, HeaderName, HeaderValue, InvalidHeaderValue},
     Client, ClientBuilder, RequestBuilder, Response,
 };
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::{
@@ -35,13 +36,18 @@ static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
         .expect("unreachable error: failed to parse default base URL")
 });
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Model {
     #[default]
+    #[serde(rename = "models/gemini-2.5-flash")]
     Gemini25Flash,
+    #[serde(rename = "models/gemini-2.5-flash-lite")]
     Gemini25FlashLite,
+    #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
+    #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
+    #[serde(untagged)]
     Custom(String),
 }
 
@@ -360,7 +366,8 @@ impl GeminiClient {
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
-    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send, Error> {
+    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send + use<>, Error>
+    {
         let mut url = self.build_url("streamGenerateContent")?;
         url.query_pairs_mut().append_pair("alt", "sse");
 

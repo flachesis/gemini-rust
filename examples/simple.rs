@@ -1,11 +1,46 @@
 use display_error_chain::DisplayErrorChain;
 use gemini_rust::{
-    Content, FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini,
-    GenerationConfig, Message, PropertyDetails, Role,
+    Content, FunctionCallingMode, FunctionDeclaration, Gemini, GenerationConfig, Message, Role,
 };
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::process::ExitCode;
 use tracing::{info, warn};
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(description = "The unit of temperature")]
+#[serde(rename_all = "lowercase")]
+enum Unit {
+    #[default]
+    Celsius,
+    Fahrenheit,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct WeatherRequest {
+    /// The city and state, e.g., San Francisco, CA
+    location: String,
+    /// The unit of temperature
+    unit: Option<Unit>,
+}
+
+impl Default for WeatherRequest {
+    fn default() -> Self {
+        WeatherRequest {
+            location: "".to_string(),
+            unit: Some(Unit::Celsius),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct WeatherResponse {
+    temperature: i32,
+    unit: String,
+    condition: String,
+}
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -56,18 +91,10 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let get_weather = FunctionDeclaration::new(
         "get_weather",
         "Get the current weather for a location",
-        FunctionParameters::object()
-            .with_property(
-                "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
-                true,
-            )
-            .with_property(
-                "unit",
-                PropertyDetails::enum_type("The unit of temperature", ["celsius", "fahrenheit"]),
-                false,
-            ),
-    );
+        None,
+    )
+    .with_parameters::<WeatherRequest>()
+    .with_response::<WeatherResponse>();
 
     // Create a request with function calling
     let response = client
@@ -87,17 +114,19 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
             "function call received"
         );
 
-        // Get parameters from the function call
-        let location: String = function_call.get("location")?;
-        let unit = function_call
-            .get::<String>("unit")
-            .unwrap_or_else(|_| String::from("celsius"));
+        // Parse the function call arguments
+        let weather_request: WeatherRequest = serde_json::from_value(function_call.args.clone())?;
 
         info!(
-            location = location,
-            unit = unit,
+            location = weather_request.location,
+            unit = ?weather_request.unit,
             "function call parameters extracted"
         );
+
+        let unit_str = match weather_request.unit.unwrap_or_default() {
+            Unit::Celsius => "celsius",
+            Unit::Fahrenheit => "fahrenheit",
+        };
 
         // Create model content with function call
         let model_content = Content::function_call((*function_call).clone());
@@ -111,7 +140,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         // Simulate function execution
         let weather_response = format!(
             "{{\"temperature\": 22, \"unit\": \"{}\", \"condition\": \"sunny\"}}",
-            unit
+            unit_str
         );
         info!(response = weather_response, "simulated function response");
 

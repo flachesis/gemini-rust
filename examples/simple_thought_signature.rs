@@ -1,11 +1,27 @@
 use display_error_chain::DisplayErrorChain;
-use gemini_rust::{
-    FunctionCallingMode, FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails,
-    ThinkingConfig, Tool,
-};
+use gemini_rust::{FunctionCallingMode, FunctionDeclaration, Gemini, ThinkingConfig, Tool};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::process::ExitCode;
 use tracing::info;
+
+#[derive(Debug, JsonSchema, Serialize, Deserialize)]
+#[schemars(description = "Get current weather for a location")]
+struct Weather {
+    /// City name
+    location: String,
+}
+
+impl std::fmt::Display for Weather {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            serde_json::to_string_pretty(self).unwrap_or_default()
+        )
+    }
+}
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -32,15 +48,9 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::pro(api_key)?;
 
     // Create a simple function tool
-    let weather_function = FunctionDeclaration::new(
-        "get_weather",
-        "Get current weather for a location",
-        FunctionParameters::object().with_property(
-            "location",
-            PropertyDetails::string("City name"),
-            true,
-        ),
-    );
+    let weather_function =
+        FunctionDeclaration::new("get_weather", "Get current weather for a location", None)
+            .with_parameters::<Weather>();
 
     // Configure thinking to enable thoughtSignature
     let thinking_config = ThinkingConfig::new()
@@ -60,7 +70,11 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let function_calls_with_thoughts = response.function_calls_with_thoughts();
 
     for (function_call, thought_signature) in function_calls_with_thoughts {
-        info!(function_name = function_call.name, args = ?function_call.args, "function called");
+        info!(
+            function_name = function_call.name,
+            args = %serde_json::from_value::<Weather>(function_call.args.clone())?,
+            "function called"
+        );
 
         if let Some(signature) = thought_signature {
             info!(

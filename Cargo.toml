@@ -40,6 +40,7 @@ time = { version = "0.3", features = ["serde", "parsing", "formatting"] }
 tracing = "0.1.41"
 strum = { version = "0.27", features = ["derive"] }
 strum_macros = "0.27"
+schemars = { version = "1.0" }
 
 [dev-dependencies]
 display-error-chain = "0.2"

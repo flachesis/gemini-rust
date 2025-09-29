@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use strum_macros::AsRefStr;
 
-use crate::Content;
+use crate::{Content, Model};
 
 /// Text embedding representation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -29,7 +29,7 @@ pub struct BatchContentEmbeddingResponse {
 #[serde(rename_all = "camelCase")]
 pub struct EmbedContentRequest {
     /// The specified embedding model
-    pub model: String,
+    pub model: Model,
     /// The chunks content to generate embeddings
     pub content: Content,
     /// The embedding task type (optional)

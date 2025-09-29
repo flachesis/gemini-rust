@@ -1,11 +1,44 @@
 use display_error_chain::DisplayErrorChain;
 use futures::TryStreamExt;
-use gemini_rust::{
-    FunctionDeclaration, FunctionParameters, Gemini, PropertyDetails, ThinkingConfig,
-};
+use gemini_rust::{FunctionDeclaration, Gemini, ThinkingConfig};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::process::ExitCode;
 use tracing::info;
+
+#[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[schemars(description = "Type of calculation")]
+#[serde(rename_all = "lowercase")]
+enum OperationType {
+    #[default]
+    Arithmetic,
+    Advanced,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[serde(default)]
+struct CalculationRequest {
+    /// The mathematical expression to calculate, e.g., '2 + 3 * 4'
+    expression: String,
+    /// Type of calculation
+    operation_type: Option<OperationType>,
+}
+
+impl Default for CalculationRequest {
+    fn default() -> Self {
+        CalculationRequest {
+            expression: "".to_string(),
+            operation_type: Some(OperationType::Arithmetic),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+struct CalculationResponse {
+    result: String,
+    steps: Vec<String>,
+}
 
 #[tokio::main]
 async fn main() -> ExitCode {
@@ -71,23 +104,10 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     info!("example 2: thinking combined with function calls");
 
     // Define a calculator function
-    let calculator = FunctionDeclaration::new(
-        "calculate",
-        "Perform basic mathematical calculations",
-        FunctionParameters::object()
-            .with_property(
-                "expression",
-                PropertyDetails::string(
-                    "The mathematical expression to calculate, e.g., '2 + 3 * 4'",
-                ),
-                true,
-            )
-            .with_property(
-                "operation_type",
-                PropertyDetails::enum_type("Type of calculation", ["arithmetic", "advanced"]),
-                false,
-            ),
-    );
+    let calculator =
+        FunctionDeclaration::new("calculate", "Perform basic mathematical calculations", None)
+            .with_parameters::<CalculationRequest>()
+            .with_response::<CalculationResponse>();
 
     let response = client
         .generate_content()
