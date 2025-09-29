@@ -7,7 +7,9 @@
 //! 4. Canceling the batch when CTRL-C is pressed
 //! 5. Properly handling the result
 
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Batch, BatchHandleError, BatchStatus, Gemini, Message};
+use std::process::ExitCode;
 use std::{env, sync::Arc, time::Duration};
 use tokio::{signal, sync::Mutex};
 use tracing::{error, info, warn};
@@ -42,10 +44,26 @@ pub async fn wait_for_completion(
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing subscriber
-    tracing_subscriber::fmt::init();
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
 
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Get the API key from the environment
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
 

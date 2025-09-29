@@ -1,13 +1,32 @@
 use base64::{engine::general_purpose, Engine as _};
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Gemini, GenerationConfig, Part, SpeakerVoiceConfig, SpeechConfig};
 use std::fs::File;
 use std::io::Write;
+use std::process::ExitCode;
 use tracing::{error, info};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing subscriber
-    tracing_subscriber::fmt::init();
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Load API key from environment variable
     let api_key =
         std::env::var("GEMINI_API_KEY").expect("Please set GEMINI_API_KEY environment variable");
@@ -62,7 +81,7 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
                             // Look for inline data with audio MIME type
                             Part::InlineData { inline_data } => {
                                 if inline_data.mime_type.starts_with("audio/") {
-                                    println!("📄 Found audio data: {}", inline_data.mime_type);
+                                    info!("📄 Found audio data: {}", inline_data.mime_type);
 
                                     // Decode base64 audio data
                                     match general_purpose::STANDARD.decode(&inline_data.data) {
@@ -74,26 +93,26 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
                                             match File::create(&filename) {
                                                 Ok(mut file) => {
                                                     if let Err(e) = file.write_all(&audio_bytes) {
-                                                        eprintln!(
+                                                        error!(
                                                             "❌ Error writing audio file: {}",
                                                             e
                                                         );
                                                     } else {
-                                                        println!(
+                                                        info!(
                                                             "💾 Multi-speaker audio saved as: {}",
                                                             filename
                                                         );
-                                                        println!("🎧 Play with: aplay {} (Linux) or afplay {} (macOS)", filename, filename);
-                                                        println!("👥 Features Alice (Puck voice) and Bob (Charon voice)");
+                                                        info!("🎧 Play with: aplay {} (Linux) or afplay {} (macOS)", filename, filename);
+                                                        info!("👥 Features Alice (Puck voice) and Bob (Charon voice)");
                                                     }
                                                 }
                                                 Err(e) => {
-                                                    eprintln!("❌ Error creating audio file: {}", e)
+                                                    error!("❌ Error creating audio file: {}", e)
                                                 }
                                             }
                                         }
                                         Err(e) => {
-                                            eprintln!("❌ Error decoding base64 audio: {}", e)
+                                            error!("❌ Error decoding base64 audio: {}", e)
                                         }
                                     }
                                 }
@@ -105,9 +124,9 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
                                 thought_signature: _,
                             } => {
                                 if thought.unwrap_or(false) {
-                                    println!("💭 Model thought: {}", text);
+                                    info!("💭 Model thought: {}", text);
                                 } else {
-                                    println!("📝 Generated text: {}", text);
+                                    info!("📝 Generated text: {}", text);
                                 }
                             }
                             _ => {
@@ -120,35 +139,35 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
 
             // Display usage metadata if available
             if let Some(usage_metadata) = &response.usage_metadata {
-                println!("\n📊 Usage Statistics:");
+                info!("📊 Usage Statistics:");
                 if let Some(prompt_tokens) = usage_metadata.prompt_token_count {
-                    println!("   Prompt tokens: {}", prompt_tokens);
+                    info!("   Prompt tokens: {}", prompt_tokens);
                 }
                 if let Some(total_tokens) = usage_metadata.total_token_count {
-                    println!("   Total tokens: {}", total_tokens);
+                    info!("   Total tokens: {}", total_tokens);
                 }
                 if let Some(thoughts_tokens) = usage_metadata.thoughts_token_count {
-                    println!("   Thinking tokens: {}", thoughts_tokens);
+                    info!("   Thinking tokens: {}", thoughts_tokens);
                 }
             }
         }
         Err(e) => {
             error!(error = ?e, "error generating multi-speaker speech");
-            eprintln!("\n💡 Troubleshooting tips:");
-            eprintln!("   1. Make sure GEMINI_API_KEY environment variable is set");
-            eprintln!("   2. Verify you have access to the Gemini TTS model");
-            eprintln!("   3. Check your internet connection");
-            eprintln!("   4. Ensure speaker names in dialogue match configured speakers");
-            eprintln!("   5. Make sure the model 'gemini-2.5-flash-preview-tts' supports multi-speaker TTS");
+            error!("💡 Troubleshooting tips:");
+            error!("   1. Make sure GEMINI_API_KEY environment variable is set");
+            error!("   2. Verify you have access to the Gemini TTS model");
+            error!("   3. Check your internet connection");
+            error!("   4. Ensure speaker names in dialogue match configured speakers");
+            error!("   5. Make sure the model 'gemini-2.5-flash-preview-tts' supports multi-speaker TTS");
         }
     }
 
-    println!("\n🎉 Example completed!");
-    println!("💡 Tips for multi-speaker TTS:");
-    println!("   • Use clear speaker names (Alice:, Bob:, etc.)");
-    println!("   • Configure voice for each speaker beforehand");
-    println!("   • Available voices: Puck, Charon, Kore, Fenrir, Aoede");
-    println!("   • Each speaker maintains consistent voice characteristics");
+    info!("🎉 Example completed!");
+    info!("💡 Tips for multi-speaker TTS:");
+    info!("   • Use clear speaker names (Alice:, Bob:, etc.)");
+    info!("   • Configure voice for each speaker beforehand");
+    info!("   • Available voices: Puck, Charon, Kore, Fenrir, Aoede");
+    info!("   • Each speaker maintains consistent voice characteristics");
 
     Ok(())
 }

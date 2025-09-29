@@ -26,7 +26,13 @@ async fn do_main(api_key: &str) -> Result<(), ClientError> {
 #[tokio::main]
 async fn main() -> ExitCode {
     // Initialize tracing subscriber
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
 
     let api_key = std::env::var("GEMINI_API_KEY").expect("no gemini api key provided");
 

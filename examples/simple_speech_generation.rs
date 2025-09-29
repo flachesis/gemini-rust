@@ -1,13 +1,32 @@
 use base64::{engine::general_purpose, Engine as _};
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Gemini, GenerationConfig, Part, PrebuiltVoiceConfig, SpeechConfig, VoiceConfig};
 use std::fs::File;
 use std::io::Write;
+use std::process::ExitCode;
 use tracing::{error, info};
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
 
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Load API key from environment variable
     let api_key =
         std::env::var("GEMINI_API_KEY").expect("Please set GEMINI_API_KEY environment variable");
