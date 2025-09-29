@@ -203,7 +203,7 @@ impl GeminiClient {
     /// * `T` - The type of the deserialized response
     ///
     /// # Note
-    /// The `AsyncFn` trait is a standard Rust feature (stabilized in v1.75) and does not
+    /// The `AsyncFn` trait is a standard Rust feature (stabilized in v1.85) and does not
     /// require any additional imports or feature flags.
     ///
     /// # Parameters
@@ -285,6 +285,34 @@ impl GeminiClient {
         deserializer(response).await
     }
 
+    /// Perform a GET request and deserialize the JSON response.
+    ///
+    /// This is a convenience wrapper around [`perform_request`](Self::perform_request).
+    #[tracing::instrument(skip(self), fields(request.type = "get", request.url = %url))]
+    async fn get_json<T: serde::de::DeserializeOwned>(&self, url: Url) -> Result<T, Error> {
+        self.perform_request(
+            |c| c.get(url),
+            async |r| r.json().await.context(DecodeResponseSnafu),
+        )
+        .await
+    }
+
+    /// Perform a POST request with JSON body and deserialize the JSON response.
+    ///
+    /// This is a convenience wrapper around [`perform_request`](Self::perform_request).
+    #[tracing::instrument(skip(self, body), fields(request.type = "post", request.url = %url))]
+    async fn post_json<Req: serde::Serialize, Res: serde::de::DeserializeOwned>(
+        &self,
+        url: Url,
+        body: &Req,
+    ) -> Result<Res, Error> {
+        self.perform_request(
+            |c| c.post(url).json(body),
+            async |r| r.json().await.context(DecodeResponseSnafu),
+        )
+        .await
+    }
+
     /// Generate content
     #[instrument(skip_all, fields(
         model,
@@ -303,12 +331,7 @@ impl GeminiClient {
         request: GenerateContentRequest,
     ) -> Result<GenerationResponse, Error> {
         let url = self.build_url("generateContent")?;
-        let response: GenerationResponse = self
-            .perform_request(
-                |c| c.post(url.clone()).json(&request),
-                async |r| r.json().await.context(DecodeResponseSnafu),
-            )
-            .await?;
+        let response: GenerationResponse = self.post_json(url, &request).await?;
 
         // Record usage metadata
         if let Some(usage) = &response.usage_metadata {
@@ -369,11 +392,7 @@ impl GeminiClient {
         request: EmbedContentRequest,
     ) -> Result<ContentEmbeddingResponse, Error> {
         let url = self.build_url("embedContent")?;
-        self.perform_request(
-            |c| c.post(url).json(&request),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.post_json(url, &request).await
     }
 
     /// Batch Embed content
@@ -383,14 +402,10 @@ impl GeminiClient {
         request: BatchEmbedContentsRequest,
     ) -> Result<BatchContentEmbeddingResponse, Error> {
         let url = self.build_url("batchEmbedContents")?;
-        self.perform_request(
-            |c| c.post(url).json(&request),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.post_json(url, &request).await
     }
 
-    /// Synchronous Batch Generate content
+    /// Batch generate content (synchronous API that returns results immediately)
     #[instrument(skip_all, fields(
         batch.display_name = request.batch.display_name,
         batch.size = request.batch.input_config.batch_size(),
@@ -400,11 +415,7 @@ impl GeminiClient {
         request: BatchGenerateContentRequest,
     ) -> Result<BatchGenerateContentResponse, Error> {
         let url = self.build_url("batchGenerateContent")?;
-        self.perform_request(
-            |c| c.post(url).json(&request),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.post_json(url, &request).await
     }
 
     /// Get a batch operation
@@ -416,11 +427,7 @@ impl GeminiClient {
         name: &str,
     ) -> Result<T, Error> {
         let url = self.build_batch_url(name, None)?;
-        self.perform_request(
-            |c| c.get(url),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// List batch operations
@@ -443,11 +450,7 @@ impl GeminiClient {
             url.query_pairs_mut().append_pair("pageToken", &token);
         }
 
-        self.perform_request(
-            |c| c.get(url),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// List files
@@ -470,11 +473,7 @@ impl GeminiClient {
             url.query_pairs_mut().append_pair("pageToken", &token);
         }
 
-        self.perform_request(
-            |c| c.get(url),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// Cancel a batch operation
@@ -552,6 +551,7 @@ impl GeminiClient {
         file_bytes: Vec<u8>,
         mime_type: Mime,
     ) -> Result<File, Error> {
+        // Step 1: Create resumable upload session
         let upload_url = self
             .create_upload(file_bytes.len(), display_name, mime_type)
             .await?;
@@ -588,11 +588,7 @@ impl GeminiClient {
     ))]
     pub(crate) async fn get_file(&self, name: &str) -> Result<File, Error> {
         let url = self.build_files_url(Some(name))?;
-        self.perform_request(
-            |c| c.get(url),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// Delete a file resource
@@ -605,6 +601,7 @@ impl GeminiClient {
             .await
     }
 
+    /// Download a file resource
     #[instrument(skip_all, fields(
         file.name = name,
     ))]
@@ -635,21 +632,13 @@ impl GeminiClient {
         cached_content: CreateCachedContentRequest,
     ) -> Result<CachedContent, Error> {
         let url = self.build_cache_url(None)?;
-        self.perform_request(
-            |c| c.post(url).json(&cached_content),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.post_json(url, &cached_content).await
     }
 
     /// Get cached content
     pub(crate) async fn get_cached_content(&self, name: &str) -> Result<CachedContent, Error> {
         let url = self.build_cache_url(Some(name))?;
-        self.perform_request(
-            |c| c.get(url.clone()),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// Update cached content (typically to update TTL)
@@ -698,11 +687,7 @@ impl GeminiClient {
             url.query_pairs_mut().append_pair("pageToken", &token);
         }
 
-        self.perform_request(
-            |c| c.get(url.clone()),
-            async |r| r.json().await.context(DecodeResponseSnafu),
-        )
-        .await
+        self.get_json(url).await
     }
 
     /// Build a URL with the given suffix
@@ -878,12 +863,12 @@ impl Gemini {
         ContentBuilder::new(self.client.clone())
     }
 
-    /// Start building a content generation request
+    /// Start building a content embedding request
     pub fn embed_content(&self) -> EmbedBuilder {
         EmbedBuilder::new(self.client.clone())
     }
 
-    /// Start building a synchronous batch content generation request
+    /// Start building a batch content generation request
     pub fn batch_generate_content(&self) -> BatchBuilder {
         BatchBuilder::new(self.client.clone())
     }
