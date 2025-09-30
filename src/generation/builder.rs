@@ -1,5 +1,6 @@
 use futures::TryStream;
 use std::sync::Arc;
+use tracing::instrument;
 
 use crate::{
     cache::CachedContentHandle,
@@ -329,6 +330,12 @@ impl ContentBuilder {
     }
 
     /// Executes the content generation request.
+    #[instrument(skip_all, fields(
+        messages.parts.count = self.contents.len(),
+        tools.present = self.tools.is_some(),
+        system.instruction.present = self.system_instruction.is_some(),
+        cached.content.present = self.cached_content.is_some(),
+    ))]
     pub async fn execute(self) -> Result<GenerationResponse, ClientError> {
         let client = self.client.clone();
         let request = self.build();
@@ -336,6 +343,12 @@ impl ContentBuilder {
     }
 
     /// Executes the content generation request as a stream.
+    #[instrument(skip_all, fields(
+        messages.parts.count = self.contents.len(),
+        tools.present = self.tools.is_some(),
+        system.instruction.present = self.system_instruction.is_some(),
+        cached.content.present = self.cached_content.is_some(),
+    ))]
     pub async fn execute_stream(
         self,
     ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>

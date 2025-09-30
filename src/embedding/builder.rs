@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use tracing::instrument;
 
 use super::model::{
     BatchContentEmbeddingResponse, BatchEmbedContentsRequest, ContentEmbeddingResponse,
@@ -67,6 +68,11 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
+    #[instrument(skip_all, fields(
+        task.type = self.task_type.as_ref().map(AsRef::<str>::as_ref),
+        title = self.title,
+        output.dimensionality = self.output_dimensionality
+    ))]
     pub async fn execute(self) -> Result<ContentEmbeddingResponse, ClientError> {
         let request = EmbedContentRequest {
             model: self.client.model.clone(),
@@ -80,6 +86,12 @@ impl EmbedBuilder {
     }
 
     /// Execute the request
+    #[instrument(skip_all, fields(
+        batch.size = self.contents.len(),
+        task.type = self.task_type.as_ref().map(AsRef::<str>::as_ref),
+        title = self.title,
+        output.dimensionality = self.output_dimensionality
+    ))]
     pub async fn execute_batch(self) -> Result<BatchContentEmbeddingResponse, ClientError> {
         let mut batch_request = BatchEmbedContentsRequest {
             requests: Vec::new(),

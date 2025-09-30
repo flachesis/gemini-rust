@@ -498,6 +498,19 @@ let client = GeminiBuilder::new(api_key)
     .build()?;
 ```
 
+## 🔍 Tracing and Telemetry
+
+The library is instrumented with the `tracing` crate to provide detailed telemetry data for monitoring and debugging. This allows you to gain deep insights into the library's performance and behavior.
+
+Key tracing features include:
+
+* **HTTP Request Tracing**: Captures detailed information about every API call, including HTTP method, URL, and response status, to help diagnose network-related issues.
+* **Token Usage Monitoring**: Records the number of prompt, candidate, and total tokens for each generation request, enabling cost analysis and optimization.
+* **Structured Logging**: Emits traces as structured events, compatible with modern log aggregation platforms like Elasticsearch, Datadog, and Honeycomb, allowing for powerful querying and visualization.
+* **Performance Metrics**: Provides timing information for each API request, allowing you to identify and address performance bottlenecks.
+
+To use these features, you will need to integrate a `tracing` subscriber into your application. For structured logging, it is recommended to use a JSON-based subscriber.
+
 ## 📚 Examples
 
 The repository includes comprehensive examples:
@@ -558,6 +571,8 @@ export GEMINI_API_KEY="your-api-key-here"
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+
+For guidelines on developing agents and applications, see the [Agent Development Guide](AGENTS.md).
 
 ## 📄 License
 

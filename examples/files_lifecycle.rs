@@ -1,15 +1,37 @@
 //! An example of uploading a file, downloading it, and verifying the content.
+use display_error_chain::DisplayErrorChain;
 use futures::TryStreamExt;
 use gemini_rust::Gemini;
+use std::process::ExitCode;
+use tracing::{error, info};
 
 const TEST_CONTENT: &str = "Hello, world! This is a test file for Gemini-Rust.";
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
     let gemini = Gemini::new(&api_key)?;
 
-    println!("Uploading a file with known content...");
+    info!("uploading a file with known content");
 
     // 1. Upload a file
     let file_handle = gemini
@@ -19,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .upload()
         .await?;
 
-    println!("File uploaded successfully: {}", file_handle.name());
+    info!(file_name = file_handle.name(), "file uploaded successfully");
 
     // 2. Find remote file
     let files = gemini.list_files(None).try_collect::<Vec<_>>().await?;
@@ -34,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 3. Assert that the byte size is identical
-    println!("\nVerifying file content...");
+    info!("verifying file content");
     assert_eq!(
         remote_file.get_file_meta().size_bytes.unwrap(),
         TEST_CONTENT.len() as i64,
@@ -42,10 +64,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     // 4. Delete the file
-    println!("\nCleaning up by deleting the file...");
+    info!("cleaning up by deleting the file");
     match file_handle.delete().await {
-        Ok(_) => println!("File deleted successfully."),
-        Err((_, e)) => eprintln!("Failed to delete file: {}", e),
+        Ok(_) => info!("file deleted successfully"),
+        Err((_, e)) => error!(error = %e, "failed to delete file"),
     }
 
     Ok(())

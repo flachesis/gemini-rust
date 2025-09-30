@@ -1,12 +1,34 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Content, Gemini, Part, Tool};
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
-    println!("--- Curl equivalent with Google Search tool ---");
+    info!("starting curl equivalent with google search tool example");
 
     // This is equivalent to the curl example:
     // curl "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=$GEMINI_API_KEY" \
@@ -52,7 +74,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = content_builder.execute().await?;
 
-    println!("Response: {}", response.text());
+    info!(
+        response = response.text(),
+        "google search response received"
+    );
 
     Ok(())
 }

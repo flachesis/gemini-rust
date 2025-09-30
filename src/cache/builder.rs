@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::instrument;
 
 use snafu::ResultExt;
 
@@ -118,6 +119,12 @@ impl CacheBuilder {
     }
 
     /// Execute the cache creation request.
+    #[instrument(skip_all, fields(
+        display.name = self.display_name,
+        messages.count = self.contents.len(),
+        tools.count = self.tools.len(),
+        system_instruction.present = self.system_instruction.is_some(),
+    ))]
     pub async fn execute(self) -> Result<CachedContentHandle, Error> {
         let model = self.client.model.clone();
         let expiration = self.expiration.ok_or(Error::MissingExpiration)?;

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use strum_macros::AsRefStr;
 
 use crate::{Content, Model};
 
@@ -51,8 +52,9 @@ pub struct BatchEmbedContentsRequest {
 }
 
 /// Task types for embedding optimization
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, AsRefStr)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TaskType {
     /// Used to generate embeddings that are optimized to assess text similarity
     SemanticSimilarity,

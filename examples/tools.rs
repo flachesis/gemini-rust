@@ -1,7 +1,10 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Content, FunctionCallingMode, FunctionDeclaration, Gemini, Message, Role, Tool};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[schemars(description = "The unit of temperature")]
@@ -75,14 +78,33 @@ struct CalculationResponse {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
-    println!("--- Tools example with multiple functions ---");
+    info!("starting tools example with multiple functions");
 
     // Define a weather function
     let get_weather = FunctionDeclaration::new(
@@ -115,9 +137,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Process function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = ?function_call.args,
+            "function call received"
         );
 
         // Handle different function calls
@@ -125,9 +148,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "calculate" => {
                 let calculation: Calculation = serde_json::from_value(function_call.args.clone())?;
 
-                println!(
-                    "Calculation: {:?} {} {}",
-                    calculation.operation, calculation.a, calculation.b
+                info!(
+                    operation = ?calculation.operation,
+                    a = calculation.a,
+                    b = calculation.b,
+                    "performing calculation"
                 );
 
                 let result = match calculation.operation {
@@ -169,14 +194,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Execute the request
                 let final_response = conversation.execute().await?;
 
-                println!("Final response: {}", final_response.text());
+                info!(response = final_response.text(), "final response received");
             }
             "get_weather" => {
                 let weather: Weather = serde_json::from_value(function_call.args.clone())?;
 
-                println!(
-                    "Weather request for: {}, Unit: {:?}",
-                    weather.location, weather.unit
+                info!(
+                    location = weather.location,
+                    unit = ?weather.unit,
+                    "weather request received"
                 );
 
                 let unit_str = match weather.unit.unwrap_or_default() {
@@ -220,13 +246,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // Execute the request
                 let final_response = conversation.execute().await?;
 
-                println!("Final response: {}", final_response.text());
+                info!(response = final_response.text(), "final response received");
             }
-            _ => println!("Unknown function"),
+            _ => info!(function_name = function_call.name, "unknown function call"),
         }
     } else {
-        println!("No function calls in the response.");
-        println!("Response: {}", response.text());
+        info!("no function calls in response");
+        info!(response = response.text(), "direct response received");
     }
 
     Ok(())

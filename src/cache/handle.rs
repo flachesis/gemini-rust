@@ -45,7 +45,7 @@ impl CachedContentHandle {
     }
 
     /// Deletes the cached content resource from the server.
-    pub async fn delete(self) -> Result<DeleteCachedContentResponse, (Self, Error)> {
+    pub async fn delete(self) -> Result<(), (Self, Error)> {
         match self
             .client
             .delete_cached_content(&self.name)

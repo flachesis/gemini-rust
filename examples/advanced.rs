@@ -1,7 +1,10 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Content, FunctionCallingMode, FunctionDeclaration, Gemini, Part};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 #[derive(Default, Debug, Clone, Serialize, Deserialize, JsonSchema)]
 #[schemars(description = "The unit of temperature")]
@@ -58,11 +61,30 @@ struct WeatherResponse {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY")?;
 
     // Create client
-    let client = Gemini::new(api_key).expect("unable to cheate Gemini API client");
+    let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
     // Define a weather function
     let get_weather = FunctionDeclaration::new(
@@ -74,7 +96,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_response::<WeatherResponse>();
 
     // Create a request with function calling
-    println!("Sending function call request...");
+    info!("sending function call request");
     let response = client
         .generate_content()
         .with_user_message("What's the weather like in Tokyo right now?")
@@ -84,17 +106,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let Some(function_call) = response.function_calls().first().cloned() else {
-        eprintln!("No function calls in the response.");
-        eprintln!("Response: {}", response.text(),);
+        tracing::error!(
+            response = response.text(),
+            "no function calls in the response"
+        );
         return Ok(());
     };
 
     let result = serde_json::from_value::<Weather>(function_call.args.clone())?;
 
-    println!(
-        "Function call received: {} with args:\n{}",
-        function_call.name,
-        serde_json::to_string_pretty(&result)?
+    info!(
+        function_name = function_call.name,
+        args = serde_json::to_string_pretty(&result)?,
+        "function call received"
     );
 
     // Get parameters from the function call
@@ -112,7 +136,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Continue the conversation with the function result
     // We need to replay the entire conversation with the function response
-    println!("Sending function response...",);
+    info!("sending function response");
 
     // First, need to recreate the original prompt and the model's response
     let mut final_request = client
@@ -135,7 +159,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Execute the request
     let final_response = final_request.execute().await?;
 
-    println!("Final response: {}", final_response.text());
+    info!(final_response = final_response.text(), "final response");
 
     Ok(())
 }

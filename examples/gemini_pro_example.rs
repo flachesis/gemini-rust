@@ -1,9 +1,31 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::Gemini;
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 /// Example usage of Gemini API matching the curl example format
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Replace with your actual API key
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -38,8 +60,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    // Print the response
-    println!("Response: {}", response.text());
+    // Log the response
+    info!(response = response.text(), "gemini pro response received");
 
     Ok(())
 }

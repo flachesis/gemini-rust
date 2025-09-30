@@ -1,12 +1,34 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Gemini, GenerationConfig};
 use std::env;
 use std::fs;
+use std::process::ExitCode;
+use tracing::{info, warn};
 
 /// Simple image generation example
 /// This demonstrates the basic usage of Gemini's image generation capabilities
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
@@ -15,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
         .expect("unable to create Gemini API client");
 
-    println!("🎨 Generating image with Gemini...");
+    info!("starting image generation example");
 
     // Generate an image from text description
     let response = client
@@ -41,11 +63,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             for part in parts.iter() {
                 match part {
                     gemini_rust::Part::Text { text, .. } => {
-                        println!("📝 Model response: {}", text);
+                        info!(response = text, "model text response received");
                     }
                     gemini_rust::Part::InlineData { inline_data } => {
-                        println!("🖼️  Image generated!");
-                        println!("   MIME type: {}", inline_data.mime_type);
+                        info!(mime_type = inline_data.mime_type, "image generated");
 
                         // Decode and save the image
                         match BASE64.decode(&inline_data.data) {
@@ -53,15 +74,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 images_saved += 1;
                                 let filename = format!("robot_garden_{}.png", images_saved);
                                 fs::write(&filename, image_bytes)?;
-                                println!("✅ Image saved as: {}", filename);
+                                info!(filename = filename, "image saved successfully");
                             }
                             Err(e) => {
-                                println!("❌ Failed to decode image: {}", e);
+                                warn!(error = ?e, "failed to decode image");
                             }
                         }
                     }
                     _ => {
-                        println!("🔍 Other content type in response");
+                        info!("other content type found in response");
                     }
                 }
             }
@@ -69,12 +90,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if images_saved == 0 {
-        println!("⚠️  No images were generated. This might be due to:");
-        println!("   - Content policy restrictions");
-        println!("   - API limitations");
-        println!("   - Model configuration issues");
+        warn!("no images were generated - possible reasons: content policy restrictions, API limitations, or model configuration issues");
     } else {
-        println!("🎉 Successfully generated {} image(s)!", images_saved);
+        info!(
+            images_count = images_saved,
+            "image generation completed successfully"
+        );
     }
 
     Ok(())

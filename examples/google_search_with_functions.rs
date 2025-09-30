@@ -1,3 +1,4 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::tools::Behavior;
 use gemini_rust::{
     Content, FunctionCall, FunctionCallingMode, FunctionDeclaration, Gemini, Message, Role, Tool,
@@ -5,6 +6,8 @@ use gemini_rust::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 #[derive(Serialize, JsonSchema, Deserialize, Clone, Debug)]
 #[schemars(description = "Schedules a meeting with specified attendees at a given time and date.")]
@@ -31,14 +34,33 @@ struct MeetingResult {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     // Get API key from environment variable
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client
     let client = Gemini::new(api_key).expect("unable to create Gemini API client");
 
-    println!("--- Meeting Scheduler Function Calling example ---");
+    info!("starting meeting scheduler function calling example");
 
     // Define a meeting scheduler function that matches the curl example
     let schedule_meeting = FunctionDeclaration::new(
@@ -63,17 +85,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check if there are function calls
     if let Some(function_call) = response.function_calls().first() {
-        println!(
-            "Function call: {} with args: {}",
-            function_call.name, function_call.args
+        info!(
+            function_name = function_call.name,
+            args = ?function_call.args,
+            "function call received"
         );
 
         // Handle the schedule_meeting function
         if function_call.name == "schedule_meeting" {
             let meeting: Meeting = serde_json::from_value(function_call.args.clone())?;
 
-            println!("Scheduling meeting:");
-            println!("{}", serde_json::to_string_pretty(&(meeting))?);
+            info!(
+                meeting = serde_json::to_string_pretty(&meeting)?,
+                "scheduling meeting"
+            );
 
             let attendees: Vec<String> = meeting.attendees;
             let date: String = meeting.date;
@@ -122,13 +147,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // Execute final request
             let final_response = conversation.execute().await?;
 
-            println!("Final response: {}", final_response.text());
+            info!(response = final_response.text(), "final response received");
         } else {
-            println!("Unknown function call: {}", function_call.name);
+            info!(
+                function_name = function_call.name,
+                "unknown function call received"
+            );
         }
     } else {
-        println!("No function calls in the response.");
-        println!("Direct response: {}", response.text());
+        info!("no function calls in response");
+        info!(response = response.text(), "direct response received");
     }
 
     Ok(())

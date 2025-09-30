@@ -1,7 +1,10 @@
+use display_error_chain::DisplayErrorChain;
 use gemini_rust::{FunctionCallingMode, FunctionDeclaration, Gemini, ThinkingConfig, Tool};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::env;
+use std::process::ExitCode;
+use tracing::info;
 
 #[derive(Debug, JsonSchema, Serialize, Deserialize)]
 #[schemars(description = "Get current weather for a location")]
@@ -21,7 +24,26 @@ impl std::fmt::Display for Weather {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> ExitCode {
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(tracing::level_filters::LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .init();
+
+    match do_main().await {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(e) => {
+            let error_chain = DisplayErrorChain::new(e.as_ref());
+            tracing::error!(error.debug = ?e, error.chained = %error_chain, "execution failed");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY")?;
     let client = Gemini::pro(api_key)?;
 
@@ -48,20 +70,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let function_calls_with_thoughts = response.function_calls_with_thoughts();
 
     for (function_call, thought_signature) in function_calls_with_thoughts {
-        println!("Function called: {}", function_call.name);
-        println!(
-            "Arguments: {}",
-            serde_json::from_value::<Weather>(function_call.args.clone())?
+        info!(
+            function_name = function_call.name,
+            args = %serde_json::from_value::<Weather>(function_call.args.clone())?,
+            "function called"
         );
 
         if let Some(signature) = thought_signature {
-            println!("Thought signature present: {} characters", signature.len());
-            println!(
-                "Signature preview: {}...",
-                &signature[..50.min(signature.len())]
+            info!(
+                signature_length = signature.len(),
+                preview = &signature[..50.min(signature.len())],
+                "thought signature present"
             );
         } else {
-            println!("No thought signature");
+            info!("no thought signature");
         }
     }
 
