@@ -9,7 +9,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 ## ✨ Features
 
 - **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
-- **🛠️ Function Calling & Tools** - Custom functions and Google Search integration
+- **🛠️ Function Calling & Tools** - Custom functions and Google Search integration with OpenAPI schema support
 - **📦 Batch Processing** - Efficient batch content generation and embedding
 - **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
@@ -18,9 +18,10 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **🎤 Speech Generation** - Text-to-speech with single and multi-speaker support
 - **🖼️ Multimodal Support** - Images and binary data processing
 - **📊 Text Embeddings** - Advanced embedding generation with multiple task types
-- **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters
+- **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters with HTTP client builder
 - **🔒 Type Safe** - Comprehensive type definitions with full `serde` support
 - **⚡ Async/Await** - Built on `tokio` for high-performance async operations
+- **🔍 Comprehensive Tracing** - Built-in structured logging and telemetry with `tracing` for observability
 
 ## 📦 Installation
 
@@ -28,475 +29,81 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gemini-rust = "1.4.0"
+gemini-rust = "1.5.0"
 ```
 
 ## 🚀 Quick Start
 
 ### Basic Content Generation
 
-```rust
-use gemini_rust::Gemini;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let api_key = std::env::var("GEMINI_API_KEY")?;
-    let client = Gemini::new(api_key)?;
-
-    let response = client
-        .generate_content()
-        .with_system_prompt("You are a helpful assistant.")
-        .with_user_message("Hello, how are you?")
-        .execute()
-        .await?;
-
-    println!("Response: {}", response.text());
-    Ok(())
-}
-```
+Get started with simple text generation, system prompts, and conversations. See [`basic_generation.rs`](examples/basic_generation.rs) for complete examples including simple messages, system prompts, and multi-turn conversations.
 
 ### Streaming Responses
 
-```rust
-use gemini_rust::Gemini;
-use futures::TryStreamExt;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    let mut stream = client
-        .generate_content()
-        .with_user_message("Tell me a story about programming")
-        .execute_stream()
-        .await?;
-
-    while let Some(chunk) = stream.try_next().await? {
-        print!("{}", chunk.text());
-    }
-    Ok(())
-}
-```
-
-## 🛠️ Advanced Features
-
-### Function Calling
-
-```rust
-use gemini_rust::{Gemini, FunctionDeclaration, FunctionParameters, PropertyDetails};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    // Define a custom function
-    let weather_function = FunctionDeclaration::new(
-        "get_weather",
-        "Get the current weather for a location",
-        FunctionParameters::object()
-            .with_property(
-                "location",
-                PropertyDetails::string("The city and state, e.g., San Francisco, CA"),
-                true,
-            )
-    );
-
-    let response = client
-        .generate_content()
-        .with_user_message("What's the weather like in Tokyo?")
-        .with_function(weather_function)
-        .execute()
-        .await?;
-
-    // Handle function calls
-    if let Some(function_call) = response.function_calls().first() {
-        println!("Function: {}", function_call.name);
-        println!("Args: {}", function_call.args);
-    }
-    Ok(())
-}
-```
-
-### Image Generation
-
-```rust
-use gemini_rust::Gemini;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use std::fs;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::with_model(
-        std::env::var("GEMINI_API_KEY")?,
-        "models/gemini-2.5-flash-image-preview".to_string()
-    )?;
-
-    let response = client
-        .generate_content()
-        .with_user_message(
-            "Create a photorealistic image of a cute robot sitting in a garden, \
-             surrounded by colorful flowers. The robot should have a friendly \
-             expression and be made of polished metal."
-        )
-        .execute()
-        .await?;
-
-    // Save generated images
-    for candidate in response.candidates.iter() {
-        if let Some(parts) = &candidate.content.parts {
-            for part in parts.iter() {
-                if let gemini_rust::Part::InlineData { inline_data } = part {
-                    let image_bytes = BASE64.decode(&inline_data.data)?;
-                    fs::write("generated_image.png", image_bytes)?;
-                    println!("Image saved as generated_image.png");
-                }
-            }
-        }
-    }
-    Ok(())
-}
-```
-
-### Speech Generation
-
-```rust
-use gemini_rust::{Gemini, GenerationConfig, SpeechConfig, VoiceConfig, PrebuiltVoiceConfig};
-use base64::{Engine as _, engine::general_purpose};
-use std::fs::File;
-use std::io::Write;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::with_model(
-        std::env::var("GEMINI_API_KEY")?,
-        "models/gemini-2.5-flash-preview-tts".to_string()
-    )?;
-
-    let generation_config = GenerationConfig {
-        response_modalities: Some(vec!["AUDIO".to_string()]),
-        speech_config: Some(SpeechConfig {
-            voice_config: Some(VoiceConfig {
-                prebuilt_voice_config: Some(PrebuiltVoiceConfig {
-                    voice_name: "Puck".to_string(),
-                }),
-            }),
-            multi_speaker_voice_config: None,
-        }),
-        ..Default::default()
-    };
-
-    let response = client
-        .generate_content()
-        .with_user_message("Hello! Welcome to Gemini text-to-speech.")
-        .with_generation_config(generation_config)
-        .execute()
-        .await?;
-
-    // Save generated audio as PCM format
-    for candidate in response.candidates.iter() {
-        if let Some(parts) = &candidate.content.parts {
-            for part in parts.iter() {
-                if let gemini_rust::Part::InlineData { inline_data } = part {
-                    if inline_data.mime_type.starts_with("audio/") {
-                        let audio_bytes = general_purpose::STANDARD.decode(&inline_data.data)?;
-                        let mut file = File::create("speech_output.pcm")?;
-                        file.write_all(&audio_bytes)?;
-                        println!("Audio saved as speech_output.pcm");
-                        println!("Convert to WAV using: ffmpeg -f s16le -ar 24000 -ac 1 -i speech_output.pcm speech_output.wav");
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-```
-
-### Google Search Tool
-
-```rust
-use gemini_rust::{Gemini, Tool};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    let response = client
-        .generate_content()
-        .with_user_message("What's the latest news about Rust programming language?")
-        .with_tool(Tool::google_search())
-        .execute()
-        .await?;
-
-    println!("Response: {}", response.text());
-    Ok(())
-}
-```
-
-### Thinking Mode (Gemini 2.5)
-
-```rust
-use gemini_rust::Gemini;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Use Gemini 2.5 Pro for advanced thinking capabilities
-    let client = Gemini::pro(std::env::var("GEMINI_API_KEY")?)?;
-
-    let response = client
-        .generate_content()
-        .with_user_message("Explain quantum computing in simple terms")
-        .with_dynamic_thinking()  // Let model decide thinking budget
-        .with_thoughts_included(true)  // Include thinking process
-        .execute()
-        .await?;
-
-    // Access thinking summaries
-    for thought in response.thoughts() {
-        println!("Thought: {}", thought);
-    }
-
-    println!("Response: {}", response.text());
-    Ok(())
-}
-```
-
-### Text Embeddings
-
-```rust
-use gemini_rust::{Gemini, Model, TaskType};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::with_model(
-        std::env::var("GEMINI_API_KEY")?,
-        Model::TextEmbedding004
-    )?;
-
-    let response = client
-        .embed_content()
-        .with_text("Hello, this is my text to embed")
-        .with_task_type(TaskType::RetrievalDocument)
-        .execute()
-        .await?;
-
-    println!("Embedding dimensions: {}", response.embedding.values.len());
-    Ok(())
-}
-```
-
-### Cached Content
-
-Cache large context (system instructions, conversation history) to reduce costs and improve performance for repeated API calls:
-
-```rust
-use gemini_rust::Gemini;
-use std::time::Duration;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    // Create cached content with system instruction and conversation history
-    let cache = client
-        .create_cache()
-        .with_display_name("My Programming Assistant")?
-        .with_system_instruction("You are a helpful programming assistant.")
-        .with_user_message("Hello! I'm learning Rust.")
-        .with_model_message("Great! I'm here to help you learn Rust programming.")
-        .with_ttl(Duration::from_secs(3600)) // Cache for 1 hour
-        .execute()
-        .await?;
-
-    // Use the cached content for subsequent requests
-    let response = client
-        .generate_content()
-        .with_cached_content(&cache)
-        .with_user_message("Can you explain ownership?")
-        .execute()
-        .await?;
-
-    println!("Response: {}", response.text());
-
-    // Clean up when done
-    cache.delete().await.map_err(|(_, e)| e)?;
-    Ok(())
-}
-```
-
-### Batch Processing
-
-The library supports batching multiple content generation requests into a single operation. You can execute the batch directly for a small number of requests. For larger jobs, you should use the `execute_as_file()` method, which serializes the requests to a JSONL file, uploads it, and initiates the batch job.
-
-```rust
-use gemini_rust::{Gemini, Message};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    // Create multiple requests
-    let request1 = client
-        .generate_content()
-        .with_user_message("What is the meaning of life?")
-        .build();
-
-    let request2 = client
-        .generate_content()
-        .with_user_message("What is the best programming language?")
-        .build();
-
-    // For smaller jobs, execute directly:
-    let batch = client
-        .batch_generate_content()
-        .with_request(request1)
-        .with_request(request2)
-        .execute()
-        .await?;
-
-    // For a large number of requests, use execute_as_file():
-    // let batch = client
-    //     .batch_generate_content()
-    //     .with_requests(many_requests)
-    //     .execute_as_file()
-    //     .await?;
-
-    println!("Batch Name: {}", batch.name());
-
-    // The `execute()` method polls for completion.
-    // You can then immediately check the final status.
-    match batch.status().await? {
-        gemini_rust::BatchStatus::Succeeded { results } => {
-            for item in results {
-                match item.response {
-                    Ok(response) => {
-                        println!("Result for key {}: {}", item.meta.key, response.text());
-                    }
-                    Err(e) => {
-                        println!("Error for key {}: {:?}", item.meta.key, e);
-                    }
-                }
-            }
-        }
-        status => println!("Batch finished with status: {:?}", status),
-    }
-
-    Ok(())
-}
-```
-
-### Image Processing
-
-```rust
-use gemini_rust::{Gemini, Blob};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    // Load and encode image as base64
-    let image_data = std::fs::read("path/to/image.jpg")?;
-    let base64_image = base64::encode(&image_data);
-
-    let blob = Blob::new("image/jpeg", base64_image);
-
-    let response = client
-        .generate_content()
-        .with_user_message("What's in this image?")
-        .with_inline_data("image/jpeg", base64_image)
-        .execute()
-        .await?;
-
-    println!("Response: {}", response.text());
-    Ok(())
-}
-```
-
-### Generation Configuration
-
-```rust
-use gemini_rust::{Gemini, GenerationConfig};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = Gemini::new(std::env::var("GEMINI_API_KEY")?)?;
-
-    let response = client
-        .generate_content()
-        .with_user_message("Write a creative story")
-        .with_generation_config(GenerationConfig {
-            temperature: Some(0.9),
-            max_output_tokens: Some(1000),
-            top_p: Some(0.8),
-            top_k: Some(40),
-            stop_sequences: Some(vec!["END".to_string()]),
-            ..Default::default()
-        })
-        .execute()
-        .await?;
-
-    println!("Response: {}", response.text());
-    Ok(())
-}
-```
+Enable real-time content streaming for interactive applications. See [`basic_streaming.rs`](examples/basic_streaming.rs) for examples of processing content as it's generated with immediate display.
+
+## 🛠️ Key Features
+
+The library provides comprehensive access to all Gemini 2.5 capabilities through an intuitive Rust API:
+
+### 🧠 **Thinking Mode (Gemini 2.5)**
+
+Advanced reasoning capabilities with thought process visibility and custom thinking budgets. See [`thinking_basic.rs`](examples/thinking_basic.rs) and [`thinking_advanced.rs`](examples/thinking_advanced.rs).
+
+### 🛠️ **Function Calling & Tools**
+
+- Custom function declarations with OpenAPI schema support (using `schemars`)
+- Google Search integration for real-time information
+- Type-safe function definitions with automatic schema generation
+- See [`tools.rs`](examples/tools.rs) and [`complex_function.rs`](examples/complex_function.rs)
+
+### 🎨 **Multimodal Generation**
+
+- **Image Generation**: Text-to-image with detailed prompts and editing capabilities
+- **Speech Generation**: Text-to-speech with single and multi-speaker support
+- **Image Processing**: Analyze images, videos, and binary data
+- See [`image_generation.rs`](examples/image_generation.rs) and [`multi_speaker_tts.rs`](examples/multi_speaker_tts.rs)
+
+### 📦 **Batch Processing**
+
+Efficient processing of multiple requests with automatic file handling for large jobs. See [`batch_generate.rs`](examples/batch_generate.rs).
+
+### 💾 **Content Caching**
+
+Cache system instructions and conversation history to reduce costs and improve performance. See [`cache_basic.rs`](examples/cache_basic.rs).
+
+### 📊 **Text Embeddings**
+
+Advanced embedding generation with multiple task types for document retrieval and semantic search. See [`embedding.rs`](examples/embedding.rs).
+
+### 🔄 **Streaming Responses**
+
+Real-time streaming of generated content for interactive applications. See [`streaming.rs`](examples/streaming.rs).
+
+### ⚙️ **Highly Configurable**
+
+- Custom models and endpoints
+- Detailed generation parameters (temperature, tokens, etc.)
+- HTTP client customization with timeouts and proxies
+- See [`generation_config.rs`](examples/generation_config.rs) and [`custom_base_url.rs`](examples/custom_base_url.rs)
+
+### 🔍 **Observability**
+
+Built-in structured logging and telemetry with `tracing` for comprehensive monitoring and debugging.
 
 ## 🔧 Configuration
 
 ### Custom Models
 
-```rust
-use gemini_rust::Gemini;
-
-// Use Gemini 2.5 Flash (default)
-let client = Gemini::new(api_key)?;
-
-// Use Gemini 2.5 Pro for advanced tasks
-let client = Gemini::pro(api_key)?;
-
-// Use specific model
-let client = Gemini::with_model(api_key, "models/gemini-1.5-pro".to_string())?;
-```
+Configure different Gemini models including Flash, Pro, Lite, and custom models. See [`custom_models.rs`](examples/custom_models.rs) for examples of all model configuration options including convenience methods, enum variants, and custom model strings.
 
 ### Custom Base URL
 
-```rust
-use gemini_rust::Gemini;
-
-// Custom endpoint
-let client = Gemini::with_base_url(
-    api_key,
-    "https://custom-api.example.com/v1/".parse()?
-)?;
-
-// Custom model and endpoint
-let client = Gemini::with_model_and_base_url(
-    api_key,
-    "models/gemini-pro".to_string(),
-    "https://custom-api.example.com/v1/".parse()?
-)?;
-```
+Use custom API endpoints and configurations. See [`custom_base_url.rs`](examples/custom_base_url.rs) for examples of configuring custom endpoints with different models.
 
 ### Configurable HTTP Client Builder
 
-For advanced HTTP configuration (timeouts, proxies, custom headers), use the builder pattern:
-
-```rust
-use gemini_rust::{Gemini, GeminiBuilder, Model};
-use reqwest::ClientBuilder;
-use std::time::Duration;
-
-let http_client = ClientBuilder::new()
-    .timeout(Duration::from_secs(30))
-    .user_agent("my-app/1.0")
-    .proxy(reqwest::Proxy::http("http://proxy.example.com:8080")?)
-    .build()?;
-
-let client = GeminiBuilder::new(api_key)
-    .with_model(Model::Gemini25Pro)
-    .with_http_client(http_client)
-    .with_base_url("https://api.example.com/".parse()?)
-    .build()?;
-```
+For advanced HTTP configuration (timeouts, proxies, custom headers), use the builder pattern. See [`http_client_builder.rs`](examples/http_client_builder.rs) for a complete example with custom timeouts, user agents, connection pooling, and proxy configuration.
 
 ## 🔍 Tracing and Telemetry
 
@@ -504,52 +111,31 @@ The library is instrumented with the `tracing` crate to provide detailed telemet
 
 Key tracing features include:
 
-* **HTTP Request Tracing**: Captures detailed information about every API call, including HTTP method, URL, and response status, to help diagnose network-related issues.
-* **Token Usage Monitoring**: Records the number of prompt, candidate, and total tokens for each generation request, enabling cost analysis and optimization.
-* **Structured Logging**: Emits traces as structured events, compatible with modern log aggregation platforms like Elasticsearch, Datadog, and Honeycomb, allowing for powerful querying and visualization.
-* **Performance Metrics**: Provides timing information for each API request, allowing you to identify and address performance bottlenecks.
+- **HTTP Request Tracing**: Captures detailed information about every API call, including HTTP method, URL, and response status, to help diagnose network-related issues
+- **Token Usage Monitoring**: Records the number of prompt, candidate, and total tokens for each generation request, enabling cost analysis and optimization
+- **Structured Logging**: Emits traces as structured events, compatible with modern log aggregation platforms like Elasticsearch, Datadog, and Honeycomb, allowing for powerful querying and visualization
+- **Performance Metrics**: Provides timing information for each API request, allowing you to identify and address performance bottlenecks
 
-To use these features, you will need to integrate a `tracing` subscriber into your application. For structured logging, it is recommended to use a JSON-based subscriber.
+To use these features, you will need to integrate a `tracing` subscriber into your application. See [`tracing_telemetry.rs`](examples/tracing_telemetry.rs) for comprehensive examples including basic console logging, structured logging for production, and environment-based log level filtering.
 
 ## 📚 Examples
 
-The repository includes comprehensive examples:
+The repository includes 30+ comprehensive examples demonstrating all features. See [`examples/README.md`](examples/README.md) for detailed information.
 
-| Example | Description |
-|---------|-------------|
-| [`simple.rs`](examples/simple.rs) | Basic text generation and function calling |
-| [`advanced.rs`](examples/advanced.rs) | Advanced content generation with all parameters |
-| [`streaming.rs`](examples/streaming.rs) | Real-time streaming responses |
-| [`tools.rs`](examples/tools.rs) | Custom function declarations |
-| [`google_search.rs`](examples/google_search.rs) | Google Search integration |
-| [`google_search_with_functions.rs`](examples/google_search_with_functions.rs) | Google Search with custom functions |
-| [`thinking_basic.rs`](examples/thinking_basic.rs) | Gemini 2.5 thinking mode (basic) |
-| [`thinking_advanced.rs`](examples/thinking_advanced.rs) | Gemini 2.5 thinking mode (advanced) |
-| [`batch_generate.rs`](examples/batch_generate.rs) | Batch content generation |
-| [`batch_cancel.rs`](examples/batch_cancel.rs) | Batch operation cancellation |
-| [`batch_delete.rs`](examples/batch_delete.rs) | Batch operation deletion |
-| [`batch_list.rs`](examples/batch_list.rs) | Batch operation listing with streaming |
-| [`batch_embedding.rs`](examples/batch_embedding.rs) | Batch text embedding generation |
-| [`cache_basic.rs`](examples/cache_basic.rs) | Cached content creation and usage |
-| [`embedding.rs`](examples/embedding.rs) | Text embedding generation |
-| [`error_handling.rs`](examples/error_handling.rs) | Error handling examples |
-| [`blob.rs`](examples/blob.rs) | Image and binary data processing |
-| [`files_delete_all.rs`](examples/files_delete_all.rs) | Delete all files |
-| [`files_lifecycle.rs`](examples/files_lifecycle.rs) | Full file lifecycle |
-| [`simple_image_generation.rs`](examples/simple_image_generation.rs) | Basic text-to-image generation |
-| [`image_generation.rs`](examples/image_generation.rs) | Advanced image generation examples |
-| [`image_editing.rs`](examples/image_editing.rs) | Image editing with text prompts |
-| [`simple_speech_generation.rs`](examples/simple_speech_generation.rs) | Basic text-to-speech generation |
-| [`multi_speaker_tts.rs`](examples/multi_speaker_tts.rs) | Multi-speaker text-to-speech dialogue |
-| [`structured_response.rs`](examples/structured_response.rs) | Structured JSON output |
-| [`generation_config.rs`](examples/generation_config.rs) | Custom generation parameters |
-| [`custom_base_url.rs`](examples/custom_base_url.rs) | Using a custom API endpoint |
-| [`curl_equivalent.rs`](examples/curl_equivalent.rs) | Equivalent cURL commands for API calls |
+### Quick Start Examples
 
-Run an example:
+- [`basic_generation.rs`](examples/basic_generation.rs) - Simple content generation for beginners
+- [`basic_streaming.rs`](examples/basic_streaming.rs) - Real-time streaming responses
+- [`simple.rs`](examples/simple.rs) - Comprehensive example with function calling
+- [`thinking_basic.rs`](examples/thinking_basic.rs) - Gemini 2.5 thinking mode
+- [`batch_generate.rs`](examples/batch_generate.rs) - Batch content generation
+- [`image_generation.rs`](examples/image_generation.rs) - Text-to-image generation
+- [`google_search.rs`](examples/google_search.rs) - Google Search integration
+
+Run any example:
 
 ```bash
-GEMINI_API_KEY="your-api-key" cargo run --example simple
+GEMINI_API_KEY="your-api-key" cargo run --example basic_generation
 ```
 
 ## 🔑 API Key Setup
