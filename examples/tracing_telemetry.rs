@@ -38,21 +38,20 @@ async fn main() -> ExitCode {
             .init();
     }
 
-    println!("🔍 Tracing and Telemetry Example");
-    println!("💡 Set RUST_LOG_FORMAT=json for structured output");
-    println!("💡 Set RUST_LOG=debug for detailed logging");
-    println!();
+    info!("🔍 Tracing and Telemetry Example");
+    info!("💡 Set RUST_LOG_FORMAT=json for structured output");
+    info!("💡 Set RUST_LOG=debug for detailed logging");
 
     // Run all examples with the same subscriber
     match run_all_examples().await {
         Ok(()) => {
-            println!("\n✅ All tracing examples completed successfully");
+            info!("\n✅ All tracing examples completed successfully");
             ExitCode::SUCCESS
         }
         Err(e) => {
             let error_chain = DisplayErrorChain::new(e.as_ref());
             error!(error.debug = ?e, error.chained = %error_chain, "examples failed");
-            println!("\n❌ Examples failed - check logs for details");
+            info!("\n❌ Examples failed - check logs for details");
             ExitCode::FAILURE
         }
     }
@@ -64,7 +63,7 @@ async fn run_all_examples() -> Result<(), Box<dyn std::error::Error>> {
     let client = Gemini::new(api_key)?;
 
     // Example 1: Basic API calls with automatic tracing
-    println!("🔍 Example 1: Basic content generation");
+    info!("🔍 Example 1: Basic content generation");
     info!("starting basic API calls with tracing");
 
     let response = client
@@ -77,10 +76,10 @@ async fn run_all_examples() -> Result<(), Box<dyn std::error::Error>> {
         response_length = response.text().len(),
         "basic generation completed"
     );
-    println!("✅ Basic generation completed");
+    info!("✅ Basic generation completed");
 
     // Example 2: Production-ready API calls with comprehensive tracing
-    println!("\n🔍 Example 2: Production-style API calls with system prompt");
+    info!("\n🔍 Example 2: Production-style API calls with system prompt");
 
     info!(
         environment = "production",
@@ -103,10 +102,10 @@ async fn run_all_examples() -> Result<(), Box<dyn std::error::Error>> {
         operation = "content_generation",
         "production API call completed successfully"
     );
-    println!("✅ Production-style API call completed");
+    info!("✅ Production-style API call completed");
 
     // Example 3: Demonstrate different log levels
-    println!("\n🔍 Example 3: Different log levels demonstration");
+    info!("\n🔍 Example 3: Different log levels demonstration");
 
     debug!("this debug message will only show if RUST_LOG=debug");
     info!("this info message shows by default");
@@ -138,7 +137,7 @@ async fn run_all_examples() -> Result<(), Box<dyn std::error::Error>> {
         response_length = response.text().len(),
         "log levels demonstration completed"
     );
-    println!("✅ Log levels demonstration completed");
+    info!("✅ Log levels demonstration completed");
 
     Ok(())
 }

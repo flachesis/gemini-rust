@@ -88,9 +88,9 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         "received response from Pro model"
     );
 
-    println!("✅ Successfully demonstrated all model configuration options!");
-    println!("Default model response: {}", response.text());
-    println!("Pro model response: {}", response_pro.text());
+    info!("✅ Successfully demonstrated all model configuration options!");
+    info!("Default model response: {}", response.text());
+    info!("Pro model response: {}", response_pro.text());
 
     Ok(())
 }

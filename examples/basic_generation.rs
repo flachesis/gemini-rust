@@ -41,7 +41,6 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Simple response: {}", response.text());
     info!(response = response.text(), "simple response received");
 
     // Example 2: With system prompt for context
@@ -52,10 +51,6 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!(
-        "\nResponse with system prompt: {}",
-        response_with_system.text()
-    );
     info!(
         response = response_with_system.text(),
         "response with system prompt received"
@@ -70,12 +65,11 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("\nConversation response: {}", conversation_response.text());
     info!(
         response = conversation_response.text(),
         "conversation response received"
     );
 
-    println!("\n✅ Basic content generation examples completed successfully!");
+    info!("\n✅ Basic content generation examples completed successfully!");
     Ok(())
 }

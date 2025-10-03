@@ -66,7 +66,5 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         "response received using custom HTTP client"
     );
 
-    println!("Response: {}", response.text());
-
     Ok(())
 }

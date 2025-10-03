@@ -36,7 +36,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("streaming responses example starting");
 
-    println!("🔄 Streaming a story about programming...\n");
+    info!("🔄 Streaming a story about programming...\n");
 
     // Create a streaming request
     let mut stream = client
@@ -51,21 +51,20 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let mut full_response = String::new();
     while let Some(chunk) = stream.try_next().await? {
         let text = chunk.text();
-        print!("{}", text);
+        info!("{}", text);
         full_response.push_str(&text);
 
         // Flush stdout to ensure immediate display
         io::stdout().flush()?;
     }
 
-    println!("\n\n✅ Streaming completed!");
     info!(
         response_length = full_response.len(),
         "streaming response completed"
     );
 
     // Example 2: Streaming with system prompt
-    println!("\n🔄 Streaming technical explanation...\n");
+    info!("\n🔄 Streaming technical explanation...\n");
 
     let mut tech_stream = client
         .generate_content()
@@ -77,10 +76,10 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     while let Some(chunk) = tech_stream.try_next().await? {
-        print!("{}", chunk.text());
+        info!("{}", chunk.text());
         io::stdout().flush()?;
     }
 
-    println!("\n\n✅ All streaming examples completed successfully!");
+    info!("\n\n✅ All streaming examples completed successfully!");
     Ok(())
 }
