@@ -5,6 +5,65 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-10-01
+
+### ✨ Features
+
+#### Comprehensive Tracing and Telemetry Support
+
+- **Structured Logging with `tracing`**: Added comprehensive tracing instrumentation throughout the library using the `tracing` crate for detailed observability
+- **HTTP Request Tracing**: Captures detailed information about every API call including HTTP method, URL, and response status for network diagnostics
+- **Token Usage Monitoring**: Records prompt, candidate, and total tokens for each generation request enabling cost analysis and optimization
+- **Performance Metrics**: Provides timing information for each API request to identify and address performance bottlenecks
+- **Structured Event Emission**: Compatible with modern log aggregation platforms like Elasticsearch, Datadog, and Honeycomb
+- **Span Field Generation**: Detailed span instrumentation with contextual field recording throughout the request lifecycle
+
+#### Enhanced Function Calling Capabilities
+
+- **OpenAPI Schema Support**: Enhanced function declarations now leverage OpenAPI support with automatic schema generation using `schemars`
+- **Complex Function Example**: Added comprehensive example demonstrating sophisticated function calling patterns with multi-step operations
+- **Function Behavior Control**: Added `Behavior` enum with `Blocking` and `NonBlocking` modes for function execution control
+- **Improved Function Parameters**: Enhanced parameter handling with optional JSON Schema-based validation
+- **Response Schema Definition**: Added optional response schema specification for better function output validation
+
+#### HTTP Client Configuration Builder
+
+- **`GeminiBuilder` Pattern**: New builder pattern for advanced HTTP client configuration including timeouts, proxies, and custom headers
+- **Custom HTTP Client Support**: Ability to provide pre-configured `reqwest::Client` instances for advanced networking scenarios
+- **Flexible Client Construction**: Enhanced client creation with comprehensive configuration options
+- **Base URL Configuration**: Improved handling of custom base URLs with proper `Url` type support
+
+#### Model Deserialization Improvements
+
+- **Enhanced Type Safety**: Improved model deserialization with better error handling and type validation
+- **Deserialization Tests**: Added comprehensive test suite for model deserialization scenarios
+- **Error Message Clarity**: Better error messages for deserialization failures with detailed context
+
+#### Agent Development Support
+
+- **Agent Development Guide**: New `AGENTS.md` file providing comprehensive guidelines for developing agents and applications
+- **Logging Conventions**: Detailed conventions for structured logging including field naming, value formatting, and instrumentation patterns
+- **Best Practices Documentation**: Guidelines for span placeholders, log levels, and observability patterns
+
+### 🔧 Technical Improvements
+
+- **New Dependencies**: Added `tracing`, `strum`, `schemars` for enhanced functionality
+- **Example Instrumentation**: All examples now include proper tracing initialization with `tracing-subscriber`
+- **Centralized Tracing Approach**: Unified tracing implementation across all client operations
+- **Generation Builder Cleanup**: Refactored and cleaned up generation builder patterns
+- **Client Architecture Refactor**: Major improvements to client architecture for better maintainability
+
+### 📚 Documentation
+
+- **Tracing Chapter**: New comprehensive section in README covering tracing and telemetry features
+- **Builder Pattern Examples**: Added examples demonstrating the new `GeminiBuilder` configuration options
+- **Agent Development Reference**: Link to new agent development guide for advanced usage patterns
+
+### 🙏 Contributors
+
+- **@eklipse2k8** - Contributed to OpenAPI schema support and function calling improvements
+- **@npatsakula** - Major contributions to tracing implementation, client architecture improvements, and technical enhancements
+
 ## [1.4.0] - 2025-09-11
 
 ### ✨ Features

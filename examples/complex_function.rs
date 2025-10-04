@@ -6,6 +6,7 @@ use gemini_rust::{
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use tracing::{info, warn};
 
 #[derive(Deserialize, Serialize, Debug, JsonSchema)]
 struct Command {
@@ -30,9 +31,9 @@ struct StatusResponse {
     /// Additional details about the operation
     detail: String,
 }
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
     let api_key = env::var("GEMINI_API_KEY")?;
     let client = Gemini::pro(api_key).expect("unable to create Gemini API client");
 
@@ -44,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_parameters::<RootCommander>()
     .with_response::<StatusResponse>();
 
-    println!("Sending function response...",);
+    info!("Sending function response...");
 
     let response = client
         .generate_content()
@@ -75,13 +76,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 if let Part::FunctionResponse { function_response } = part {
                     if let Some(last_call) = function_queue.pop_front() {
                         if last_call.name != function_response.name {
-                            eprintln!(
+                            warn!(
                                 "Warning: Function response name '{}' does not match last function call name '{}'",
                                 function_response.name, last_call.name
                             );
                         }
                     } else {
-                        eprintln!(
+                        warn!(
                             "Warning: Function response name '{}' has no matching function call",
                             function_response.name
                         );
@@ -96,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     reply.contents.extend(contents);
 
     for function_call in function_queue {
-        println!(
+        info!(
             "Function call received: {} with args:\n{}",
             function_call.name,
             serde_json::to_string_pretty(&function_call.args)?
@@ -121,11 +122,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         reply.contents.push(content);
     }
 
-    println!("Sending function response...",);
+    info!("Sending function response...",);
 
     let final_response = reply.execute().await?;
 
-    println!("Final response from model: {}", final_response.text(),);
+    info!("Final response from model: {}", final_response.text(),);
 
     Ok(())
 }
