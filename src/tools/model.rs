@@ -17,11 +17,18 @@ pub enum Tool {
         /// The Google Search configuration
         google_search: GoogleSearchConfig,
     },
+    URLContext {
+        url_context: URLContextConfig,
+    },
 }
 
 /// Empty configuration for Google Search tool
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GoogleSearchConfig {}
+
+/// Empty configuration for URL Context tool
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct URLContextConfig {}
 
 impl Tool {
     /// Create a new tool with a single function declaration
@@ -42,6 +49,13 @@ impl Tool {
     pub fn google_search() -> Self {
         Self::GoogleSearch {
             google_search: GoogleSearchConfig {},
+        }
+    }
+
+    /// Create a new URL Context tool
+    pub fn url_context() -> Self {
+        Self::URLContext {
+            url_context: URLContextConfig {},
         }
     }
 }
