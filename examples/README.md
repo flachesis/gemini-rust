@@ -42,6 +42,7 @@ Get your API key from [Google AI Studio](https://aistudio.google.com/apikey).
 | [`google_search.rs`](google_search.rs) | Google Search tool integration for real-time information |
 | [`google_search_with_functions.rs`](google_search_with_functions.rs) | Combining Google Search with custom functions |
 | [`curl_google_search.rs`](curl_google_search.rs) | Google Search functionality with cURL equivalent commands |
+| [`url_context.rs`](url_context.rs) | URL Context tool for analyzing web content |
 
 ### 🧠 Thinking Mode (Gemini 2.5)
 

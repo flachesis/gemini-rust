@@ -131,6 +131,7 @@ The repository includes 30+ comprehensive examples demonstrating all features. S
 - [`batch_generate.rs`](examples/batch_generate.rs) - Batch content generation
 - [`image_generation.rs`](examples/image_generation.rs) - Text-to-image generation
 - [`google_search.rs`](examples/google_search.rs) - Google Search integration
+- [`url_context.rs`](examples/url_context.rs) - URL Context tool for web content analysis
 
 Run any example:
 
