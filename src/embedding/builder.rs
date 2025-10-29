@@ -11,6 +11,7 @@ use crate::{
 };
 
 /// Builder for embed generation requests
+#[derive(Clone)]
 pub struct EmbedBuilder {
     client: Arc<GeminiClient>,
     contents: Vec<Content>,
