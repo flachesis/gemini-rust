@@ -12,6 +12,7 @@ use crate::{
 };
 
 /// Builder for content generation requests
+#[derive(Clone)]
 pub struct ContentBuilder {
     client: Arc<GeminiClient>,
     pub contents: Vec<Content>,

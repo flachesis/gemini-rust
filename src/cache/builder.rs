@@ -15,6 +15,7 @@ use crate::tools::Tool;
 use crate::tools::ToolConfig;
 
 /// Builder for creating cached content with a fluent API.
+#[derive(Clone)]
 pub struct CacheBuilder {
     client: Arc<GeminiClient>,
     display_name: Option<String>,

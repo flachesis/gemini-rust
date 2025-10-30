@@ -7,6 +7,7 @@ use super::*;
 use crate::client::GeminiClient;
 
 /// A builder for creating a file resource.
+#[derive(Clone)]
 pub struct FileBuilder {
     client: Arc<GeminiClient>,
     file_bytes: Vec<u8>,

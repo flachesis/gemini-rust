@@ -12,6 +12,7 @@ use crate::{client::GeminiClient, generation::GenerateContentRequest};
 /// This builder simplifies the process of constructing a batch request, allowing you to
 /// add multiple `GenerateContentRequest` items and then execute them as a single
 /// long-running operation.
+#[derive(Clone)]
 pub struct BatchBuilder {
     client: Arc<GeminiClient>,
     display_name: String,
