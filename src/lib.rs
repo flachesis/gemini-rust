@@ -82,10 +82,12 @@ pub use models::{Blob, Content, Message, Modality, Part, Role};
 pub use generation::{
     builder::ContentBuilder, model::BlockReason, model::Candidate, model::CitationMetadata,
     model::CitationSource, model::FinishReason, model::GenerateContentRequest,
-    model::GenerationConfig, model::GenerationResponse, model::MultiSpeakerVoiceConfig,
-    model::PrebuiltVoiceConfig, model::PromptFeedback, model::PromptTokenDetails,
-    model::SpeakerVoiceConfig, model::SpeechConfig, model::ThinkingConfig, model::UsageMetadata,
-    model::VoiceConfig,
+    model::GenerationConfig, model::GenerationResponse, model::GroundingChunk,
+    model::GroundingMetadata, model::GroundingSegment, model::GroundingSupport,
+    model::MapsGroundingChunk, model::MultiSpeakerVoiceConfig, model::PrebuiltVoiceConfig,
+    model::PromptFeedback, model::PromptTokenDetails, model::SpeakerVoiceConfig,
+    model::SpeechConfig, model::ThinkingConfig, model::UsageMetadata, model::VoiceConfig,
+    model::WebGroundingChunk,
 };
 
 // ========== Text Embeddings ==========
@@ -109,7 +111,7 @@ pub use safety::model::{
 
 pub use tools::model::{
     FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
-    FunctionResponse, Tool, ToolConfig,
+    FunctionResponse, GoogleMapsConfig, LatLng, RetrievalConfig, Tool, ToolConfig,
 };
 
 // ========== Batch Processing ==========

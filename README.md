@@ -9,7 +9,8 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 ## ✨ Features
 
 - **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
-- **🛠️ Function Calling & Tools** - Custom functions and Google Search integration with OpenAPI schema support
+- **🛠️ Function Calling & Tools** - Custom functions, Google Search, and Google Maps integration with OpenAPI schema support
+- **🗺️ Google Maps Grounding** - Location-aware responses with Google Maps data and widget support
 - **📦 Batch Processing** - Efficient batch content generation and embedding
 - **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
@@ -42,6 +43,10 @@ Get started with simple text generation, system prompts, and conversations. See 
 
 Enable real-time content streaming for interactive applications. See [`basic_streaming.rs`](examples/basic_streaming.rs) for examples of processing content as it's generated with immediate display.
 
+### Google Maps Grounding
+
+Add location-aware capabilities to your applications with Google Maps integration. See [`simple_maps_example.rs`](examples/simple_maps_example.rs) for basic usage and [`google_maps_grounding.rs`](examples/google_maps_grounding.rs) for comprehensive examples.
+
 ## 🛠️ Key Features
 
 The library provides comprehensive access to all Gemini 2.5 capabilities through an intuitive Rust API:
@@ -54,8 +59,17 @@ Advanced reasoning capabilities with thought process visibility and custom think
 
 - Custom function declarations with OpenAPI schema support (using `schemars`)
 - Google Search integration for real-time information
+- Google Maps grounding for location-aware responses
 - Type-safe function definitions with automatic schema generation
-- See [`tools.rs`](examples/tools.rs) and [`complex_function.rs`](examples/complex_function.rs)
+- See [`tools.rs`](examples/tools.rs), [`complex_function.rs`](examples/complex_function.rs), and [`google_maps_grounding.rs`](examples/google_maps_grounding.rs)
+
+### 🗺️ **Google Maps Grounding**
+
+- **Location-Aware Responses**: Access Google Maps data for geographically specific queries
+- **Widget Support**: Generate context tokens for interactive Google Maps widgets
+- **Grounding Sources**: Access citation information for all Maps data used in responses
+- **Easy Integration**: Simple API with location context configuration
+- See [`simple_maps_example.rs`](examples/simple_maps_example.rs) and [`advanced_maps_configuration.rs`](examples/advanced_maps_configuration.rs)
 
 ### 🎨 **Multimodal Generation**
 

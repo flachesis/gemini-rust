@@ -20,6 +20,11 @@ pub enum Tool {
     URLContext {
         url_context: URLContextConfig,
     },
+    /// Google Maps grounding tool
+    GoogleMaps {
+        /// The Google Maps configuration
+        google_maps: GoogleMapsConfig,
+    },
 }
 
 /// Empty configuration for Google Search tool
@@ -29,6 +34,15 @@ pub struct GoogleSearchConfig {}
 /// Empty configuration for URL Context tool
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct URLContextConfig {}
+
+/// Configuration for Google Maps grounding tool
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GoogleMapsConfig {
+    /// Optional: Enable widget context token generation
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enable_widget: Option<bool>,
+}
 
 impl Tool {
     /// Create a new tool with a single function declaration
@@ -56,6 +70,13 @@ impl Tool {
     pub fn url_context() -> Self {
         Self::URLContext {
             url_context: URLContextConfig {},
+        }
+    }
+
+    /// Create a new Google Maps grounding tool
+    pub fn google_maps(enable_widget: Option<bool>) -> Self {
+        Self::GoogleMaps {
+            google_maps: GoogleMapsConfig { enable_widget },
         }
     }
 }
@@ -277,6 +298,9 @@ pub struct ToolConfig {
     /// The function calling config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_calling_config: Option<FunctionCallingConfig>,
+    /// The retrieval config for location-based tools like Google Maps
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub retrieval_config: Option<RetrievalConfig>,
 }
 
 /// Configuration for function calling
@@ -296,4 +320,32 @@ pub enum FunctionCallingMode {
     Any,
     /// The model must not use function calling
     None,
+}
+
+/// Retrieval configuration for location-based tools
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct RetrievalConfig {
+    /// Optional: Latitude and longitude for location context
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lat_lng: Option<LatLng>,
+}
+
+/// Geographic coordinates
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct LatLng {
+    /// Latitude in degrees
+    pub latitude: f64,
+    /// Longitude in degrees
+    pub longitude: f64,
+}
+
+impl LatLng {
+    /// Create a new LatLng coordinate
+    pub fn new(latitude: f64, longitude: f64) -> Self {
+        Self {
+            latitude,
+            longitude,
+        }
+    }
 }

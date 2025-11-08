@@ -1,3 +1,4 @@
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
@@ -80,6 +81,9 @@ pub struct Candidate {
     /// The citation metadata for the candidate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub citation_metadata: Option<CitationMetadata>,
+    /// The grounding metadata for the candidate
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grounding_metadata: Option<GroundingMetadata>,
     /// The finish reason for the candidate
     #[serde(skip_serializing_if = "Option::is_none")]
     pub finish_reason: Option<FinishReason>,
@@ -123,6 +127,81 @@ pub struct PromptTokenDetails {
     pub modality: Modality,
     /// Token count for this modality
     pub token_count: i32,
+}
+
+/// Grounding metadata for responses that use grounding tools
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundingMetadata {
+    /// Grounding chunks containing source information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grounding_chunks: Option<Vec<GroundingChunk>>,
+    /// Grounding supports connecting response text to sources
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grounding_supports: Option<Vec<GroundingSupport>>,
+    /// Web search queries used for grounding
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub web_search_queries: Option<Vec<String>>,
+    /// Google Maps widget context token
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub google_maps_widget_context_token: Option<String>,
+}
+
+/// A chunk of grounding information from a source
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundingChunk {
+    /// Maps-specific grounding information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub maps: Option<MapsGroundingChunk>,
+    /// Web-specific grounding information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub web: Option<WebGroundingChunk>,
+}
+
+/// Maps-specific grounding chunk information
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MapsGroundingChunk {
+    /// The URI of the Maps source
+    pub uri: Url,
+    /// The title of the Maps source
+    pub title: String,
+    /// The place ID from Google Maps
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub place_id: Option<String>,
+}
+
+/// Web-specific grounding chunk information
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WebGroundingChunk {
+    /// The URI of the web source
+    pub uri: Url,
+    /// The title of the web source
+    pub title: String,
+}
+
+/// Support information connecting response text to grounding sources
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundingSupport {
+    /// Segment of the response text
+    pub segment: GroundingSegment,
+    /// Indices of grounding chunks that support this segment
+    pub grounding_chunk_indices: Vec<u32>,
+}
+
+/// A segment of response text
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct GroundingSegment {
+    /// Start index of the segment in the response text
+    pub start_index: u32,
+    /// End index of the segment in the response text
+    pub end_index: u32,
+    /// The text content of the segment
+    pub text: String,
 }
 
 /// Response from the Gemini API for content generation
