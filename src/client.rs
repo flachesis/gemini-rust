@@ -230,7 +230,7 @@ impl GeminiClient {
     /// # let request = Value::Null;
     ///
     /// // POST request with JSON payload
-    /// let _response = client
+    /// let _response : () = client
     ///     .perform_request(
     ///         |c| c.post(url.clone()).json(&request),
     ///         async |r| r.json().await.context(DecodeResponseSnafu),
@@ -238,7 +238,7 @@ impl GeminiClient {
     ///     .await?;
     ///
     /// // GET request with JSON response
-    /// let _response = client
+    /// let _response : () = client
     ///     .perform_request(
     ///         |c| c.get(url.clone()),
     ///         async |r| r.json().await.context(DecodeResponseSnafu),
