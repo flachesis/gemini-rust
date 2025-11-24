@@ -28,6 +28,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::{File, FileHandle, FilesError};
+
 /// Role of a message in a conversation
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
@@ -73,6 +75,49 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+    FileData {
+        // The file coordinates
+        #[serde(rename = "fileData")]
+        file_data: FileData,
+    },
+}
+
+/// Coordinates for a previously uploaded file. Implements `TryFrom` for [`FileHandle`] (or
+/// `&FileHandle` to be precise) for user convenience, as an uploaded file is represented via the
+/// [`File`] type but a [`FileHandle`] is required to upload a file or search for files.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileData {
+    mime_type: String,
+    file_uri: String,
+}
+
+impl TryFrom<&FileHandle> for FileData {
+    type Error = FilesError;
+
+    fn try_from(file_handle: &FileHandle) -> Result<Self, Self::Error> {
+        let File { mime_type, uri, .. } = file_handle.get_file_meta();
+
+        let none_fields: Vec<_> = [
+            mime_type.is_none().then_some("mime_type"),
+            uri.is_none().then_some("uri"),
+        ]
+        .into_iter()
+        .flatten()
+        .map(String::from)
+        .collect();
+
+        if !none_fields.is_empty() {
+            return Err(FilesError::Incomplete {
+                fields: none_fields,
+            });
+        }
+
+        Ok(Self {
+            mime_type: mime_type.as_ref().expect("Some-ness checked above").clone(),
+            file_uri: uri.as_ref().expect("Some-ness checked above").to_string(),
+        })
+    }
 }
 
 /// Blob for a message part
@@ -201,6 +246,26 @@ impl Content {
             }]),
             role: None,
         }
+    }
+
+    /// Create a new content with text and coordinates to a previously uploaded file
+    pub fn text_with_file(
+        text: impl Into<String>,
+        file_handle: &FileHandle,
+    ) -> Result<Self, FilesError> {
+        Ok(Self {
+            parts: Some(vec![
+                Part::Text {
+                    text: text.into(),
+                    thought: None,
+                    thought_signature: None,
+                },
+                Part::FileData {
+                    file_data: FileData::try_from(file_handle)?,
+                },
+            ]),
+            role: None,
+        })
     }
 
     /// Add a role to this content
