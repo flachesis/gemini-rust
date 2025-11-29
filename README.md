@@ -19,6 +19,7 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **🎤 Speech Generation** - Text-to-speech with single and multi-speaker support
 - **🖼️ Multimodal Support** - Images and binary data processing
 - **📊 Text Embeddings** - Advanced embedding generation with multiple task types
+- **🔍 File Search** - Retrieval Augmented Generation (RAG) with semantic document search
 - **⚙️ Highly Configurable** - Custom models, endpoints, and generation parameters with HTTP client builder
 - **🔒 Type Safe** - Comprehensive type definitions with full `serde` support
 - **⚡ Async/Await** - Built on `tokio` for high-performance async operations
@@ -89,6 +90,16 @@ Cache system instructions and conversation history to reduce costs and improve p
 ### 📊 **Text Embeddings**
 
 Advanced embedding generation with multiple task types for document retrieval and semantic search. See [`embedding.rs`](examples/embedding.rs).
+
+### 🔍 **File Search (RAG)**
+
+- **Semantic Document Search**: Upload documents and query them with natural language
+- **Automatic Chunking**: Documents are automatically split, embedded, and indexed
+- **Custom Metadata**: Filter searches using metadata tags (e.g., `category = "api-docs"`)
+- **Grounding Citations**: Get source references for model responses
+- **Multiple Upload Methods**: Direct upload or import from Files API
+- **Persistent Storage**: Documents persist indefinitely until deleted
+- See [`file_search_basic.rs`](examples/file_search_basic.rs), [`file_search_metadata.rs`](examples/file_search_metadata.rs), and [`file_search_import.rs`](examples/file_search_import.rs)
 
 ### 🔄 **Streaming Responses**
 
