@@ -168,9 +168,27 @@ pub enum Error {
     Io {
         source: std::io::Error,
     },
+
+    #[snafu(display("operation timed out: {name}"))]
+    OperationTimeout {
+        name: String,
+    },
+
+    #[snafu(display("operation failed: {name}, code: {code}, message: {message}"))]
+    OperationFailed {
+        name: String,
+        code: i32,
+        message: String,
+    },
+
+    #[snafu(display("invalid resource name: {name}"))]
+    InvalidResourceName {
+        name: String,
+    },
 }
 
 /// Internal client for making requests to the Gemini API
+#[derive(Debug)]
 pub struct GeminiClient {
     http_client: Client,
     pub model: Model,
@@ -793,6 +811,252 @@ impl GeminiClient {
             .unwrap_or_else(|| "cachedContents".to_string());
         self.build_url_with_suffix(&suffix)
     }
+
+    // File Search Store operations
+
+    #[instrument(skip_all, fields(display_name = request.display_name.as_deref()))]
+    pub async fn create_file_search_store(
+        &self,
+        request: crate::file_search::CreateFileSearchStoreRequest,
+    ) -> Result<crate::file_search::FileSearchStore, Error> {
+        let url = self.build_url_with_suffix("fileSearchStores")?;
+        self.post_json(url, &request).await
+    }
+
+    #[instrument(skip_all, fields(store.name = %name))]
+    pub async fn get_file_search_store(
+        &self,
+        name: &str,
+    ) -> Result<crate::file_search::FileSearchStore, Error> {
+        let url = self.build_url_with_suffix(name)?;
+        self.get_json(url).await
+    }
+
+    #[instrument(skip_all, fields(
+        page.size = page_size,
+        page.token.present = page_token.is_some(),
+    ))]
+    pub async fn list_file_search_stores(
+        &self,
+        page_size: Option<u32>,
+        page_token: Option<&str>,
+    ) -> Result<crate::file_search::ListFileSearchStoresResponse, Error> {
+        let mut url = self.build_url_with_suffix("fileSearchStores")?;
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", token);
+        }
+        self.get_json(url).await
+    }
+
+    #[instrument(skip_all, fields(store.name = %name, force))]
+    pub async fn delete_file_search_store(&self, name: &str, force: bool) -> Result<(), Error> {
+        let mut url = self.build_url_with_suffix(name)?;
+        if force {
+            url.query_pairs_mut().append_pair("force", "true");
+        }
+        self.perform_request(|c| c.delete(url.clone()), async |_r| Ok(()))
+            .await
+    }
+
+    // Upload operation (resumable protocol)
+
+    #[instrument(skip_all, fields(
+        store.name = %store_name,
+        file.size = file_data.len(),
+        display_name = display_name.as_deref(),
+        mime.type = mime_type.as_ref().map(|m| m.to_string()),
+    ))]
+    pub async fn upload_to_file_search_store(
+        &self,
+        store_name: &str,
+        file_data: Vec<u8>,
+        display_name: Option<String>,
+        mime_type: Option<mime::Mime>,
+        custom_metadata: Option<Vec<crate::file_search::CustomMetadata>>,
+        chunking_config: Option<crate::file_search::ChunkingConfig>,
+    ) -> Result<crate::file_search::Operation, Error> {
+        use crate::file_search::UploadToFileSearchStoreRequest;
+
+        let metadata_request = UploadToFileSearchStoreRequest {
+            display_name,
+            custom_metadata,
+            chunking_config,
+            mime_type: mime_type.clone(),
+        };
+
+        let mime = mime_type.unwrap_or(mime::APPLICATION_OCTET_STREAM);
+
+        let init_url = format!("/upload/v1beta/{}:uploadToFileSearchStore", store_name);
+        let upload_url = self
+            .initiate_resumable_upload(&init_url, file_data.len(), &mime, Some(&metadata_request))
+            .await?;
+
+        let operation: crate::file_search::Operation =
+            self.upload_file_data(&upload_url, file_data).await?;
+        Ok(operation)
+    }
+
+    // Import operation
+
+    #[instrument(skip_all, fields(
+        store.name = %store_name,
+        file.name = %request.file_name,
+    ))]
+    pub async fn import_file_to_search_store(
+        &self,
+        store_name: &str,
+        request: crate::file_search::ImportFileRequest,
+    ) -> Result<crate::file_search::Operation, Error> {
+        let url = self.build_url_with_suffix(&format!("{}:importFile", store_name))?;
+        self.post_json(url, &request).await
+    }
+
+    // Document operations
+
+    #[instrument(skip_all, fields(
+        store.name = %store_name,
+        document.id = %document_id,
+    ))]
+    pub async fn get_document(
+        &self,
+        store_name: &str,
+        document_id: &str,
+    ) -> Result<crate::file_search::Document, Error> {
+        let url =
+            self.build_url_with_suffix(&format!("{}/documents/{}", store_name, document_id))?;
+        self.get_json(url).await
+    }
+
+    #[instrument(skip_all, fields(
+        store.name = %store_name,
+        page.size = page_size,
+        page.token.present = page_token.is_some(),
+    ))]
+    pub async fn list_documents(
+        &self,
+        store_name: &str,
+        page_size: Option<u32>,
+        page_token: Option<&str>,
+    ) -> Result<crate::file_search::ListDocumentsResponse, Error> {
+        let mut url = self.build_url_with_suffix(&format!("{}/documents", store_name))?;
+        if let Some(size) = page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", &size.to_string());
+        }
+        if let Some(token) = page_token {
+            url.query_pairs_mut().append_pair("pageToken", token);
+        }
+        self.get_json(url).await
+    }
+
+    #[instrument(skip_all, fields(
+        store.name = %store_name,
+        document.id = %document_id,
+        force,
+    ))]
+    pub async fn delete_document(
+        &self,
+        store_name: &str,
+        document_id: &str,
+        force: bool,
+    ) -> Result<(), Error> {
+        let mut url =
+            self.build_url_with_suffix(&format!("{}/documents/{}", store_name, document_id))?;
+        if force {
+            url.query_pairs_mut().append_pair("force", "true");
+        }
+        self.perform_request(|c| c.delete(url.clone()), async |_r| Ok(()))
+            .await
+    }
+
+    // Operation operations
+
+    #[instrument(skip_all, fields(operation.name = %name))]
+    pub async fn get_operation(&self, name: &str) -> Result<crate::file_search::Operation, Error> {
+        let url = self.build_url_with_suffix(name)?;
+        self.get_json(url).await
+    }
+
+    // Resumable upload helpers
+
+    #[instrument(skip(self, metadata))]
+    async fn initiate_resumable_upload<T: Serialize>(
+        &self,
+        path: &str,
+        total_bytes: usize,
+        mime_type: &Mime,
+        metadata: Option<&T>,
+    ) -> Result<String, Error> {
+        let url = self.build_url_with_suffix(path)?;
+
+        tracing::debug!("initiating resumable upload to {}", url);
+
+        let mut request = self
+            .http_client
+            .post(url.clone())
+            .header("X-Goog-Upload-Protocol", "resumable")
+            .header("X-Goog-Upload-Command", "start")
+            .header(
+                "X-Goog-Upload-Header-Content-Length",
+                total_bytes.to_string(),
+            )
+            .header("X-Goog-Upload-Header-Content-Type", mime_type.to_string())
+            .header("Content-Type", "application/json");
+
+        // Always send metadata as JSON body, even if it's empty
+        if let Some(metadata) = metadata {
+            request = request.json(metadata);
+        } else {
+            request = request.body("{}");
+        }
+
+        let response = request.send().await.context(PerformRequestNewSnafu)?;
+
+        // Check response status
+        let response = Self::check_response(response).await?;
+
+        let upload_url = response
+            .headers()
+            .get("x-goog-upload-url")
+            .and_then(|v| v.to_str().ok())
+            .ok_or(Error::MissingResponseHeader {
+                header: "x-goog-upload-url".to_string(),
+            })?;
+
+        tracing::debug!("received upload url: {}", upload_url);
+        Ok(upload_url.to_string())
+    }
+
+    #[instrument(skip(self, data), fields(data.len = data.len()))]
+    async fn upload_file_data<T: serde::de::DeserializeOwned>(
+        &self,
+        upload_url: &str,
+        data: Vec<u8>,
+    ) -> Result<T, Error> {
+        tracing::debug!("uploading file data to {}", upload_url);
+
+        let data_len = data.len();
+        let response = self
+            .http_client
+            .post(upload_url)
+            .header("Content-Length", data_len.to_string())
+            .header("X-Goog-Upload-Offset", "0")
+            .header("X-Goog-Upload-Command", "upload, finalize")
+            .body(data)
+            .send()
+            .await
+            .context(PerformRequestNewSnafu)?;
+
+        tracing::debug!("upload response status: {}", response.status());
+        let response = Self::check_response(response).await?;
+
+        // The finalize response contains the result
+        response.json().await.context(DecodeResponseSnafu)
+    }
 }
 
 /// A builder for the `Gemini` client.
@@ -1039,6 +1303,55 @@ impl Gemini {
 
                 for file in response.files {
                     yield FileHandle::new(client.clone(), file);
+                }
+
+                if let Some(next_page_token) = response.next_page_token {
+                    page_token = Some(next_page_token);
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Start building a file search store
+    pub fn create_file_search_store(&self) -> crate::file_search::FileSearchStoreBuilder {
+        crate::file_search::FileSearchStoreBuilder {
+            client: self.client.clone(),
+            display_name: None,
+        }
+    }
+
+    /// Get a handle to a file search store by its name.
+    pub async fn get_file_search_store(
+        &self,
+        name: &str,
+    ) -> Result<crate::file_search::FileSearchStoreHandle, Error> {
+        let store = self.client.get_file_search_store(name).await?;
+        Ok(crate::file_search::FileSearchStoreHandle::new(
+            self.client.clone(),
+            store,
+        ))
+    }
+
+    /// Lists file search stores.
+    ///
+    /// This method returns a stream that handles pagination automatically.
+    pub fn list_file_search_stores(
+        &self,
+        page_size: impl Into<Option<u32>>,
+    ) -> impl Stream<Item = Result<crate::file_search::FileSearchStoreHandle, Error>> + Send {
+        let client = self.client.clone();
+        let page_size = page_size.into();
+        async_stream::try_stream! {
+            let mut page_token: Option<String> = None;
+            loop {
+                let response = client
+                    .list_file_search_stores(page_size, page_token.as_deref())
+                    .await?;
+
+                for store in response.file_search_stores {
+                    yield crate::file_search::FileSearchStoreHandle::new(client.clone(), store);
                 }
 
                 if let Some(next_page_token) = response.next_page_token {

@@ -58,6 +58,9 @@ pub mod safety;
 /// Function calling and tool integration
 pub mod tools;
 
+/// File search for retrieval augmented generation (RAG)
+pub mod file_search;
+
 #[cfg(test)]
 mod tests;
 
@@ -141,4 +144,14 @@ pub use files::{
 pub use cache::{
     builder::CacheBuilder, handle::CachedContentHandle, model::CacheExpirationRequest,
     model::CacheExpirationResponse, model::CachedContent, model::CreateCachedContentRequest,
+};
+
+// ========== File Search ==========
+// Types for file search and retrieval augmented generation (RAG)
+
+pub use file_search::{
+    model::ChunkingConfig, model::CustomMetadata, model::CustomMetadataValue, model::Document,
+    model::DocumentState, model::FileSearchStore, model::Operation, model::OperationResult,
+    model::Status, model::StringList, model::WhiteSpaceConfig, DocumentBuilder, DocumentHandle,
+    FileSearchStoreBuilder, FileSearchStoreHandle, ImportBuilder, OperationHandle, UploadBuilder,
 };

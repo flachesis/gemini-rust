@@ -138,7 +138,10 @@ impl TryFrom<&FileHandle> for FileData {
         }
 
         Ok(Self {
-            mime_type: mime_type.as_ref().expect("Some-ness checked above").clone(),
+            mime_type: mime_type
+                .as_ref()
+                .expect("Some-ness checked above")
+                .to_string(),
             file_uri: uri.as_ref().expect("Some-ness checked above").to_string(),
         })
     }

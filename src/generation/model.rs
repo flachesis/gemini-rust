@@ -197,11 +197,14 @@ pub struct GroundingSupport {
 #[serde(rename_all = "camelCase")]
 pub struct GroundingSegment {
     /// Start index of the segment in the response text
-    pub start_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_index: Option<u32>,
     /// End index of the segment in the response text
-    pub end_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<u32>,
     /// The text content of the segment
-    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
 }
 
 /// Response from the Gemini API for content generation
