@@ -167,7 +167,8 @@ fn display_grounding_info(response: &GenerationResponse) {
                 for support in supports {
                     println!(
                         "  • \"{}\" -> {:?}",
-                        support.segment.text, support.grounding_chunk_indices
+                        support.segment.text.as_deref().unwrap_or(""),
+                        support.grounding_chunk_indices
                     );
                 }
             }

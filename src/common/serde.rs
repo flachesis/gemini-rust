@@ -74,3 +74,25 @@ pub(crate) mod key_as_string {
         })
     }
 }
+
+/// Deserializes a string into an `i64`.
+pub fn deserialize_string_to_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    String::deserialize(deserializer)?
+        .parse()
+        .map_err(serde::de::Error::custom)
+}
+
+/// Deserializes an optional string into an `Option<i64>`.
+pub fn deserialize_optional_string_to_i64<'de, D>(deserializer: D) -> Result<Option<i64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    Option::<String>::deserialize(deserializer)?
+        .map(|s| s.parse::<i64>().map_err(serde::de::Error::custom))
+        .transpose()
+}
