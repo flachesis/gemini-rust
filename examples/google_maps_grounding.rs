@@ -167,7 +167,8 @@ async fn family_friendly_recommendations(
                 for support in supports {
                     println!(
                         "  • \"{}\" -> Sources: {:?}",
-                        support.segment.text, support.grounding_chunk_indices
+                        support.segment.text.as_deref().unwrap_or(""),
+                        support.grounding_chunk_indices
                     );
                 }
             }
@@ -229,11 +230,10 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
                 println!("\n🔗 Detailed Grounding Information:");
                 for support in supports {
                     let segment = &support.segment;
-                    println!("  • Text: \"{}\"", segment.text);
-                    println!(
-                        "    Location: chars {}-{}",
-                        segment.start_index, segment.end_index
-                    );
+                    println!("  • Text: \"{}\"", segment.text.as_deref().unwrap_or(""));
+                    if let (Some(start), Some(end)) = (segment.start_index, segment.end_index) {
+                        println!("    Location: chars {}-{}", start, end);
+                    }
                     println!("    Sources: {:?}", support.grounding_chunk_indices);
                     println!();
                 }
