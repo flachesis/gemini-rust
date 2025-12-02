@@ -339,3 +339,27 @@ fn test_content_creation_with_thought_signature() {
     assert!(serialized_thought.contains("thought_signature_456"));
     assert!(serialized_thought.contains("\"thought\":true"));
 }
+
+#[test]
+fn test_builder_safety_settings() {
+    use crate::{GeminiBuilder, HarmCategory, HarmBlockThreshold, SafetySetting};
+
+    let client = GeminiBuilder::new("_key").build().unwrap();
+
+    let settings = vec![
+        SafetySetting {
+            category: HarmCategory::Harassment,
+            threshold: HarmBlockThreshold::BlockNone,
+        }
+    ];
+
+    let builder = client.generate_content()
+        .with_safety_settings(settings.clone());
+
+    let request = builder.build();
+
+    assert!(request.safety_settings.is_some());
+    let req_settings = request.safety_settings.unwrap();
+    assert_eq!(req_settings.len(), 1);
+    assert_eq!(req_settings[0].category, HarmCategory::Harassment);
+}
