@@ -387,6 +387,19 @@ impl GeminiClient {
             .map(|r| r.flatten()))
     }
 
+    /// Count tokens for content
+    #[instrument(skip_all, fields(
+        model,
+        messages.parts.count = request.contents.len(),
+    ))]
+    pub(crate) async fn count_tokens(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<crate::generation::CountTokensResponse, Error> {
+        let url = self.build_url("countTokens")?;
+        self.post_json(url, &request).await
+    }
+
     /// Embed content
     #[instrument(skip_all, fields(
         model,

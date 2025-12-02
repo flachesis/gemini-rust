@@ -364,4 +364,14 @@ impl ContentBuilder {
         let request = self.build();
         client.generate_content_stream(request).await
     }
+
+    /// Counts the number of tokens in the content generation request.
+    #[instrument(skip_all, fields(
+        messages.parts.count = self.contents.len(),
+    ))]
+    pub async fn count_tokens(self) -> Result<super::model::CountTokensResponse, ClientError> {
+        let client = self.client.clone();
+        let request = self.build();
+        client.count_tokens(request).await
+    }
 }
