@@ -339,3 +339,48 @@ fn test_content_creation_with_thought_signature() {
     assert!(serialized_thought.contains("thought_signature_456"));
     assert!(serialized_thought.contains("\"thought\":true"));
 }
+
+#[test]
+fn test_file_data_serialization() {
+    use crate::{Content, FileData, Part};
+    use serde_json::json;
+
+    let file_data = FileData {
+        mime_type: "video/mp4".to_string(),
+        file_uri: "https://example.com/file.mp4".to_string(),
+    };
+
+    let serialized = serde_json::to_value(&file_data).unwrap();
+    assert_eq!(serialized, json!({
+        "mimeType": "video/mp4",
+        "fileUri": "https://example.com/file.mp4"
+    }));
+
+    let part = Part::FileData { file_data };
+    let serialized_part = serde_json::to_value(&part).unwrap();
+
+    assert_eq!(serialized_part, json!({
+        "fileData": {
+            "mimeType": "video/mp4",
+            "fileUri": "https://example.com/file.mp4"
+        }
+    }));
+}
+
+#[test]
+fn test_content_file_data_helper() {
+    use crate::Content;
+
+    let content = Content::file_data("application/pdf", "http://uri");
+    let parts = content.parts.unwrap();
+
+    assert_eq!(parts.len(), 1);
+
+    match &parts[0] {
+        crate::Part::FileData { file_data } => {
+            assert_eq!(file_data.mime_type, "application/pdf");
+            assert_eq!(file_data.file_uri, "http://uri");
+        },
+        _ => panic!("Expected FileData part"),
+    }
+}
