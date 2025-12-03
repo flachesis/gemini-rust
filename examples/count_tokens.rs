@@ -30,11 +30,12 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Preparing to count tokens for request...");
 
-    let token_info = client.generate_content()
-        .with_user_message("Hello, teacher!")                                   // 6 tokens
+    let token_info = client
+        .generate_content()
+        .with_user_message("Hello, teacher!") // 6 tokens
         .with_model_message("Hello! What would you like to learn about today?") // 11 tokens
         .with_user_message("Explain the theory of relativity in simple terms.") // 10 tokens
-        .count_tokens()                                                         // Total tokens in AI Studio: 27 tokens
+        .count_tokens() // Total tokens in AI Studio: 27 tokens
         .await?;
 
     info!(
