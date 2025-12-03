@@ -436,32 +436,49 @@ pub struct GenerateContentRequest {
     pub cached_content: Option<String>,
 }
 
-/// Thinking level for Gemini 3 Pro
+/// Thinking level for Gemini 3 Pro models
+///
+/// Controls the depth of reasoning and analysis the model applies.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ThinkingLevel {
+    /// Unspecified thinking level (uses model default)
     ThinkingLevelUnspecified,
+    /// Low thinking level - faster responses with less reasoning
     Low,
+    /// High thinking level - deeper analysis with more comprehensive reasoning
     High,
 }
 
 /// Media resolution level for images and PDFs
+///
+/// Controls the resolution used when processing inline images and PDF documents,
+/// which affects both quality and token consumption.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MediaResolutionLevel {
+    /// Unspecified resolution (uses model default)
     MediaResolutionUnspecified,
+    /// Low resolution - uses fewer tokens, lower quality
     MediaResolutionLow,
+    /// Medium resolution - balanced token usage and quality
     MediaResolutionMedium,
+    /// High resolution - uses more tokens, higher quality
     MediaResolutionHigh,
 }
 
-/// Wrapper struct for per-part media resolution
+/// Wrapper struct for per-part media resolution.
+/// Allows fine-grained control over the resolution used for individual inline images and PDFs.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct MediaResolution {
+    /// The media resolution level to use
     pub level: MediaResolutionLevel,
 }
 
-/// Configuration for thinking (Gemini 2.5 series only)
+/// Configuration for thinking (Gemini 2.5 and Gemini 3 series)
+///
+/// - For Gemini 2.5 models, use `thinking_budget` and `include_thoughts`.
+/// - For Gemini 3 models, use `thinking_level` (mutually exclusive with `thinking_budget`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ThinkingConfig {
@@ -607,11 +624,13 @@ pub struct GenerationConfig {
 
     /// The thinking configuration
     ///
-    /// Configuration for the model's thinking process (Gemini 2.5 series only).
+    /// Configuration for the model's thinking process (Gemini 2.5 and Gemini 3 series).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_config: Option<ThinkingConfig>,
 
-    /// Global media resolution setting
+    /// Global media resolution for all images and PDFs.
+    /// Controls the resolution used for inline image and PDF data, affecting token usage.
+    /// Can be overridden per-part using the Part::InlineData media_resolution field.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media_resolution: Option<MediaResolutionLevel>,
 }

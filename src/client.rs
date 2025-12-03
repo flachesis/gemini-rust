@@ -33,6 +33,10 @@ use crate::batch::model::*;
 use crate::cache::model::*;
 
 /// Type alias for streaming generation responses
+///
+/// A pinned, boxed stream that yields `GenerationResponse` chunks as they arrive
+/// from the API. Used for streaming content generation to receive partial results
+/// before the complete response is ready.
 pub type GenerationStream = Pin<Box<dyn Stream<Item = Result<GenerationResponse, Error>> + Send>>;
 
 static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {

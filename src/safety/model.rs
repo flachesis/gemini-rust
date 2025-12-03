@@ -45,7 +45,7 @@ pub enum HarmCategory {
     /// Gemini - Dangerous content.
     #[serde(rename = "HARM_CATEGORY_DANGEROUS_CONTENT")]
     DangerousContent,
-    /// Gemini - Content that may be used to harm civic integrity.
+    /// Gemini - Content that may be used to harm civic integrity, such as misinformation about voting, elections, or democratic processes, or content that undermines trust in civic institutions.
     #[serde(rename = "HARM_CATEGORY_CIVIC_INTEGRITY")]
     CivicIntegrity,
 }

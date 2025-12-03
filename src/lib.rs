@@ -70,6 +70,8 @@ pub use client::Error as ClientError;
 pub use client::Gemini;
 /// Builder for creating a new Gemini client
 pub use client::GeminiBuilder;
+/// Type alias for streaming generation responses
+pub use client::GenerationStream;
 /// Available Gemini models
 pub use client::Model;
 
