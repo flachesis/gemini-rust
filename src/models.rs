@@ -59,7 +59,7 @@ pub enum Part {
         inline_data: Blob,
         /// Per-part media resolution override.
         /// If specified, overrides the global media_resolution setting for this specific inline data.
-        #[serde(rename = "mediaResolution", skip_serializing_if = "Option::is_none")]
+        #[serde(skip_serializing_if = "Option::is_none")]
         media_resolution: Option<super::generation::model::MediaResolution>,
     },
     /// Function call from the model
