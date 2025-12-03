@@ -74,7 +74,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                                     // Decode base64 audio data using the new API
                                     match general_purpose::STANDARD.decode(&inline_data.data) {
                                         Ok(audio_bytes) => {
-                                            let filename = format!("speech_output_{}_{}.pcm", i, j);
+                                            let filename = format!("speech_output_{i}_{j}.pcm");
 
                                             // Save audio to file
                                             match File::create(&filename) {

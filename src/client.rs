@@ -76,7 +76,7 @@ impl fmt::Display for Model {
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
-            Model::Custom(model) => write!(f, "{}", model),
+            Model::Custom(model) => write!(f, "{model}"),
         }
     }
 }
@@ -380,17 +380,17 @@ impl GeminiClient {
 
         Ok(stream
             .eventsource()
-            .map(|event| event.context(BadPartSnafu))
-            .map_ok(|event| {
-                serde_json::from_str::<GenerationResponse>(&event.data).context(DeserializeSnafu)
-            })
-            .map(|r| r.flatten()))
+            .map(|event| {
+                event
+                    .context(BadPartSnafu)
+                    .and_then(|e| serde_json::from_str::<GenerationResponse>(&e.data).context(DeserializeSnafu))
+            }))
     }
 
     /// Embed content
     #[instrument(skip_all, fields(
         model,
-        task.type = request.task_type.as_ref().map(|t| format!("{:?}", t)),
+        task.type = request.task_type.as_ref().map(|t| format!("{t:?}")),
         task.title = request.title,
         task.output.dimensionality = request.output_dimensionality,
     ))]
@@ -735,7 +735,7 @@ impl GeminiClient {
                 if n.starts_with("cachedContents/") {
                     n.to_string()
                 } else {
-                    format!("cachedContents/{}", n)
+                    format!("cachedContents/{n}")
                 }
             })
             .unwrap_or_else(|| "cachedContents".to_string());

@@ -176,7 +176,7 @@ fn save_generated_images(
                         image_count += 1;
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {
-                                let filename = format!("{}_{}.png", prefix, image_count);
+                                let filename = format!("{prefix}_{image_count}.png");
                                 fs::write(&filename, image_bytes)?;
                                 info!(
                                     filename = filename,

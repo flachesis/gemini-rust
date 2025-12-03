@@ -72,7 +72,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {
                                 images_saved += 1;
-                                let filename = format!("robot_garden_{}.png", images_saved);
+                                let filename = format!("robot_garden_{images_saved}.png");
                                 fs::write(&filename, image_bytes)?;
                                 info!(filename = filename, "image saved successfully");
                             }

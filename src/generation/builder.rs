@@ -7,6 +7,7 @@ use crate::{
     client::{Error as ClientError, GeminiClient},
     files::Error as FilesError,
     generation::{GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig, ThinkingConfig},
+    models::{FileData, Part},
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
     GenerationResponse, Message, Role, Tool,
@@ -66,12 +67,49 @@ impl ContentBuilder {
     ///
     /// Uploading a file and using it avoids encoding large files and sending them, in particular
     /// when this would need to happen more than once with a file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file metadata is incomplete (missing MIME type or URI).
     pub fn with_user_message_and_file(
         mut self,
         text: impl Into<String>,
         file_handle: &FileHandle,
     ) -> Result<Self, FilesError> {
-        let content = Content::text_with_file(text, file_handle)?.with_role(Role::User);
+        let meta = file_handle.get_file_meta();
+
+        let mime_type = meta
+            .mime_type
+            .clone()
+            .ok_or_else(|| FilesError::Incomplete {
+                fields: vec!["mime_type".to_string()],
+            })?;
+
+        let file_uri = meta
+            .uri
+            .as_ref()
+            .map(|u| u.to_string())
+            .ok_or_else(|| FilesError::Incomplete {
+                fields: vec!["uri".to_string()],
+            })?;
+
+        let content = Content {
+            parts: Some(vec![
+                Part::Text {
+                    text: text.into(),
+                    thought: None,
+                    thought_signature: None,
+                },
+                Part::FileData {
+                    file_data: FileData {
+                        mime_type,
+                        file_uri,
+                    },
+                },
+            ]),
+            role: Some(Role::User),
+        };
+
         self.contents.push(content);
         Ok(self)
     }
