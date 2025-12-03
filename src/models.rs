@@ -73,6 +73,7 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+    /// File reference for previously uploaded files
     FileData {
         #[serde(rename = "fileData")]
         file_data: FileData,

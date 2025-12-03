@@ -63,7 +63,7 @@ impl ContentBuilder {
         self
     }
 
-    /// Add a user message, together with coordinates for a previously uploaded file.
+    /// Adds a user message, together with coordinates for a previously uploaded file.
     ///
     /// Uploading a file and using it avoids encoding large files and sending them, in particular
     /// when this would need to happen more than once with a file.
@@ -78,20 +78,21 @@ impl ContentBuilder {
     ) -> Result<Self, FilesError> {
         let meta = file_handle.get_file_meta();
 
-        let mime_type = meta
-            .mime_type
-            .clone()
-            .ok_or_else(|| FilesError::Incomplete {
-                fields: vec!["mime_type".to_string()],
-            })?;
+        let mut missing_fields = Vec::new();
+        if meta.mime_type.is_none() {
+            missing_fields.push("mime_type".to_string());
+        }
+        if meta.uri.is_none() {
+            missing_fields.push("uri".to_string());
+        }
+        if !missing_fields.is_empty() {
+            return Err(FilesError::Incomplete {
+                fields: missing_fields,
+            });
+        }
 
-        let file_uri = meta
-            .uri
-            .as_ref()
-            .map(|u| u.to_string())
-            .ok_or_else(|| FilesError::Incomplete {
-                fields: vec!["uri".to_string()],
-            })?;
+        let mime_type = meta.mime_type.clone().unwrap();
+        let file_uri = meta.uri.as_ref().unwrap().to_string();
 
         let content = Content {
             parts: Some(vec![
