@@ -37,7 +37,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("  Language: {:?}", executable_code.language);
                         println!("  Code:\n{}", executable_code.code);
                     }
-                    Part::CodeExecutionResult { code_execution_result } => {
+                    Part::CodeExecutionResult {
+                        code_execution_result,
+                    } => {
                         println!("\nCode Execution Result Part #{}:", i + 1);
                         println!("  Outcome: {:?}", code_execution_result.outcome);
                         println!("  Output:\n{}", code_execution_result.output);
@@ -78,7 +80,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(first_candidate) = response_prime.candidates.first() {
         if let Some(parts) = &first_candidate.content.parts {
             for part in parts {
-                if let Part::CodeExecutionResult { code_execution_result } = part {
+                if let Part::CodeExecutionResult {
+                    code_execution_result,
+                } = part
+                {
                     println!("\nCode Execution Output:");
                     println!("{}", code_execution_result.output);
                     println!("Outcome: {:?}", code_execution_result.outcome);
@@ -116,7 +121,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         println!("\nGenerated Code:");
                         println!("{}", executable_code.code);
                     }
-                    Part::CodeExecutionResult { code_execution_result } => {
+                    Part::CodeExecutionResult {
+                        code_execution_result,
+                    } => {
                         println!("\nExecution Result:");
                         println!("{}", code_execution_result.output);
                     }

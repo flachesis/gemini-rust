@@ -14,7 +14,8 @@ use crate::{
 };
 
 /// Type alias for streaming generation responses
-pub type GenerationStream = Pin<Box<dyn futures::Stream<Item = Result<GenerationResponse, ClientError>> + Send>>;
+pub type GenerationStream =
+    Pin<Box<dyn futures::Stream<Item = Result<GenerationResponse, ClientError>> + Send>>;
 
 /// Builder for content generation requests
 #[derive(Clone)]

@@ -58,7 +58,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Note: This demo requires a base64-encoded image.");
     println!("To test media resolution, provide a base64-encoded image string.");
     println!("Example usage:");
-    println!(r#"
+    println!(
+        r#"
     // Example with actual image:
     // let sample_image = std::fs::read("path/to/image.png")?;
     // let base64_image = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &sample_image);
@@ -70,7 +71,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     .with_thinking_level(ThinkingLevel::Low)
     //     .execute()
     //     .await?;
-    "#);
+    "#
+    );
 
     Ok(())
 }
