@@ -36,7 +36,8 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         },
     ];
 
-    let response = client.generate_content()
+    let response = client
+        .generate_content()
         .with_user_message("Tell me a scary story about a computer virus.")
         .with_safety_settings(safety_settings)
         .execute()

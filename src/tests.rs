@@ -342,18 +342,17 @@ fn test_content_creation_with_thought_signature() {
 
 #[test]
 fn test_builder_safety_settings() {
-    use crate::{GeminiBuilder, HarmCategory, HarmBlockThreshold, SafetySetting};
+    use crate::{GeminiBuilder, HarmBlockThreshold, HarmCategory, SafetySetting};
 
     let client = GeminiBuilder::new("_key").build().unwrap();
 
-    let settings = vec![
-        SafetySetting {
-            category: HarmCategory::Harassment,
-            threshold: HarmBlockThreshold::BlockNone,
-        }
-    ];
+    let settings = vec![SafetySetting {
+        category: HarmCategory::Harassment,
+        threshold: HarmBlockThreshold::BlockNone,
+    }];
 
-    let builder = client.generate_content()
+    let builder = client
+        .generate_content()
         .with_safety_settings(settings.clone());
 
     let request = builder.build();
