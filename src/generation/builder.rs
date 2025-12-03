@@ -3,7 +3,7 @@ use tracing::instrument;
 
 use crate::{
     cache::CachedContentHandle,
-    client::{Error as ClientError, GenerationStream, GeminiClient},
+    client::{Error as ClientError, GeminiClient, GenerationStream},
     generation::{
         GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ThinkingLevel,
