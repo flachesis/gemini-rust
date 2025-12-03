@@ -27,11 +27,14 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let file_path = Path::new(filename);
 
     info!(filename, "1. Reading local file...");
-    let file_content = tokio::fs::read(file_path).await.expect("Failed to read README.md");
+    let file_content = tokio::fs::read(file_path)
+        .await
+        .expect("Failed to read README.md");
 
     info!(size = file_content.len(), "2. Uploading file to Gemini...");
 
-    let file_handle = client.create_file(file_content)
+    let file_handle = client
+        .create_file(file_content)
         .display_name("gemini_rust_readme.md")
         .with_mime_type("text/markdown".parse()?)
         .upload()
@@ -40,7 +43,8 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     info!(file_uri = ?file_handle.get_file_meta().uri, "File uploaded successfully");
 
     // Extract URI safely
-    let file_uri = file_handle.get_file_meta()
+    let file_uri = file_handle
+        .get_file_meta()
         .uri
         .as_ref()
         .ok_or("File URI is missing")?
@@ -48,7 +52,8 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("3. Generating content using the uploaded file reference...");
 
-    let response = client.generate_content()
+    let response = client
+        .generate_content()
         .with_content(Content::file_data("text/markdown", file_uri))
         .with_user_message("Summarize the main features of this library based on the README file.")
         .execute()
