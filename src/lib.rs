@@ -74,7 +74,7 @@ pub use client::GeminiBuilder;
 pub use client::Model;
 
 /// Core primitive types for building requests and parsing responses
-pub use models::{Blob, Content, Message, Modality, Part, Role};
+pub use models::{Blob, Content, FileData, Message, Modality, Part, Role};
 
 // ========== Content Generation ==========
 // Types for generating text, images, and audio content

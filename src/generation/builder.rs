@@ -113,6 +113,29 @@ impl ContentBuilder {
         Ok(self)
     }
 
+    /// Adds a `Content` object to the request.
+    ///
+    /// This provides maximum flexibility for adding manually constructed content.
+    /// Note: You may need to set the role on the content object using `.with_role()`.
+    pub fn with_content(mut self, content: Content) -> Self {
+        self.contents.push(content);
+        self
+    }
+
+    /// Adds a file reference to the request.
+    ///
+    /// This is a convenience method for adding file data (uploaded via the File API).
+    /// It automatically assigns the `user` role to the content.
+    pub fn with_file_data(
+        mut self,
+        mime_type: impl Into<String>,
+        file_uri: impl Into<String>,
+    ) -> Self {
+        let content = Content::file_data(mime_type, file_uri).with_role(Role::User);
+        self.contents.push(content);
+        self
+    }
+
     /// Adds a `Message` to the conversation history.
     pub fn with_message(mut self, message: Message) -> Self {
         let content = message.content.clone();

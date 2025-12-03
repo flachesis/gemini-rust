@@ -73,6 +73,11 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+    /// File reference (uploaded via File API)
+    FileData {
+        #[serde(rename = "fileData")]
+        file_data: FileData,
+    },
 }
 
 /// Blob for a message part
@@ -85,12 +90,32 @@ pub struct Blob {
     pub data: String,
 }
 
+/// FileData for a message part
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileData {
+    /// The MIME type of the data
+    pub mime_type: String,
+    /// The URI of the file
+    pub file_uri: String,
+}
+
 impl Blob {
     /// Create a new blob with mime type and data
     pub fn new(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
         Self {
             mime_type: mime_type.into(),
             data: data.into(),
+        }
+    }
+}
+
+impl FileData {
+    /// Create a new file data with mime type and file URI
+    pub fn new(mime_type: impl Into<String>, file_uri: impl Into<String>) -> Self {
+        Self {
+            mime_type: mime_type.into(),
+            file_uri: file_uri.into(),
         }
     }
 }
@@ -198,6 +223,19 @@ impl Content {
         Self {
             parts: Some(vec![Part::InlineData {
                 inline_data: Blob::new(mime_type, data),
+            }]),
+            role: None,
+        }
+    }
+
+    /// Create a new content with file data
+    pub fn file_data(mime_type: impl Into<String>, file_uri: impl Into<String>) -> Self {
+        Self {
+            parts: Some(vec![Part::FileData {
+                file_data: FileData {
+                    mime_type: mime_type.into(),
+                    file_uri: file_uri.into(),
+                },
             }]),
             role: None,
         }
