@@ -110,6 +110,16 @@ impl Blob {
     }
 }
 
+impl FileData {
+    /// Create a new file data with mime type and file URI
+    pub fn new(mime_type: impl Into<String>, file_uri: impl Into<String>) -> Self {
+        Self {
+            mime_type: mime_type.into(),
+            file_uri: file_uri.into(),
+        }
+    }
+}
+
 /// Content of a message
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

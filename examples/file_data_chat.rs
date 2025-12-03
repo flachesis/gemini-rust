@@ -54,7 +54,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
 
     let response = client
         .generate_content()
-        .with_content(Content::file_data("text/markdown", file_uri))
+        .with_file_data("text/markdown", file_uri)
         .with_user_message("Summarize the main features of this library based on the README file.")
         .execute()
         .await?;
