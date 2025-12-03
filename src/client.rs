@@ -378,13 +378,11 @@ impl GeminiClient {
             )
             .await?;
 
-        Ok(stream
-            .eventsource()
-            .map(|event| {
-                event
-                    .context(BadPartSnafu)
-                    .and_then(|e| serde_json::from_str::<GenerationResponse>(&e.data).context(DeserializeSnafu))
-            }))
+        Ok(stream.eventsource().map(|event| {
+            event.context(BadPartSnafu).and_then(|e| {
+                serde_json::from_str::<GenerationResponse>(&e.data).context(DeserializeSnafu)
+            })
+        }))
     }
 
     /// Embed content
