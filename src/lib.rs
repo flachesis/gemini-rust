@@ -84,9 +84,10 @@ pub use generation::{
     model::CitationSource, model::FinishReason, model::GenerateContentRequest,
     model::GenerationConfig, model::GenerationResponse, model::GroundingChunk,
     model::GroundingMetadata, model::GroundingSegment, model::GroundingSupport,
-    model::MapsGroundingChunk, model::MultiSpeakerVoiceConfig, model::PrebuiltVoiceConfig,
-    model::PromptFeedback, model::PromptTokenDetails, model::SpeakerVoiceConfig,
-    model::SpeechConfig, model::ThinkingConfig, model::UsageMetadata, model::VoiceConfig,
+    model::MapsGroundingChunk, model::MediaResolution, model::MediaResolutionLevel,
+    model::MultiSpeakerVoiceConfig, model::PrebuiltVoiceConfig, model::PromptFeedback,
+    model::PromptTokenDetails, model::SpeakerVoiceConfig, model::SpeechConfig,
+    model::ThinkingConfig, model::ThinkingLevel, model::UsageMetadata, model::VoiceConfig,
     model::WebGroundingChunk,
 };
 
@@ -110,6 +111,7 @@ pub use safety::model::{
 // Types for integrating external tools and function calling
 
 pub use tools::model::{
+    CodeExecutionConfig, CodeExecutionOutcome, CodeExecutionResult, CodeLanguage, ExecutableCode,
     FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
     FunctionResponse, GoogleMapsConfig, LatLng, RetrievalConfig, Tool, ToolConfig,
 };

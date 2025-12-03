@@ -436,6 +436,31 @@ pub struct GenerateContentRequest {
     pub cached_content: Option<String>,
 }
 
+/// Thinking level for Gemini 3 Pro
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ThinkingLevel {
+    ThinkingLevelUnspecified,
+    Low,
+    High,
+}
+
+/// Media resolution level for images and PDFs
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MediaResolutionLevel {
+    MediaResolutionUnspecified,
+    MediaResolutionLow,
+    MediaResolutionMedium,
+    MediaResolutionHigh,
+}
+
+/// Wrapper struct for per-part media resolution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MediaResolution {
+    pub level: MediaResolutionLevel,
+}
+
 /// Configuration for thinking (Gemini 2.5 series only)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -459,18 +484,21 @@ pub struct ThinkingConfig {
     /// raw thoughts, providing insights into the reasoning process.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub include_thoughts: Option<bool>,
+
+    /// The thinking level (Required for Gemini 3)
+    ///
+    /// Gemini 3 uses thinking_level (Low/High) which is mutually exclusive with thinking_budget
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking_level: Option<ThinkingLevel>,
 }
 
 impl ThinkingConfig {
-    // TODO: Add failable constructor with validation
-    // pub fn new() -> Result<Self, ValidationError> { ... }
-    // Should validate temperature (0.0-1.0), max_tokens (>0), etc.
-
     /// Create a new thinking config with default settings
     pub fn new() -> Self {
         Self {
             thinking_budget: None,
             include_thoughts: None,
+            thinking_level: None,
         }
     }
 
@@ -492,11 +520,18 @@ impl ThinkingConfig {
         self
     }
 
+    /// Set the thinking level (Required for Gemini 3)
+    pub fn with_thinking_level(mut self, level: ThinkingLevel) -> Self {
+        self.thinking_level = Some(level);
+        self
+    }
+
     /// Create a thinking config that enables dynamic thinking with thoughts included
     pub fn dynamic_thinking() -> Self {
         Self {
             thinking_budget: Some(-1),
             include_thoughts: Some(true),
+            thinking_level: None,
         }
     }
 }
@@ -575,6 +610,10 @@ pub struct GenerationConfig {
     /// Configuration for the model's thinking process (Gemini 2.5 series only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub thinking_config: Option<ThinkingConfig>,
+
+    /// Global media resolution setting
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media_resolution: Option<MediaResolutionLevel>,
 }
 
 /// Configuration for speech generation (text-to-speech)

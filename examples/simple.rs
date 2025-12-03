@@ -139,8 +139,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
 
         // Simulate function execution
         let weather_response = format!(
-            "{{\"temperature\": 22, \"unit\": \"{}\", \"condition\": \"sunny\"}}",
-            unit_str
+            "{{\"temperature\": 22, \"unit\": \"{unit_str}\", \"condition\": \"sunny\"}}"
         );
         info!(response = weather_response, "simulated function response");
 

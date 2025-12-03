@@ -1,15 +1,20 @@
-use futures::TryStream;
-use std::sync::Arc;
+use std::{pin::Pin, sync::Arc};
 use tracing::instrument;
 
 use crate::{
     cache::CachedContentHandle,
     client::{Error as ClientError, GeminiClient},
-    generation::{GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig, ThinkingConfig},
+    generation::{
+        GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
+        ThinkingConfig, ThinkingLevel,
+    },
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
     Message, Role, Tool,
 };
+
+/// Type alias for streaming generation responses
+pub type GenerationStream = Pin<Box<dyn futures::Stream<Item = Result<GenerationResponse, ClientError>> + Send>>;
 
 /// Builder for content generation requests
 #[derive(Clone)]
@@ -77,6 +82,21 @@ impl ContentBuilder {
         mime_type: impl Into<String>,
     ) -> Self {
         let content = Content::inline_data(mime_type, data).with_role(Role::User);
+        self.contents.push(content);
+        self
+    }
+
+    /// Adds inline data with explicit media resolution control.
+    ///
+    /// The data should be base64-encoded.
+    pub fn with_inline_data_and_resolution(
+        mut self,
+        data: impl Into<String>,
+        mime_type: impl Into<String>,
+        resolution: MediaResolutionLevel,
+    ) -> Self {
+        let content =
+            Content::inline_data_with_resolution(mime_type, data, resolution).with_role(Role::User);
         self.contents.push(content);
         self
     }
@@ -295,6 +315,35 @@ impl ContentBuilder {
         self
     }
 
+    /// Sets the thinking level for Gemini 3 Pro.
+    ///
+    /// This is mutually exclusive with thinking_budget.
+    pub fn with_thinking_level(mut self, level: ThinkingLevel) -> Self {
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .thinking_config
+            .get_or_insert_with(Default::default)
+            .thinking_level = Some(level);
+        self
+    }
+
+    /// Sets the global media resolution level.
+    ///
+    /// This controls the token usage for all images and PDFs in the request.
+    pub fn with_media_resolution(mut self, level: MediaResolutionLevel) -> Self {
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .media_resolution = Some(level);
+        self
+    }
+
+    /// Adds the code execution tool to the request.
+    ///
+    /// This allows the model to generate and execute code.
+    pub fn with_code_execution(self) -> Self {
+        self.with_tool(Tool::code_execution())
+    }
+
     /// Enables audio output (text-to-speech).
     pub fn with_audio_output(mut self) -> Self {
         self.generation_config
@@ -356,10 +405,7 @@ impl ContentBuilder {
         system.instruction.present = self.system_instruction.is_some(),
         cached.content.present = self.cached_content.is_some(),
     ))]
-    pub async fn execute_stream(
-        self,
-    ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>
-    {
+    pub async fn execute_stream(self) -> Result<GenerationStream, ClientError> {
         let client = self.client.clone();
         let request = self.build();
         client.generate_content_stream(request).await

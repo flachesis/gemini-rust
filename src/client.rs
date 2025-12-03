@@ -23,6 +23,7 @@ use serde_json::json;
 use snafu::{OptionExt, ResultExt, Snafu};
 use std::{
     fmt::{self, Formatter},
+    pin::Pin,
     sync::{Arc, LazyLock},
 };
 use tracing::{instrument, Level, Span};
@@ -30,6 +31,9 @@ use url::Url;
 
 use crate::batch::model::*;
 use crate::cache::model::*;
+
+/// Type alias for streaming generation responses
+pub type GenerationStream = Pin<Box<dyn Stream<Item = Result<GenerationResponse, Error>> + Send>>;
 
 static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
     Url::parse("https://generativelanguage.googleapis.com/v1beta/")
@@ -45,6 +49,8 @@ pub enum Model {
     Gemini25FlashLite,
     #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
+    #[serde(rename = "models/gemini-3-pro-preview")]
+    Gemini3Pro,
     #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
     #[serde(untagged)]
@@ -57,6 +63,7 @@ impl Model {
             Model::Gemini25Flash => "models/gemini-2.5-flash",
             Model::Gemini25FlashLite => "models/gemini-2.5-flash-lite",
             Model::Gemini25Pro => "models/gemini-2.5-pro",
+            Model::Gemini3Pro => "models/gemini-3-pro-preview",
             Model::TextEmbedding004 => "models/text-embedding-004",
             Model::Custom(model) => model,
         }
@@ -75,8 +82,9 @@ impl fmt::Display for Model {
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
+            Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
-            Model::Custom(model) => write!(f, "{}", model),
+            Model::Custom(model) => write!(f, "{model}"),
         }
     }
 }
@@ -366,8 +374,7 @@ impl GeminiClient {
     pub(crate) async fn generate_content_stream(
         &self,
         request: GenerateContentRequest,
-    ) -> Result<impl TryStreamExt<Ok = GenerationResponse, Error = Error> + Send + use<>, Error>
-    {
+    ) -> Result<GenerationStream, Error> {
         let mut url = self.build_url("streamGenerateContent")?;
         url.query_pairs_mut().append_pair("alt", "sse");
 
@@ -378,19 +385,21 @@ impl GeminiClient {
             )
             .await?;
 
-        Ok(stream
-            .eventsource()
-            .map(|event| event.context(BadPartSnafu))
-            .map_ok(|event| {
-                serde_json::from_str::<GenerationResponse>(&event.data).context(DeserializeSnafu)
-            })
-            .map(|r| r.flatten()))
+        Ok(Box::pin(
+            stream
+                .eventsource()
+                .map(|event| event.context(BadPartSnafu))
+                .and_then(|event| async move {
+                    serde_json::from_str::<GenerationResponse>(&event.data)
+                        .context(DeserializeSnafu)
+                }),
+        ))
     }
 
     /// Embed content
     #[instrument(skip_all, fields(
         model,
-        task.type = request.task_type.as_ref().map(|t| format!("{:?}", t)),
+        task.type = request.task_type.as_ref().map(|t| format!("{t:?}")),
         task.title = request.title,
         task.output.dimensionality = request.output_dimensionality,
     ))]
@@ -735,7 +744,7 @@ impl GeminiClient {
                 if n.starts_with("cachedContents/") {
                     n.to_string()
                 } else {
-                    format!("cachedContents/{}", n)
+                    format!("cachedContents/{n}")
                 }
             })
             .unwrap_or_else(|| "cachedContents".to_string());
