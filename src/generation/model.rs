@@ -157,6 +157,9 @@ pub struct GroundingChunk {
     /// Web-specific grounding information
     #[serde(skip_serializing_if = "Option::is_none")]
     pub web: Option<WebGroundingChunk>,
+    /// File Search-specific grounding information
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file_search: Option<FileGroundingChunk>,
 }
 
 /// Maps-specific grounding chunk information
@@ -182,6 +185,16 @@ pub struct WebGroundingChunk {
     pub title: String,
 }
 
+/// File Search-specific grounding chunk information
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileGroundingChunk {
+    /// The URI of the file source
+    pub uri: Url,
+    /// The title of the file source
+    pub title: String,
+}
+
 /// Support information connecting response text to grounding sources
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -197,11 +210,14 @@ pub struct GroundingSupport {
 #[serde(rename_all = "camelCase")]
 pub struct GroundingSegment {
     /// Start index of the segment in the response text
-    pub start_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_index: Option<u32>,
     /// End index of the segment in the response text
-    pub end_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<u32>,
     /// The text content of the segment
-    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
 }
 
 /// Response from the Gemini API for content generation
@@ -658,6 +674,53 @@ impl SpeakerVoiceConfig {
                     voice_name: voice_name.into(),
                 }),
             },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_grounding_chunk_serialization() {
+        use reqwest::Url;
+
+        let chunk = GroundingChunk {
+            maps: None,
+            web: Some(WebGroundingChunk {
+                uri: Url::parse("https://example.com").unwrap(),
+                title: "Example".to_string(),
+            }),
+            file_search: None,
+        };
+
+        let json = serde_json::to_string(&chunk).unwrap();
+        let deserialized: GroundingChunk = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.web.is_some());
+        assert!(deserialized.maps.is_none());
+    }
+
+    #[test]
+    fn test_file_grounding_chunk_serialization() {
+        use reqwest::Url;
+
+        let chunk = GroundingChunk {
+            maps: None,
+            web: None,
+            file_search: Some(FileGroundingChunk {
+                uri: Url::parse("file://document.txt").unwrap(),
+                title: "Document Title".to_string(),
+            }),
+        };
+
+        let json = serde_json::to_string(&chunk).unwrap();
+        let deserialized: GroundingChunk = serde_json::from_str(&json).unwrap();
+        assert!(deserialized.file_search.is_some());
+        if let Some(file_chunk) = &deserialized.file_search {
+            assert_eq!(file_chunk.title, "Document Title");
+            // Just check that we have a file URI
+            assert!(file_chunk.uri.scheme() == "file");
         }
     }
 }

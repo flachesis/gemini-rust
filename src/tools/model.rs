@@ -25,6 +25,11 @@ pub enum Tool {
         /// The Google Maps configuration
         google_maps: GoogleMapsConfig,
     },
+    /// File Search tool for RAG
+    FileSearch {
+        /// The File Search configuration
+        file_search: FileSearchConfig,
+    },
 }
 
 /// Empty configuration for Google Search tool
@@ -42,6 +47,18 @@ pub struct GoogleMapsConfig {
     /// Optional: Enable widget context token generation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enable_widget: Option<bool>,
+}
+
+/// Configuration for File Search tool
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSearchConfig {
+    /// File search store names to search
+    pub file_search_store_names: Vec<String>,
+
+    /// Optional metadata filter (AIP-160 syntax)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_filter: Option<String>,
 }
 
 impl Tool {
@@ -77,6 +94,16 @@ impl Tool {
     pub fn google_maps(enable_widget: Option<bool>) -> Self {
         Self::GoogleMaps {
             google_maps: GoogleMapsConfig { enable_widget },
+        }
+    }
+
+    /// Create a new File Search tool
+    pub fn file_search(store_names: Vec<String>, metadata_filter: Option<String>) -> Self {
+        Self::FileSearch {
+            file_search: FileSearchConfig {
+                file_search_store_names: store_names,
+                metadata_filter,
+            },
         }
     }
 }
