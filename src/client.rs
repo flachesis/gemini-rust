@@ -76,7 +76,7 @@ impl fmt::Display for Model {
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
-            Model::Custom(model) => write!(f, "{}", model),
+            Model::Custom(model) => write!(f, "{model}"),
         }
     }
 }
@@ -230,7 +230,7 @@ impl GeminiClient {
     /// # let request = Value::Null;
     ///
     /// // POST request with JSON payload
-    /// let _response = client
+    /// let _response : () = client
     ///     .perform_request(
     ///         |c| c.post(url.clone()).json(&request),
     ///         async |r| r.json().await.context(DecodeResponseSnafu),
@@ -238,7 +238,7 @@ impl GeminiClient {
     ///     .await?;
     ///
     /// // GET request with JSON response
-    /// let _response = client
+    /// let _response : () = client
     ///     .perform_request(
     ///         |c| c.get(url.clone()),
     ///         async |r| r.json().await.context(DecodeResponseSnafu),
@@ -378,19 +378,17 @@ impl GeminiClient {
             )
             .await?;
 
-        Ok(stream
-            .eventsource()
-            .map(|event| event.context(BadPartSnafu))
-            .map_ok(|event| {
-                serde_json::from_str::<GenerationResponse>(&event.data).context(DeserializeSnafu)
+        Ok(stream.eventsource().map(|event| {
+            event.context(BadPartSnafu).and_then(|e| {
+                serde_json::from_str::<GenerationResponse>(&e.data).context(DeserializeSnafu)
             })
-            .map(|r| r.flatten()))
+        }))
     }
 
     /// Embed content
     #[instrument(skip_all, fields(
         model,
-        task.type = request.task_type.as_ref().map(|t| format!("{:?}", t)),
+        task.type = request.task_type.as_ref().map(|t| format!("{t:?}")),
         task.title = request.title,
         task.output.dimensionality = request.output_dimensionality,
     ))]
@@ -735,7 +733,7 @@ impl GeminiClient {
                 if n.starts_with("cachedContents/") {
                     n.to_string()
                 } else {
-                    format!("cachedContents/{}", n)
+                    format!("cachedContents/{n}")
                 }
             })
             .unwrap_or_else(|| "cachedContents".to_string());

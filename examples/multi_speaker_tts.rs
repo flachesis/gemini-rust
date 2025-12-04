@@ -87,7 +87,7 @@ Alice: I couldn't agree more. It's remarkable how far AI-generated speech has co
                                     match general_purpose::STANDARD.decode(&inline_data.data) {
                                         Ok(audio_bytes) => {
                                             let filename =
-                                                format!("multi_speaker_dialogue_{}_{}.pcm", i, j);
+                                                format!("multi_speaker_dialogue_{i}_{j}.pcm");
 
                                             // Save audio to file
                                             match File::create(&filename) {

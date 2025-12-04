@@ -73,6 +73,25 @@ pub enum Part {
         #[serde(rename = "functionResponse")]
         function_response: super::tools::FunctionResponse,
     },
+    /// File reference for previously uploaded files
+    FileData {
+        #[serde(rename = "fileData")]
+        file_data: FileData,
+    },
+}
+
+/// URI-based file data for referencing previously uploaded files.
+///
+/// This struct contains the coordinates needed to reference a file that was
+/// uploaded to the Gemini API. The file URI and MIME type are provided by
+/// the API when a file is successfully uploaded.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileData {
+    /// The IANA standard MIME type of the file
+    pub mime_type: String,
+    /// The URI of the uploaded file
+    pub file_uri: String,
 }
 
 /// Blob for a message part
@@ -282,6 +301,8 @@ pub enum Modality {
     Audio,
     /// Indicates the model should return video.
     Video,
+    /// Indicates the model should return a document.
+    Document,
     #[serde(untagged)]
     Other(String),
 }
