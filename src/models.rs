@@ -291,6 +291,8 @@ impl Message {
 pub enum Modality {
     /// Default value.
     ModalityUnspecified,
+    /// Indicates the model should return a (json) document.
+    Document,
     /// Indicates the model should return text.
     Text,
     /// Indicates the model should return images.
@@ -301,4 +303,6 @@ pub enum Modality {
     Video,
     /// Indicates the model should return a document.
     Document,
+    #[serde(untagged)]
+    Other(String),
 }
