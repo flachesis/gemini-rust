@@ -15,7 +15,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Ask for restaurant recommendations with location context
     let prompt = "What are the best coffee shops near me?";
 
-    println!("Query: {}", prompt);
+    println!("Query: {prompt}");
     println!("Location: San Francisco (37.7749, -122.4194)\n");
 
     // Use Google Maps grounding with San Francisco coordinates

@@ -1,11 +1,13 @@
-use futures::TryStream;
 use std::sync::Arc;
 use tracing::instrument;
 
 use crate::{
     cache::CachedContentHandle,
-    client::{Error as ClientError, GeminiClient},
-    generation::{GenerateContentRequest, SpeakerVoiceConfig, SpeechConfig, ThinkingConfig},
+    client::{Error as ClientError, GeminiClient, GenerationStream},
+    generation::{
+        GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
+        ThinkingConfig, ThinkingLevel,
+    },
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
     Message, Role, Tool,
@@ -77,6 +79,24 @@ impl ContentBuilder {
         mime_type: impl Into<String>,
     ) -> Self {
         let content = Content::inline_data(mime_type, data).with_role(Role::User);
+        self.contents.push(content);
+        self
+    }
+
+    /// Adds inline data with explicit media resolution control.
+    ///
+    /// This allows fine-grained control over the resolution used for processing
+    /// the inline data, which affects both quality and token consumption.
+    /// This method is useful for optimizing token usage.
+    /// The data should be base64-encoded.
+    pub fn with_inline_data_and_resolution(
+        mut self,
+        data: impl Into<String>,
+        mime_type: impl Into<String>,
+        resolution: MediaResolutionLevel,
+    ) -> Self {
+        let content =
+            Content::inline_data_with_resolution(mime_type, data, resolution).with_role(Role::User);
         self.contents.push(content);
         self
     }
@@ -265,12 +285,15 @@ impl ContentBuilder {
     /// Sets the thinking budget for the request (Gemini 2.5 series only).
     ///
     /// A budget of -1 enables dynamic thinking.
+    /// This is mutually exclusive with `thinking_level` (Gemini 3 models).
     pub fn with_thinking_budget(mut self, budget: i32) -> Self {
-        self.generation_config
+        let config = self
+            .generation_config
             .get_or_insert_with(Default::default)
             .thinking_config
-            .get_or_insert_with(Default::default)
-            .thinking_budget = Some(budget);
+            .get_or_insert_with(Default::default);
+        config.thinking_budget = Some(budget);
+        config.thinking_level = None;
         self
     }
 
@@ -293,6 +316,46 @@ impl ContentBuilder {
             .get_or_insert_with(Default::default)
             .include_thoughts = Some(include);
         self
+    }
+
+    /// Sets the thinking level for Gemini 3 Pro.
+    ///
+    /// This controls the depth of reasoning the model applies. Use `Low` for simpler
+    /// queries requiring faster responses, or `High` for complex problems requiring
+    /// deeper analysis.
+    ///
+    /// Note: This is mutually exclusive with `thinking_budget` (used by Gemini 2.5 models).
+    /// Setting this will be ignored by Gemini 2.5 models.
+    pub fn with_thinking_level(mut self, level: ThinkingLevel) -> Self {
+        let config = self
+            .generation_config
+            .get_or_insert_with(Default::default)
+            .thinking_config
+            .get_or_insert_with(Default::default);
+        config.thinking_level = Some(level);
+        config.thinking_budget = None;
+        self
+    }
+
+    /// Sets the global media resolution level.
+    ///
+    /// This controls the token usage for all images and PDFs in the request.
+    /// Individual parts can override this setting using `with_inline_data_and_resolution()`.
+    /// Higher resolutions provide better quality but consume more tokens.
+    pub fn with_media_resolution(mut self, level: MediaResolutionLevel) -> Self {
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .media_resolution = Some(level);
+        self
+    }
+
+    /// Adds the code execution tool to the request.
+    ///
+    /// This allows the model to generate and execute Python code as part of the
+    /// generation process. Useful for mathematical calculations, data analysis,
+    /// and other computational tasks. Currently supports Python only.
+    pub fn with_code_execution(self) -> Self {
+        self.with_tool(Tool::code_execution())
     }
 
     /// Enables audio output (text-to-speech).
@@ -356,10 +419,7 @@ impl ContentBuilder {
         system.instruction.present = self.system_instruction.is_some(),
         cached.content.present = self.cached_content.is_some(),
     ))]
-    pub async fn execute_stream(
-        self,
-    ) -> Result<impl TryStream<Ok = GenerationResponse, Error = ClientError> + Send, ClientError>
-    {
+    pub async fn execute_stream(self) -> Result<GenerationStream, ClientError> {
         let client = self.client.clone();
         let request = self.build();
         client.generate_content_stream(request).await

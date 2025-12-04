@@ -118,8 +118,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                 success: true,
                 meeting_id,
                 message: format!(
-                    "Meeting '{}' scheduled for {} at {} with {:?}",
-                    topic, date, time, attendees
+                    "Meeting '{topic}' scheduled for {date} at {time} with {attendees:?}"
                 ),
             };
 

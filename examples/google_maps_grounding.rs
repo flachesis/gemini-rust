@@ -55,7 +55,7 @@ async fn basic_restaurant_recommendations(
         .execute()
         .await?;
 
-    println!("Question: {}\n", prompt);
+    println!("Question: {prompt}\n");
     println!("Response: {}", response.text());
 
     // Display grounding sources if available
@@ -94,7 +94,7 @@ async fn place_specific_question(gemini: &Gemini) -> Result<(), Box<dyn std::err
         .execute()
         .await?;
 
-    println!("Question: {}\n", prompt);
+    println!("Question: {prompt}\n");
     println!("Response: {}", response.text());
 
     // Display grounding sources if available
@@ -106,7 +106,7 @@ async fn place_specific_question(gemini: &Gemini) -> Result<(), Box<dyn std::err
                     if let Some(maps) = &chunk.maps {
                         println!("  • [{}]({})", maps.title, maps.uri);
                         if let Some(place_id) = &maps.place_id {
-                            println!("    Place ID: {}", place_id);
+                            println!("    Place ID: {place_id}");
                         }
                     }
                 }
@@ -116,7 +116,7 @@ async fn place_specific_question(gemini: &Gemini) -> Result<(), Box<dyn std::err
             if let Some(queries) = &grounding_metadata.web_search_queries {
                 println!("\n🔍 Search Queries:");
                 for query in queries {
-                    println!("  • {}", query);
+                    println!("  • {query}");
                 }
             }
         }
@@ -146,7 +146,7 @@ async fn family_friendly_recommendations(
         .execute()
         .await?;
 
-    println!("Question: {}\n", prompt);
+    println!("Question: {prompt}\n");
     println!("Response: {}", response.text());
 
     // Display grounding sources and supports
@@ -196,7 +196,7 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
         .execute()
         .await?;
 
-    println!("Question: {}\n", prompt);
+    println!("Question: {prompt}\n");
     println!("Response: {}", response.text());
 
     // Display comprehensive grounding information
@@ -208,7 +208,7 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
                     if let Some(maps) = &chunk.maps {
                         println!("  {}. [{}]({})", i + 1, maps.title, maps.uri);
                         if let Some(place_id) = &maps.place_id {
-                            println!("     Place ID: {}", place_id);
+                            println!("     Place ID: {place_id}");
                         }
                     }
                 }
@@ -218,8 +218,7 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
             if let Some(widget_token) = &grounding_metadata.google_maps_widget_context_token {
                 println!("\n🗺️  Google Maps Widget Context Token:");
                 println!(
-                    "  <gmp-place-contextual context-token=\"{}\"></gmp-place-contextual>",
-                    widget_token
+                    "  <gmp-place-contextual context-token=\"{widget_token}\"></gmp-place-contextual>"
                 );
                 println!("  \nYou can use this token to render an interactive Google Maps widget in your web application.");
             }
@@ -243,7 +242,7 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
             if let Some(queries) = &grounding_metadata.web_search_queries {
                 println!("🔍 Search Queries Used:");
                 for query in queries {
-                    println!("  • {}", query);
+                    println!("  • {query}");
                 }
             }
         }

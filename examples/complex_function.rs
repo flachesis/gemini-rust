@@ -109,8 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let status = StatusResponse {
             status: true,
             detail: format!(
-                "Command '{}' executed successfully with arguments: {:?}",
-                command, arguments
+                "Command '{command}' executed successfully with arguments: {arguments:?}"
             ),
         };
 

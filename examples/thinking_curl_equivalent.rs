@@ -87,6 +87,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let thinking_config = ThinkingConfig {
         thinking_budget: Some(1024),
         include_thoughts: Some(true),
+        thinking_level: None,
     };
 
     let generation_config = GenerationConfig {

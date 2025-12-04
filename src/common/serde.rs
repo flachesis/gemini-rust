@@ -67,8 +67,7 @@ pub(crate) mod key_as_string {
         let s = String::deserialize(deserializer)?;
         s.parse::<usize>().map_err(|e| {
             let error_message = format!(
-                "Failed to parse key '{}' as a number: {}. This crate uses index-based keys for batch requests; custom string keys are not supported.",
-                s, e
+                "Failed to parse key '{s}' as a number: {e}. This crate uses index-based keys for batch requests; custom string keys are not supported."
             );
             serde::de::Error::custom(error_message)
         })
