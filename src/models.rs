@@ -301,8 +301,6 @@ pub enum Modality {
     Audio,
     /// Indicates the model should return video.
     Video,
-    /// Indicates the model should return a document.
-    Document,
     #[serde(untagged)]
     Other(String),
 }
