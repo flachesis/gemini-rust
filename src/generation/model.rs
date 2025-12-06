@@ -631,7 +631,7 @@ pub struct GenerationConfig {
     /// Global media resolution for all images and PDFs.
     /// Controls the resolution used for inline image and PDF data, affecting token usage.
     /// Can be overridden per-part using the Part::InlineData media_resolution field.
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none", rename = "media_resolution")]
     pub media_resolution: Option<MediaResolutionLevel>,
 }
 
