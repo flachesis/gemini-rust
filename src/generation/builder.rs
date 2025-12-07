@@ -10,7 +10,7 @@ use crate::{
     },
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Role, Tool,
+    Message, Role, SafetySetting, Tool,
 };
 
 /// Builder for content generation requests
@@ -19,6 +19,7 @@ pub struct ContentBuilder {
     client: Arc<GeminiClient>,
     pub contents: Vec<Content>,
     generation_config: Option<GenerationConfig>,
+    safety_settings: Option<Vec<SafetySetting>>,
     tools: Option<Vec<Tool>>,
     tool_config: Option<ToolConfig>,
     system_instruction: Option<Content>,
@@ -32,11 +33,18 @@ impl ContentBuilder {
             client,
             contents: Vec::new(),
             generation_config: None,
+            safety_settings: None,
             tools: None,
             tool_config: None,
             system_instruction: None,
             cached_content: None,
         }
+    }
+
+    /// Sets the safety settings for the request.
+    pub fn with_safety_settings(mut self, safety_settings: Vec<SafetySetting>) -> Self {
+        self.safety_settings = Some(safety_settings);
+        self
     }
 
     /// Sets the system prompt for the request.
@@ -391,7 +399,7 @@ impl ContentBuilder {
         GenerateContentRequest {
             contents: self.contents,
             generation_config: self.generation_config,
-            safety_settings: None,
+            safety_settings: self.safety_settings,
             tools: self.tools,
             tool_config: self.tool_config,
             system_instruction: self.system_instruction,
