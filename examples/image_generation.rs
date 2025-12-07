@@ -67,7 +67,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                             "text response received"
                         );
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    gemini_rust::Part::InlineData { inline_data, .. } => {
                         info!(
                             response_number = j + 1,
                             mime_type = inline_data.mime_type,
@@ -172,7 +172,7 @@ fn save_generated_images(
                     gemini_rust::Part::Text { text, .. } => {
                         text_parts.push(text.clone());
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    gemini_rust::Part::InlineData { inline_data, .. } => {
                         image_count += 1;
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {

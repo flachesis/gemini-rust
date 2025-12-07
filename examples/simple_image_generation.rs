@@ -65,7 +65,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                     gemini_rust::Part::Text { text, .. } => {
                         info!(response = text, "model text response received");
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    gemini_rust::Part::InlineData { inline_data, .. } => {
                         info!(mime_type = inline_data.mime_type, "image generated");
 
                         // Decode and save the image

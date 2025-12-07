@@ -55,7 +55,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     for candidate in base_response.candidates.iter() {
         if let Some(parts) = &candidate.content.parts {
             for part in parts.iter() {
-                if let gemini_rust::Part::InlineData { inline_data } = part {
+                if let gemini_rust::Part::InlineData { inline_data, .. } = part {
                     base_image_data = Some(inline_data.data.clone());
                     let image_bytes = BASE64.decode(&inline_data.data)?;
                     fs::write("base_landscape.png", image_bytes)?;
@@ -144,7 +144,7 @@ fn save_generated_images(
                             info!(text = text.trim(), prefix = prefix, "model text response");
                         }
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    gemini_rust::Part::InlineData { inline_data, .. } => {
                         image_count += 1;
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {
