@@ -9,6 +9,7 @@ use crate::client::GeminiClient;
 ///
 /// A `CachedContentHandle` object is a handle to a cached content resource on the Gemini API.
 /// It allows you to retrieve, update, or delete the cached content.
+#[derive(Clone)]
 pub struct CachedContentHandle {
     /// The unique resource name of the cached content, e.g., `cachedContents/cache-xxxxxxxx`.
     pub name: String,
