@@ -80,8 +80,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
         let request = gemini
             .generate_content()
             .with_message(Message::user(format!(
-                "Write a creative story about a robot learning to paint, part {}. Make it at least 100 words long.",
-                i
+                "Write a creative story about a robot learning to paint, part {i}. Make it at least 100 words long."
             )))
             .build();
 
