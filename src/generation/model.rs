@@ -582,10 +582,10 @@ pub struct GenerationConfig {
 #[serde(rename_all = "camelCase")]
 pub struct CountTokensResponse {
     /// The total number of tokens counted across all instances.
-    pub total_tokens: i32,
+    pub total_tokens: u32,
     /// The total number of tokens in the cached content.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub cached_content_token_count: Option<i32>,
+    pub cached_content_token_count: Option<u32>,
 }
 
 /// Configuration for speech generation (text-to-speech)
