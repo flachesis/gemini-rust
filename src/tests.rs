@@ -120,7 +120,7 @@ fn test_function_call_with_thought_signature() {
 
     // Test serialization
     let serialized = serde_json::to_string(&function_call).unwrap();
-    println!("Serialized FunctionCall: {}", serialized);
+    println!("Serialized FunctionCall: {serialized}");
 
     // Test deserialization
     let deserialized: FunctionCall = serde_json::from_str(&serialized).unwrap();
@@ -138,7 +138,7 @@ fn test_function_call_without_thought_signature() {
 
     // Test serialization should not include thought_signature field when None
     let serialized = serde_json::to_string(&function_call).unwrap();
-    println!("Serialized FunctionCall without thought: {}", serialized);
+    println!("Serialized FunctionCall without thought: {serialized}");
     assert!(!serialized.contains("thought_signature"));
 }
 
@@ -169,7 +169,7 @@ fn test_multi_turn_content_structure() {
 
     // Test serialization of the complete structure first
     let serialized = serde_json::to_string(&model_content).unwrap();
-    println!("Serialized multi-turn content: {}", serialized);
+    println!("Serialized multi-turn content: {serialized}");
 
     // Verify it contains the thought signature
     assert!(serialized.contains("thoughtSignature"));
@@ -328,13 +328,13 @@ fn test_content_creation_with_thought_signature() {
 
     // Test serialization
     let serialized = serde_json::to_string(&content).unwrap();
-    println!("Serialized content with thought signature: {}", serialized);
+    println!("Serialized content with thought signature: {serialized}");
     assert!(serialized.contains("thoughtSignature"));
     assert!(serialized.contains("test_signature_123"));
 
     // Test serialization of thought content
     let serialized_thought = serde_json::to_string(&thought_content).unwrap();
-    println!("Serialized thought content: {}", serialized_thought);
+    println!("Serialized thought content: {serialized_thought}");
     assert!(serialized_thought.contains("thoughtSignature"));
     assert!(serialized_thought.contains("thought_signature_456"));
     assert!(serialized_thought.contains("\"thought\":true"));
@@ -389,4 +389,27 @@ fn test_content_file_data_helper() {
         }
         _ => panic!("Expected FileData part"),
     }
+}
+
+#[test]
+fn test_builder_safety_settings() {
+    use crate::{GeminiBuilder, HarmBlockThreshold, HarmCategory, SafetySetting};
+
+    let client = GeminiBuilder::new("_key").build().unwrap();
+
+    let settings = vec![SafetySetting {
+        category: HarmCategory::Harassment,
+        threshold: HarmBlockThreshold::BlockNone,
+    }];
+
+    let builder = client
+        .generate_content()
+        .with_safety_settings(settings.clone());
+
+    let request = builder.build();
+
+    assert!(request.safety_settings.is_some());
+    let req_settings = request.safety_settings.unwrap();
+    assert_eq!(req_settings.len(), 1);
+    assert_eq!(req_settings[0].category, HarmCategory::Harassment);
 }

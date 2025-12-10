@@ -52,7 +52,7 @@ async fn manual_tool_configuration(gemini: &Gemini) -> Result<(), Box<dyn std::e
         .execute()
         .await?;
 
-    println!("Query: {}\n", prompt);
+    println!("Query: {prompt}\n");
     println!("Response: {}", response.text());
 
     display_grounding_info(&response);
@@ -79,7 +79,7 @@ async fn widget_enabled_grounding(gemini: &Gemini) -> Result<(), Box<dyn std::er
         .execute()
         .await?;
 
-    println!("Query: {}\n", prompt);
+    println!("Query: {prompt}\n");
     println!("Response: {}", response.text());
 
     display_grounding_info(&response);
@@ -95,8 +95,7 @@ async fn widget_enabled_grounding(gemini: &Gemini) -> Result<(), Box<dyn std::er
                 );
                 println!("  Use this token to render an interactive Google Maps widget:");
                 println!(
-                    "  <gmp-place-contextual context-token=\"{}\"></gmp-place-contextual>",
-                    widget_token
+                    "  <gmp-place-contextual context-token=\"{widget_token}\"></gmp-place-contextual>"
                 );
             } else {
                 println!("\nℹ️  No widget context token in this response.");
@@ -175,7 +174,7 @@ fn display_grounding_info(response: &GenerationResponse) {
             if let Some(queries) = &grounding_metadata.web_search_queries {
                 println!("\n🔍 Search Queries:");
                 for query in queries {
-                    println!("  • {}", query);
+                    println!("  • {query}");
                 }
             }
         } else {

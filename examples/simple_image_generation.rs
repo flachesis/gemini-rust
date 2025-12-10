@@ -65,14 +65,14 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
                     gemini_rust::Part::Text { text, .. } => {
                         info!(response = text, "model text response received");
                     }
-                    gemini_rust::Part::InlineData { inline_data } => {
+                    gemini_rust::Part::InlineData { inline_data, .. } => {
                         info!(mime_type = inline_data.mime_type, "image generated");
 
                         // Decode and save the image
                         match BASE64.decode(&inline_data.data) {
                             Ok(image_bytes) => {
                                 images_saved += 1;
-                                let filename = format!("robot_garden_{}.png", images_saved);
+                                let filename = format!("robot_garden_{images_saved}.png");
                                 fs::write(&filename, image_bytes)?;
                                 info!(filename = filename, "image saved successfully");
                             }
