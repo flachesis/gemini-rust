@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### ✨ Features
+
+#### File Search for Retrieval Augmented Generation (RAG)
+
+- **File Search API Support**: Full implementation of the File Search API for semantic document search and RAG
+- **File Search Stores**: Create and manage persistent document stores with automatic chunking, embedding, and indexing
+- **Document Upload**: Direct upload of files to stores with resumable upload protocol for large files
+- **File Import**: Import existing files from Files API into search stores
+- **Custom Metadata**: Add metadata to documents for filtering searches using AIP-160 syntax (e.g., `category = "api-docs"`)
+- **Chunking Configuration**: Customize document chunking with configurable token limits and overlap
+- **Operation Polling**: Monitor long-running upload and import operations with automatic polling
+- **Document Management**: List, retrieve, and delete documents within stores
+- **Store Lifecycle**: Create, list, get, and delete file search stores with force delete support
+- **Grounding Citations**: Access source references and grounding metadata in model responses
+- **Tool Integration**: New `Tool::file_search()` for using stores in content generation
+- **Builder Pattern**: Fluent API with `FileSearchStoreBuilder`, `UploadBuilder`, `ImportBuilder`, and `DocumentBuilder`
+- **Handle Pattern**: Resource management with `FileSearchStoreHandle`, `DocumentHandle`, and `OperationHandle`
+- **Comprehensive Examples**: Added `file_search_basic.rs`, `file_search_metadata.rs`, and `file_search_import.rs`
+- **Full Documentation**: rustdoc documentation for all public types and methods
+
+### 🔧 Technical Improvements
+
+- **Error Handling**: Added `OperationTimeout`, `OperationFailed`, and `InvalidResourceName` error types
+- **Resumable Upload**: Implementation of Google's resumable upload protocol for large file uploads
+- **Structured Logging**: Comprehensive tracing instrumentation for all file search operations
+- **Type Safety**: Full serde support for all File Search API types
+- **Debug Support**: Added `Debug` implementation to `GeminiClient` for better diagnostics
+
 ## [1.5.0] - 2025-10-01
 
 ### ✨ Features
