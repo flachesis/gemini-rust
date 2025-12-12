@@ -4,13 +4,15 @@ use tracing::instrument;
 use crate::{
     cache::CachedContentHandle,
     client::{Error as ClientError, GeminiClient, GenerationStream},
+    files::Error as FilesError,
     generation::{
         GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ThinkingLevel,
     },
+    models::{FileData, Part},
     tools::{FunctionCallingConfig, ToolConfig},
-    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Role, SafetySetting, Tool,
+    Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
+    GenerationResponse, Message, Role, SafetySetting, Tool,
 };
 
 /// Builder for content generation requests
@@ -69,6 +71,58 @@ impl ContentBuilder {
         let message = Message::user(text);
         self.contents.push(message.content);
         self
+    }
+
+    /// Adds a user message, together with coordinates for a previously uploaded file.
+    ///
+    /// Uploading a file and using it avoids encoding large files and sending them, in particular
+    /// when this would need to happen more than once with a file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file metadata is incomplete (missing MIME type or URI).
+    pub fn with_user_message_and_file(
+        mut self,
+        text: impl Into<String>,
+        file_handle: &FileHandle,
+    ) -> Result<Self, FilesError> {
+        let meta = file_handle.get_file_meta();
+
+        let mut missing_fields = Vec::new();
+        if meta.mime_type.is_none() {
+            missing_fields.push("mime_type".to_string());
+        }
+        if meta.uri.is_none() {
+            missing_fields.push("uri".to_string());
+        }
+        if !missing_fields.is_empty() {
+            return Err(FilesError::Incomplete {
+                fields: missing_fields,
+            });
+        }
+
+        let mime_type = meta.mime_type.clone().unwrap();
+        let file_uri = meta.uri.as_ref().unwrap().to_string();
+
+        let content = Content {
+            parts: Some(vec![
+                Part::Text {
+                    text: text.into(),
+                    thought: None,
+                    thought_signature: None,
+                },
+                Part::FileData {
+                    file_data: FileData {
+                        mime_type,
+                        file_uri,
+                    },
+                },
+            ]),
+            role: Some(Role::User),
+        };
+
+        self.contents.push(content);
+        Ok(self)
     }
 
     /// Adds a model message to the conversation history.

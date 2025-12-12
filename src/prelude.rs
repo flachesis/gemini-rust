@@ -18,7 +18,7 @@ pub use crate::{ClientError, Gemini, Model};
 pub use crate::{ContentBuilder, EmbedBuilder};
 
 // Core data types for messages and content
-pub use crate::{Content, Message, Role};
+pub use crate::{Content, FileData, Message, Role};
 
 // Main response types
 pub use crate::{ContentEmbeddingResponse, CountTokensResponse, GenerationResponse};
