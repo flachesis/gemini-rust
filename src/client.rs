@@ -400,6 +400,33 @@ impl GeminiClient {
         ))
     }
 
+    /// Count tokens for content
+    #[instrument(skip_all, fields(
+        model,
+        messages.parts.count = request.contents.len(),
+    ))]
+    pub(crate) async fn count_tokens(
+        &self,
+        request: GenerateContentRequest,
+    ) -> Result<crate::generation::CountTokensResponse, Error> {
+        let url = self.build_url("countTokens")?;
+        // Wrap the request in a "generateContentRequest" field and explicitly add the model.
+        // The countTokens API requires the model to be specified within generateContentRequest.
+        let body = json!({
+            "generateContentRequest": {
+                "model": self.model.as_str(),
+                "contents": request.contents,
+                "generationConfig": request.generation_config,
+                "safetySettings": request.safety_settings,
+                "tools": request.tools,
+                "toolConfig": request.tool_config,
+                "systemInstruction": request.system_instruction,
+                "cachedContent": request.cached_content,
+            }
+        });
+        self.post_json(url, &body).await
+    }
+
     /// Embed content
     #[instrument(skip_all, fields(
         model,
