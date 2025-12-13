@@ -635,6 +635,17 @@ pub struct GenerationConfig {
     pub media_resolution: Option<MediaResolutionLevel>,
 }
 
+/// Response from the Gemini API for token counting
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CountTokensResponse {
+    /// The total number of tokens counted across all instances.
+    pub total_tokens: u32,
+    /// The total number of tokens in the cached content.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cached_content_token_count: Option<u32>,
+}
+
 /// Configuration for speech generation (text-to-speech)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
