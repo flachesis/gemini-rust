@@ -4,13 +4,14 @@ use tracing::instrument;
 use crate::{
     cache::CachedContentHandle,
     client::{Error as ClientError, GeminiClient, GenerationStream},
+    files::Error as FilesError,
     generation::{
         GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ThinkingLevel,
     },
     tools::{FunctionCallingConfig, ToolConfig},
-    Content, FunctionCallingMode, FunctionDeclaration, GenerationConfig, GenerationResponse,
-    Message, Role, SafetySetting, Tool,
+    Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
+    GenerationResponse, Message, Role, SafetySetting, Tool,
 };
 
 /// Builder for content generation requests
@@ -69,6 +70,20 @@ impl ContentBuilder {
         let message = Message::user(text);
         self.contents.push(message.content);
         self
+    }
+
+    /// Add a user message, together with coordinates for a previously uploaded file.
+    ///
+    /// Uploading a file and using it avoids encoding large files and sending them, in particular
+    /// when this would need to happen more than once with a file.
+    pub fn with_user_message_and_file(
+        mut self,
+        text: impl Into<String>,
+        file_handle: &FileHandle,
+    ) -> Result<Self, FilesError> {
+        let content = Content::text_with_file(text, file_handle)?.with_role(Role::User);
+        self.contents.push(content);
+        Ok(self)
     }
 
     /// Adds a model message to the conversation history.

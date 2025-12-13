@@ -104,6 +104,7 @@ Get your API key from [Google AI Studio](https://aistudio.google.com/apikey).
 | Example | Description |
 |---------|-------------|
 | [`files_lifecycle.rs`](files_lifecycle.rs) | Complete file management lifecycle (upload, list, get, delete) |
+| [`files_usage.rs`](files_usage.rs) | Upload and use file in a request |
 | [`files_delete_all.rs`](files_delete_all.rs) | Bulk delete all uploaded files |
 
 ### ⚙️ Configuration & Setup
