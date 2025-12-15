@@ -6,5 +6,11 @@ pub mod model;
 
 #[derive(Debug, Snafu)]
 pub enum Error {
-    Client { source: crate::client::Error },
+    Client {
+        source: crate::client::Error,
+    },
+    #[snafu(display("incomplete file, missing required fields: {fields:?}"))]
+    Incomplete {
+        fields: Vec<String>,
+    },
 }
