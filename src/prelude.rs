@@ -21,7 +21,7 @@ pub use crate::{ContentBuilder, EmbedBuilder};
 pub use crate::{Content, FileData, Message, Role};
 
 // Main response types
-pub use crate::{ContentEmbeddingResponse, GenerationResponse};
+pub use crate::{ContentEmbeddingResponse, CountTokensResponse, GenerationResponse};
 
 // Configuration types
 pub use crate::{GenerationConfig, TaskType};

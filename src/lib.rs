@@ -83,14 +83,14 @@ pub use models::{Blob, Content, FileData, Message, Modality, Part, Role};
 
 pub use generation::{
     builder::ContentBuilder, model::BlockReason, model::Candidate, model::CitationMetadata,
-    model::CitationSource, model::FinishReason, model::GenerateContentRequest,
-    model::GenerationConfig, model::GenerationResponse, model::GroundingChunk,
-    model::GroundingMetadata, model::GroundingSegment, model::GroundingSupport,
-    model::MapsGroundingChunk, model::MediaResolution, model::MediaResolutionLevel,
-    model::MultiSpeakerVoiceConfig, model::PrebuiltVoiceConfig, model::PromptFeedback,
-    model::PromptTokenDetails, model::SpeakerVoiceConfig, model::SpeechConfig,
-    model::ThinkingConfig, model::ThinkingLevel, model::UsageMetadata, model::VoiceConfig,
-    model::WebGroundingChunk,
+    model::CitationSource, model::CountTokensResponse, model::FinishReason,
+    model::GenerateContentRequest, model::GenerationConfig, model::GenerationResponse,
+    model::GroundingChunk, model::GroundingMetadata, model::GroundingSegment,
+    model::GroundingSupport, model::MapsGroundingChunk, model::MediaResolution,
+    model::MediaResolutionLevel, model::MultiSpeakerVoiceConfig, model::PrebuiltVoiceConfig,
+    model::PromptFeedback, model::PromptTokenDetails, model::SpeakerVoiceConfig,
+    model::SpeechConfig, model::ThinkingConfig, model::ThinkingLevel, model::UsageMetadata,
+    model::VoiceConfig, model::WebGroundingChunk,
 };
 
 // ========== Text Embeddings ==========

@@ -9,7 +9,6 @@ use crate::{
         GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
         ThinkingConfig, ThinkingLevel,
     },
-    models::{FileData, Part},
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
     GenerationResponse, Message, Role, SafetySetting, Tool,
@@ -86,41 +85,7 @@ impl ContentBuilder {
         text: impl Into<String>,
         file_handle: &FileHandle,
     ) -> Result<Self, FilesError> {
-        let meta = file_handle.get_file_meta();
-
-        let mut missing_fields = Vec::new();
-        if meta.mime_type.is_none() {
-            missing_fields.push("mime_type".to_string());
-        }
-        if meta.uri.is_none() {
-            missing_fields.push("uri".to_string());
-        }
-        if !missing_fields.is_empty() {
-            return Err(FilesError::Incomplete {
-                fields: missing_fields,
-            });
-        }
-
-        let mime_type = meta.mime_type.clone().unwrap();
-        let file_uri = meta.uri.as_ref().unwrap().to_string();
-
-        let content = Content {
-            parts: Some(vec![
-                Part::Text {
-                    text: text.into(),
-                    thought: None,
-                    thought_signature: None,
-                },
-                Part::FileData {
-                    file_data: FileData {
-                        mime_type,
-                        file_uri,
-                    },
-                },
-            ]),
-            role: Some(Role::User),
-        };
-
+        let content = Content::text_with_file(text, file_handle)?.with_role(Role::User);
         self.contents.push(content);
         Ok(self)
     }
@@ -485,5 +450,15 @@ impl ContentBuilder {
         let client = self.client.clone();
         let request = self.build();
         client.generate_content_stream(request).await
+    }
+
+    /// Counts the number of tokens in the content generation request.
+    #[instrument(skip_all, fields(
+        messages.parts.count = self.contents.len(),
+    ))]
+    pub async fn count_tokens(self) -> Result<super::model::CountTokensResponse, ClientError> {
+        let client = self.client.clone();
+        let request = self.build();
+        client.count_tokens(request).await
     }
 }
