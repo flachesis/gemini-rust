@@ -72,10 +72,14 @@ impl ContentBuilder {
         self
     }
 
-    /// Add a user message, together with coordinates for a previously uploaded file.
+    /// Adds a user message, together with coordinates for a previously uploaded file.
     ///
     /// Uploading a file and using it avoids encoding large files and sending them, in particular
     /// when this would need to happen more than once with a file.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file metadata is incomplete (missing MIME type or URI).
     pub fn with_user_message_and_file(
         mut self,
         text: impl Into<String>,

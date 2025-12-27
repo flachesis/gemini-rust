@@ -5,6 +5,7 @@ use super::*;
 use crate::client::GeminiClient;
 
 /// A handle to a file on the Gemini API.
+#[derive(Clone)]
 pub struct FileHandle {
     inner: super::model::File,
     client: Arc<GeminiClient>,
