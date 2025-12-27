@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use display_error_chain::DisplayErrorChain;
-use gemini_rust::{Gemini, GenerationConfig};
+use gemini_rust::{Gemini, GenerationConfig, Model};
 use std::env;
 use std::fs;
 use std::process::ExitCode;
@@ -33,7 +33,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client with the image generation model
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
+    let client = Gemini::with_model(api_key, Model::Gemini25FlashImage)
         .expect("unable to create Gemini API client");
 
     info!("starting text-to-image generation examples");
@@ -46,7 +46,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
              The scene should be photorealistic with elegant lighting and sophisticated presentation."
         )
         .with_generation_config(GenerationConfig {
-            temperature: Some(0.7),
+            temperature: Some(1.0),
             max_output_tokens: Some(8192), // Higher token limit for image output
             ..Default::default()
         })

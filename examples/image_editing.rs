@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use display_error_chain::DisplayErrorChain;
-use gemini_rust::Gemini;
+use gemini_rust::{Gemini, Model};
 use std::env;
 use std::fs;
 use std::process::ExitCode;
@@ -33,7 +33,7 @@ async fn do_main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY environment variable not set");
 
     // Create client with the image generation model
-    let client = Gemini::with_model(api_key, "models/gemini-2.5-flash-image-preview".to_string())
+    let client = Gemini::with_model(api_key, Model::Gemini25FlashImage)
         .expect("unable to create Gemini API client");
 
     info!("starting image editing example with Gemini");
