@@ -15,6 +15,10 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 - **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
 - **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
+- **🚀 Gemini 3 Pro** - Code execution, advanced thinking levels, and media resolution control
+- **🔢 Token Count API** - Pre-calculate token usage for cost optimization
+- **🎯 Safety Settings** - Customize content moderation and safety filters
+- **📁 File Handles** - Efficient file reference without re-encoding large files
 - **🎨 Image Generation** - Text-to-image generation and image editing capabilities
 - **🎤 Speech Generation** - Text-to-speech with single and multi-speaker support
 - **🖼️ Multimodal Support** - Images and binary data processing
@@ -30,7 +34,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gemini-rust = "1.5.1"
+gemini-rust = "1.6.0"
 ```
 
 ## 🚀 Quick Start
@@ -46,6 +50,18 @@ Enable real-time content streaming for interactive applications. See [`basic_str
 ### Google Maps Grounding
 
 Add location-aware capabilities to your applications with Google Maps integration. See [`simple_maps_example.rs`](examples/simple_maps_example.rs) for basic usage and [`google_maps_grounding.rs`](examples/google_maps_grounding.rs) for comprehensive examples.
+
+### Token Count API
+
+Calculate token usage before making generation requests for cost estimation and optimization. See [`count_tokens.rs`](examples/count_tokens.rs).
+
+### Safety Settings
+
+Customize content moderation with granular control over different harm categories and block thresholds. See [`safety_settings.rs`](examples/safety_settings.rs).
+
+### Gemini 3 Pro
+
+Access the latest model features including code execution and advanced thinking levels. See [`gemini_3_code_execution.rs`](examples/gemini_3_code_execution.rs) for code execution and [`gemini_3_thinking_and_media.rs`](examples/gemini_3_thinking_and_media.rs) for thinking levels.
 
 ## 🛠️ Key Features
 
@@ -105,6 +121,25 @@ Real-time streaming of generated content for interactive applications. See [`str
 
 Built-in structured logging and telemetry with `tracing` for comprehensive monitoring and debugging.
 
+### 🔢 **Token Count API**
+
+Pre-calculate token usage for cost estimation and optimization. Calculate tokens for your requests before executing them. See [`count_tokens.rs`](examples/count_tokens.rs).
+
+### 🎯 **Safety Settings**
+
+Customize content moderation with granular control over different harm categories (Hate Speech, Dangerous Content, etc.) and block thresholds (Block None, Low, Medium, High). See [`safety_settings.rs`](examples/safety_settings.rs).
+
+### 🚀 **Gemini 3 Pro**
+
+- **Code Execution**: Generate and execute Python code for mathematical calculations, data analysis, and computational tasks
+- **Thinking Levels**: Choose Low for faster responses or High for deeper analysis
+- **Media Resolution**: Fine-grained control over image and PDF processing quality
+- See [`gemini_3_code_execution.rs`](examples/gemini_3_code_execution.rs) and [`gemini_3_thinking_and_media.rs`](examples/gemini_3_thinking_and_media.rs)
+
+### 📁 **File Handles**
+
+Efficiently reference previously uploaded files without re-encoding. Upload files once and reference them multiple times, reducing data transfer. Supports PDFs, images, and other binary formats. See [`file_input.rs`](examples/file_input.rs) and [`files_usage.rs`](examples/files_usage.rs).
+
 ## 🔧 Configuration
 
 ### Custom Models
@@ -142,6 +177,10 @@ The repository includes 30+ comprehensive examples demonstrating all features. S
 - [`basic_streaming.rs`](examples/basic_streaming.rs) - Real-time streaming responses
 - [`simple.rs`](examples/simple.rs) - Comprehensive example with function calling
 - [`thinking_basic.rs`](examples/thinking_basic.rs) - Gemini 2.5 thinking mode
+- [`count_tokens.rs`](examples/count_tokens.rs) - Pre-calculate token usage
+- [`safety_settings.rs`](examples/safety_settings.rs) - Configure safety filters
+- [`gemini_3_code_execution.rs`](examples/gemini_3_code_execution.rs) - Code execution with Python
+- [`file_input.rs`](examples/file_input.rs) - Upload and reference files
 - [`batch_generate.rs`](examples/batch_generate.rs) - Batch content generation
 - [`image_generation.rs`](examples/image_generation.rs) - Text-to-image generation
 - [`google_search.rs`](examples/google_search.rs) - Google Search integration
@@ -166,6 +205,7 @@ export GEMINI_API_KEY="your-api-key-here"
 - **Gemini 2.5 Flash** - Fast, efficient model (default) - `Model::Gemini25Flash`
 - **Gemini 2.5 Flash Lite** - Lightweight model - `Model::Gemini25FlashLite`
 - **Gemini 2.5 Pro** - Advanced model with thinking capabilities - `Model::Gemini25Pro`
+- **Gemini 3 Pro** - Latest model with code execution and advanced thinking - `Model::Gemini3Pro` (Preview)
 - **Text Embedding 004** - Latest embedding model - `Model::TextEmbedding004`
 - **Custom models** - Use `Model::Custom(String)` or string literals for other models
 
