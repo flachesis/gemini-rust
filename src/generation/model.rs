@@ -618,6 +618,11 @@ pub struct GenerationConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_modalities: Option<Vec<String>>,
 
+    /// Optional. Config for image generation. An error will be returned if this field is set for models
+    /// that don't support these config options.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_config: Option<ImageConfig>,
+
     /// Speech configuration for text-to-speech generation
     #[serde(skip_serializing_if = "Option::is_none")]
     pub speech_config: Option<SpeechConfig>,
@@ -644,6 +649,23 @@ pub struct CountTokensResponse {
     /// The total number of tokens in the cached content.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub cached_content_token_count: Option<u32>,
+}
+
+/// Config for image generation features.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageConfig {
+    /// Optional. The aspect ratio of the image to generate. Supported aspect ratios: 1:1, 2:3, 3:2, 3:4,
+    /// 4:3, 9:16, 16:9, 21:9.
+    ///
+    /// If not specified, the model will choose a default aspect ratio based on any reference images
+    /// provided.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aspect_ratio: Option<String>,
+    /// Optional. Specifies the size of generated images. Supported values are `1K`, `2K`, `4K`. If not
+    /// specified, the model will use default value `1K`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub image_size: Option<String>,
 }
 
 /// Configuration for speech generation (text-to-speech)
