@@ -51,10 +51,16 @@ pub enum Model {
     Gemini25Flash,
     #[serde(rename = "models/gemini-2.5-flash-lite")]
     Gemini25FlashLite,
+    #[serde(rename = "models/gemini-2.5-flash-image")]
+    Gemini25FlashImage,
     #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
+    #[serde(rename = "models/gemini-3-flash-preview")]
+    Gemini3Flash,
     #[serde(rename = "models/gemini-3-pro-preview")]
     Gemini3Pro,
+    #[serde(rename = "models/gemini-3-pro-image-preview")]
+    Gemini3ProImage,
     #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
     #[serde(untagged)]
@@ -66,8 +72,11 @@ impl Model {
         match self {
             Model::Gemini25Flash => "models/gemini-2.5-flash",
             Model::Gemini25FlashLite => "models/gemini-2.5-flash-lite",
+            Model::Gemini25FlashImage => "models/gemini-2.5-flash-image",
             Model::Gemini25Pro => "models/gemini-2.5-pro",
+            Model::Gemini3Flash => "models/gemini-3-flash-preview",
             Model::Gemini3Pro => "models/gemini-3-pro-preview",
+            Model::Gemini3ProImage => "models/gemini-3-pro-image-preview",
             Model::TextEmbedding004 => "models/text-embedding-004",
             Model::Custom(model) => model,
         }
@@ -85,8 +94,11 @@ impl fmt::Display for Model {
         match self {
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
+            Model::Gemini25FlashImage => write!(f, "models/gemini-2.5-flash-image"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
+            Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
             Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
+            Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image-preview"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
             Model::Custom(model) => write!(f, "{model}"),
         }
@@ -880,6 +892,11 @@ impl Gemini {
     /// Create a new client for the Gemini Pro model
     pub fn pro<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
         Self::with_model(api_key, Model::Gemini25Pro)
+    }
+
+    /// Create a new client for the Gemini Pro 3 image model
+    pub fn pro_image<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
+        Self::with_model(api_key, Model::Gemini3ProImage)
     }
 
     /// Create a new client with the specified API key and model

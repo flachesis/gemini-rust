@@ -6,8 +6,8 @@ use crate::{
     client::{Error as ClientError, GeminiClient, GenerationStream},
     files::Error as FilesError,
     generation::{
-        GenerateContentRequest, MediaResolutionLevel, SpeakerVoiceConfig, SpeechConfig,
-        ThinkingConfig, ThinkingLevel,
+        GenerateContentRequest, ImageConfig, MediaResolutionLevel, SpeakerVoiceConfig,
+        SpeechConfig, ThinkingConfig, ThinkingLevel,
     },
     tools::{FunctionCallingConfig, ToolConfig},
     Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
@@ -390,6 +390,14 @@ impl ContentBuilder {
         self.generation_config
             .get_or_insert_with(Default::default)
             .response_modalities = Some(vec!["AUDIO".to_string()]);
+        self
+    }
+
+    /// Sets the image generation configuration.
+    pub fn with_image_config(mut self, image_config: ImageConfig) -> Self {
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .image_config = Some(image_config);
         self
     }
 
