@@ -1,6 +1,6 @@
 # gemini-rust
 
-A comprehensive Rust client library for Google's Gemini 2.5 API.
+A comprehensive Rust client library for Google's Gemini API.
 
 [![Crates.io](https://img.shields.io/crates/v/gemini-rust.svg)](https://crates.io/crates/gemini-rust)
 [![Documentation](https://docs.rs/gemini-rust/badge.svg)](https://docs.rs/gemini-rust)
@@ -8,18 +8,18 @@ A comprehensive Rust client library for Google's Gemini 2.5 API.
 
 ## ✨ Features
 
-- **🚀 Complete Gemini 2.5 API Implementation** - Full support for all Gemini API endpoints
+- **🚀 Complete Gemini API Implementation** - Full support for all Gemini API endpoints
 - **🛠️ Function Calling & Tools** - Custom functions, Google Search, and Google Maps integration with OpenAPI schema support
 - **🗺️ Google Maps Grounding** - Location-aware responses with Google Maps data and widget support
 - **📦 Batch Processing** - Efficient batch content generation and embedding
 - **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
 - **🔄 Streaming Responses** - Real-time streaming of generated content
-- **🧠 Thinking Mode** - Support for Gemini 2.5 thinking capabilities
+- **🧠 Thinking Mode** - Support for Gemini 2.5+ thinking capabilities
 - **🚀 Gemini 3 Pro** - Code execution, advanced thinking levels, and media resolution control
 - **🔢 Token Count API** - Pre-calculate token usage for cost optimization
 - **🎯 Safety Settings** - Customize content moderation and safety filters
 - **📁 File Handles** - Efficient file reference without re-encoding large files
-- **🎨 Image Generation** - Text-to-image generation and image editing capabilities
+- **🍌 Image Generation** - Text-to-image generation and image editing capabilities
 - **🎤 Speech Generation** - Text-to-speech with single and multi-speaker support
 - **🖼️ Multimodal Support** - Images and binary data processing
 - **📊 Text Embeddings** - Advanced embedding generation with multiple task types
@@ -89,7 +89,7 @@ Advanced reasoning capabilities with thought process visibility and custom think
 
 ### 🎨 **Multimodal Generation**
 
-- **Image Generation**: Text-to-image with detailed prompts and editing capabilities
+- **Image Generation**: Nano Banana (Flash) and Pro (Gemini 3) Text-to-image with detailed thinking and follow up editing capabilities
 - **Speech Generation**: Text-to-speech with single and multi-speaker support
 - **Image Processing**: Analyze images, videos, and binary data
 - See [`image_generation.rs`](examples/image_generation.rs) and [`multi_speaker_tts.rs`](examples/multi_speaker_tts.rs)
