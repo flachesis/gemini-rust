@@ -1,3 +1,4 @@
+use mime::Mime;
 use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
@@ -20,8 +21,11 @@ pub struct File {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display_name: Option<String>,
     /// The MIME type of the file.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub mime_type: Option<String>,
+    #[serde(
+        with = "crate::common::serde::mime_as_string::optional",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub mime_type: Option<Mime>,
     /// The size of the file in bytes.
     #[serde(default, with = "i64_as_string::optional")]
     #[serde(skip_serializing_if = "Option::is_none")]

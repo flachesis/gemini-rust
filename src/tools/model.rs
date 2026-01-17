@@ -30,6 +30,11 @@ pub enum Tool {
         #[serde(rename = "codeExecution")]
         code_execution: CodeExecutionConfig,
     },
+    /// File Search tool for RAG
+    FileSearch {
+        /// The File Search configuration
+        file_search: FileSearchConfig,
+    },
 }
 
 /// Empty configuration for Google Search tool
@@ -97,6 +102,18 @@ pub enum CodeExecutionOutcome {
     OutcomeDeadlineExceeded,
 }
 
+/// Configuration for File Search tool
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSearchConfig {
+    /// File search store names to search
+    pub file_search_store_names: Vec<String>,
+
+    /// Optional metadata filter (AIP-160 syntax)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata_filter: Option<String>,
+}
+
 impl Tool {
     /// Create a new tool with a single function declaration
     pub fn new(function_declaration: FunctionDeclaration) -> Self {
@@ -140,6 +157,16 @@ impl Tool {
     pub fn code_execution() -> Self {
         Self::CodeExecution {
             code_execution: CodeExecutionConfig {},
+        }
+    }
+
+    /// Create a new File Search tool
+    pub fn file_search(store_names: Vec<String>, metadata_filter: Option<String>) -> Self {
+        Self::FileSearch {
+            file_search: FileSearchConfig {
+                file_search_store_names: store_names,
+                metadata_filter,
+            },
         }
     }
 }

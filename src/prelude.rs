@@ -34,3 +34,9 @@ pub use crate::{FunctionDeclaration, FunctionResponse, Tool};
 
 // Batch and file handles (commonly used for async operations)
 pub use crate::{Batch, FileHandle};
+
+// File Search for RAG
+pub use crate::{
+    ChunkingConfig, CustomMetadata, CustomMetadataValue, DocumentHandle, FileSearchStoreHandle,
+    OperationHandle, WhiteSpaceConfig,
+};
