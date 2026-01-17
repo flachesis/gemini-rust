@@ -223,6 +223,14 @@ impl ContentBuilder {
         self
     }
 
+    /// Sets the seed for the request.
+    pub fn with_seed(mut self, seed: i32) -> Self {
+        self.generation_config
+            .get_or_insert_with(Default::default)
+            .seed = Some(seed);
+        self
+    }
+
     /// Sets the maximum number of output tokens for the request.
     pub fn with_max_output_tokens(mut self, max_output_tokens: i32) -> Self {
         self.generation_config

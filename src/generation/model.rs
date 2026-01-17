@@ -588,6 +588,14 @@ pub struct GenerationConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<i32>,
 
+    /// Seed used in decoding.
+    ///
+    /// By default, the model uses a random value for each request if a seed is not provided.
+    /// Setting a specific seed, along with consistent values for other parameters like temperature, can make the model return the same response for repeated requests with the same input.
+    /// Identical outputs are not guaranteed across all runs, due to backend infrastructure variations, but it provides a "best effort" for reproducibility.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i32>,
+
     /// The maximum number of tokens to generate
     ///
     /// Limits the length of the generated content. One token is roughly 4 characters.
