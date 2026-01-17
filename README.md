@@ -217,6 +217,7 @@ export GEMINI_API_KEY="your-api-key-here"
 - **Gemini 2.5 Flash Lite** - Lightweight model - `Model::Gemini25FlashLite`
 - **Gemini 2.5 Pro** - Advanced model with thinking capabilities - `Model::Gemini25Pro`
 - **Gemini 3 Pro** - Latest model with code execution and advanced thinking - `Model::Gemini3Pro` (Preview)
+- **Gemini 3 Flash** - Fast model with thinking levels (Minimal, Low, Medium, High) - `Model::Gemini3Flash` (Preview)
 - **Text Embedding 004** - Latest embedding model - `Model::TextEmbedding004`
 - **Custom models** - Use `Model::Custom(String)` or string literals for other models
 
