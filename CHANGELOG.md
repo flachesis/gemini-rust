@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.0] - 2025-01-17
 
 ### ✨ Features
 
@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comprehensive Examples**: Added `file_search_basic.rs`, `file_search_metadata.rs`, and `file_search_import.rs`
 - **Full Documentation**: rustdoc documentation for all public types and methods
 
+#### Seed Support for Reproducible Generation
+
+- **GenerationConfig Seed Field**: Added `seed` field to `GenerationConfig` for controlling reproducibility of model outputs
+- **ContentBuilder Method**: New `ContentBuilder::with_seed()` method for setting the seed in generation requests
+- **Best Effort Reproducibility**: Setting a specific seed with consistent parameters enables more predictable outputs across requests
+
 ### 🔧 Technical Improvements
 
 - **Error Handling**: Added `OperationTimeout`, `OperationFailed`, and `InvalidResourceName` error types
@@ -34,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Structured Logging**: Comprehensive tracing instrumentation for all file search operations
 - **Type Safety**: Full serde support for all File Search API types
 - **Debug Support**: Added `Debug` implementation to `GeminiClient` for better diagnostics
+
+### 🙏 Contributors
+
+- **@ernestas-poskus** - Seed support for generation reproducibility
+
+## [Unreleased]
 
 ## [1.5.0] - 2025-10-01
 
