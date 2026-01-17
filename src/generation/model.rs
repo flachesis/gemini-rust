@@ -439,16 +439,20 @@ pub struct GenerateContentRequest {
     pub cached_content: Option<String>,
 }
 
-/// Thinking level for Gemini 3 Pro models
+/// Thinking level for Gemini 3 series models
 ///
-/// Controls the depth of reasoning and analysis the model applies.
+/// Controls the depth of reasoning and analysis that the model applies.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ThinkingLevel {
     /// Unspecified thinking level (uses model default)
     ThinkingLevelUnspecified,
+    /// Minimal thinking level - fastest responses with minimal reasoning
+    Minimal,
     /// Low thinking level - faster responses with less reasoning
     Low,
+    /// Medium thinking level - balanced reasoning depth
+    Medium,
     /// High thinking level - deeper analysis with more comprehensive reasoning
     High,
 }
