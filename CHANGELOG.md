@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.1] - 2025-01-17
+
+### ✨ Features
+
+#### Extended Thinking Levels for Gemini 3 Flash
+
+- **New Thinking Levels**: Added `Minimal` and `Medium` variants to `ThinkingLevel` enum
+- **Complete Spectrum**: Gemini 3 Flash now supports all 5 thinking levels (Minimal, Low, Medium, High, Unspecified)
+- **Logical Progression**: Thinking levels ordered by reasoning depth from minimal to comprehensive
+- **Enhanced Documentation**: Updated docs to reflect support across Gemini 3 series models (Flash and Pro)
+- **New Example**: Added `gemini_3_all_thinking_levels.rs` demonstrating all thinking levels with practical examples
+
 ## [1.7.0] - 2025-01-17
 
 ### ✨ Features
@@ -44,18 +56,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### 🙏 Contributors
 
 - **@ernestas-poskus** - Seed support for generation reproducibility
-
-## [Unreleased]
-
-### ✨ Features
-
-#### Extended Thinking Levels for Gemini 3 Flash
-
-- **New Thinking Levels**: Added `Minimal` and `Medium` variants to `ThinkingLevel` enum
-- **Complete Spectrum**: Gemini 3 Flash now supports all 5 thinking levels (Minimal, Low, Medium, High, Unspecified)
-- **Logical Progression**: Thinking levels ordered by reasoning depth from minimal to comprehensive
-- **Enhanced Documentation**: Updated docs to reflect support across Gemini 3 series models (Flash and Pro)
-- **New Example**: Added `gemini_3_all_thinking_levels.rs` demonstrating all thinking levels with practical examples
 
 ## [1.5.0] - 2025-10-01
 
