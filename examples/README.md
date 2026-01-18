@@ -55,6 +55,14 @@ Get your API key from [Google AI Studio](https://aistudio.google.com/apikey).
 | [`text_thought_signature_example.rs`](text_thought_signature_example.rs) | Text-based thought signature demonstrations |
 | [`thought_signature_example.rs`](thought_signature_example.rs) | Comprehensive thought signature usage |
 
+### 🚀 Gemini 3
+
+| Example | Description |
+|---------|-------------|
+| [`gemini_3_code_execution.rs`](gemini_3_code_execution.rs) | Code execution with Python and tool integration |
+| [`gemini_3_thinking_and_media.rs`](gemini_3_thinking_and_media.rs) | Thinking levels and media resolution for Gemini 3 Pro |
+| [`gemini_3_all_thinking_levels.rs`](gemini_3_all_thinking_levels.rs) | Demonstrate all 5 thinking levels (Minimal, Low, Medium, High) with Gemini 3 Flash |
+
 ### 📦 Batch Processing
 
 | Example | Description |

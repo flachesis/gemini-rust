@@ -197,11 +197,14 @@ pub struct GroundingSupport {
 #[serde(rename_all = "camelCase")]
 pub struct GroundingSegment {
     /// Start index of the segment in the response text
-    pub start_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub start_index: Option<u32>,
     /// End index of the segment in the response text
-    pub end_index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub end_index: Option<u32>,
     /// The text content of the segment
-    pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub text: Option<String>,
 }
 
 /// Response from the Gemini API for content generation
@@ -436,16 +439,20 @@ pub struct GenerateContentRequest {
     pub cached_content: Option<String>,
 }
 
-/// Thinking level for Gemini 3 Pro models
+/// Thinking level for Gemini 3 series models
 ///
-/// Controls the depth of reasoning and analysis the model applies.
+/// Controls the depth of reasoning and analysis that the model applies.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ThinkingLevel {
     /// Unspecified thinking level (uses model default)
     ThinkingLevelUnspecified,
+    /// Minimal thinking level - fastest responses with minimal reasoning
+    Minimal,
     /// Low thinking level - faster responses with less reasoning
     Low,
+    /// Medium thinking level - balanced reasoning depth
+    Medium,
     /// High thinking level - deeper analysis with more comprehensive reasoning
     High,
 }
@@ -584,6 +591,14 @@ pub struct GenerationConfig {
     /// Lower values are more selective, higher values allow more variety.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub top_k: Option<i32>,
+
+    /// Seed used in decoding.
+    ///
+    /// By default, the model uses a random value for each request if a seed is not provided.
+    /// Setting a specific seed, along with consistent values for other parameters like temperature, can make the model return the same response for repeated requests with the same input.
+    /// Identical outputs are not guaranteed across all runs, due to backend infrastructure variations, but it provides a "best effort" for reproducibility.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub seed: Option<i32>,
 
     /// The maximum number of tokens to generate
     ///
