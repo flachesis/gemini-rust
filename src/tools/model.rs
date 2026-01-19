@@ -216,11 +216,14 @@ where
         s.meta_schema = None;
     }));
 
-    let mut schema = schema_generator.into_root_schema_for::<Parameters>();
-
-    // Root schemas always include a title field, which we don't want or need
-    schema.remove("title");
-    schema.to_value()
+    let schema = schema_generator.into_root_schema_for::<Parameters>();
+    let mut value =
+        serde_json::to_value(&schema).expect("schema should serialize to JSON value");
+    if let Value::Object(map) = &mut value {
+        map.remove("title");
+        map.remove("components");
+    }
+    value
 }
 
 impl FunctionDeclaration {
