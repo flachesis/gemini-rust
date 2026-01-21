@@ -199,7 +199,10 @@ pub struct FunctionDeclaration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameters: Option<Value>,
     /// `Optional` The parameters for the function in JSON Schema format.
-    #[serde(rename = "parametersJsonSchema", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "parametersJsonSchema",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub(crate) parameters_json_schema: Option<Value>,
     /// `Optional` Describes the output from this function in JSON Schema format. Reflects the
     /// Open API 3.03 Response Object. The Schema defines the type used for the response value
@@ -223,8 +226,7 @@ where
     }));
 
     let schema = schema_generator.into_root_schema_for::<Parameters>();
-    let mut value =
-        serde_json::to_value(&schema).expect("schema should serialize to JSON value");
+    let mut value = serde_json::to_value(&schema).expect("schema should serialize to JSON value");
     if let Value::Object(map) = &mut value {
         map.remove("title");
         map.remove("components");
@@ -243,8 +245,7 @@ where
     }));
 
     let schema = schema_generator.into_root_schema_for::<Parameters>();
-    let mut value =
-        serde_json::to_value(&schema).expect("schema should serialize to JSON value");
+    let mut value = serde_json::to_value(&schema).expect("schema should serialize to JSON value");
     if let Value::Object(map) = &mut value {
         map.remove("title");
         map.remove("$schema");
