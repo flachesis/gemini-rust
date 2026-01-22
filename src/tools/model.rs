@@ -246,6 +246,11 @@ impl FunctionDeclaration {
         self.parameters = Some(generate_parameters_schema::<Parameters>());
         self
     }
+    /// Sets the parameters for the function using a raw json_serde::Value. Allows interop with RMCP Tool structs.
+    pub fn with_parsed_parameters(mut self, parameters: Value) -> Self {
+        self.parameters = Some(parameters.clone());
+        self
+    }
 
     /// Set the response schema for the function using a struct that implements `JsonSchema`
     pub fn with_response<Response>(mut self) -> Self
@@ -255,6 +260,12 @@ impl FunctionDeclaration {
         self.response = Some(generate_parameters_schema::<Response>());
         self
     }
+    ///Sets the response schema for the function using a raw json_serde::Value. Allows interop with RMCP Tool structs.
+    pub fn with_parsed_response(mut self, response: Value) -> Self {
+        self.response = Some(response.clone());
+        self
+    }
+
 }
 
 /// A function call made by the model
