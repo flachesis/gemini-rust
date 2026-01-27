@@ -198,11 +198,20 @@ pub struct FunctionDeclaration {
     /// `Optional` The parameters for the function
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parameters: Option<Value>,
+    /// `Optional` The parameters for the function in JSON Schema format.
+    #[serde(
+        rename = "parametersJsonSchema",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub(crate) parameters_json_schema: Option<Value>,
     /// `Optional` Describes the output from this function in JSON Schema format. Reflects the
     /// Open API 3.03 Response Object. The Schema defines the type used for the response value
     /// of the function.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) response: Option<Value>,
+    /// `Optional` Describes the output from this function in JSON Schema format.
+    #[serde(rename = "responseJsonSchema", skip_serializing_if = "Option::is_none")]
+    pub(crate) response_json_schema: Option<Value>,
 }
 
 /// Returns JSON Schema for the given parameters
@@ -216,11 +225,34 @@ where
         s.meta_schema = None;
     }));
 
-    let mut schema = schema_generator.into_root_schema_for::<Parameters>();
+    let schema = schema_generator.into_root_schema_for::<Parameters>();
+    let mut value = serde_json::to_value(&schema).expect("schema should serialize to JSON value");
+    if let Value::Object(map) = &mut value {
+        map.remove("title");
+        map.remove("components");
+    }
+    value
+}
 
-    // Root schemas always include a title field, which we don't want or need
-    schema.remove("title");
-    schema.to_value()
+/// Returns JSON Schema for the given parameters (JSON Schema field for Gemini).
+fn generate_parameters_json_schema<Parameters>() -> Value
+where
+    Parameters: JsonSchema + Serialize,
+{
+    let schema_generator = SchemaGenerator::new(SchemaSettings::draft07().with(|s| {
+        s.inline_subschemas = true;
+        s.meta_schema = None;
+    }));
+
+    let schema = schema_generator.into_root_schema_for::<Parameters>();
+    let mut value = serde_json::to_value(&schema).expect("schema should serialize to JSON value");
+    if let Value::Object(map) = &mut value {
+        map.remove("title");
+        map.remove("$schema");
+        map.remove("definitions");
+        map.remove("$defs");
+    }
+    value
 }
 
 impl FunctionDeclaration {
@@ -244,6 +276,17 @@ impl FunctionDeclaration {
         Parameters: JsonSchema + Serialize,
     {
         self.parameters = Some(generate_parameters_schema::<Parameters>());
+        self.parameters_json_schema = None;
+        self
+    }
+
+    /// Set the parameters for the function using a JSON Schema representation.
+    pub fn with_parameters_json_schema<Parameters>(mut self) -> Self
+    where
+        Parameters: JsonSchema + Serialize,
+    {
+        self.parameters_json_schema = Some(generate_parameters_json_schema::<Parameters>());
+        self.parameters = None;
         self
     }
 
@@ -253,6 +296,17 @@ impl FunctionDeclaration {
         Response: JsonSchema + Serialize,
     {
         self.response = Some(generate_parameters_schema::<Response>());
+        self.response_json_schema = None;
+        self
+    }
+
+    /// Set the response schema for the function using a JSON Schema representation.
+    pub fn with_response_json_schema<Response>(mut self) -> Self
+    where
+        Response: JsonSchema + Serialize,
+    {
+        self.response_json_schema = Some(generate_parameters_json_schema::<Response>());
+        self.response = None;
         self
     }
 }

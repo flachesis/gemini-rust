@@ -629,6 +629,12 @@ pub struct GenerationConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_schema: Option<serde_json::Value>,
 
+    /// The response JSON schema (strict mode).
+    ///
+    /// Prefer this field for modern Gemini models that support JSON Schema natively.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_json_schema: Option<serde_json::Value>,
+
     /// Response modalities (for TTS and other multimodal outputs)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_modalities: Option<Vec<String>>,
