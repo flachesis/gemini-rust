@@ -121,6 +121,9 @@ fn test_function_call_with_thought_signature() {
     // Test serialization
     let serialized = serde_json::to_string(&function_call).unwrap();
     println!("Serialized FunctionCall: {serialized}");
+    let json: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+    assert_eq!(json["thought_signature"], "test_thought_signature");
+    assert!(json.get("thoughtSignature").is_none());
 
     // Test deserialization
     let deserialized: FunctionCall = serde_json::from_str(&serialized).unwrap();
@@ -191,6 +194,16 @@ fn test_multi_turn_content_structure() {
         }
         _ => panic!("Expected FunctionCall part"),
     }
+
+    let content_from_helper = Content::function_call(function_call);
+    let helper_json = serde_json::to_value(&content_from_helper).unwrap();
+    assert_eq!(helper_json["parts"][0]["thoughtSignature"], "sample_thought_signature");
+    assert!(helper_json["parts"][0]["functionCall"]
+        .get("thoughtSignature")
+        .is_none());
+    assert!(helper_json["parts"][0]["functionCall"]
+        .get("thought_signature")
+        .is_none());
 }
 
 #[test]
