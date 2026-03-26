@@ -149,6 +149,24 @@ impl ContentBuilder {
         Ok(self)
     }
 
+    /// Adds a function response to the request using a `Serialize` response and
+    /// the original function call identifier.
+    pub fn with_function_response_with_id<Response>(
+        mut self,
+        name: impl Into<String>,
+        id: impl Into<String>,
+        response: Response,
+    ) -> std::result::Result<Self, serde_json::Error>
+    where
+        Response: serde::Serialize,
+    {
+        let content =
+            Content::function_response_json_with_id(name, id, serde_json::to_value(response)?)
+                .with_role(Role::User);
+        self.contents.push(content);
+        Ok(self)
+    }
+
     /// Adds a function response to the request using a JSON string.
     ///
     /// This is a convenience method that parses the string into a `serde_json::Value`.
@@ -160,6 +178,21 @@ impl ContentBuilder {
         let response_str = response.into();
         let json = serde_json::from_str(&response_str)?;
         let content = Content::function_response_json(name, json).with_role(Role::User);
+        self.contents.push(content);
+        Ok(self)
+    }
+
+    /// Adds a function response from a JSON string and the original function
+    /// call identifier.
+    pub fn with_function_response_str_with_id(
+        mut self,
+        name: impl Into<String>,
+        id: impl Into<String>,
+        response: impl Into<String>,
+    ) -> std::result::Result<Self, serde_json::Error> {
+        let response_str = response.into();
+        let json = serde_json::from_str(&response_str)?;
+        let content = Content::function_response_json_with_id(name, id, json).with_role(Role::User);
         self.contents.push(content);
         Ok(self)
     }
@@ -313,7 +346,33 @@ impl ContentBuilder {
     pub fn with_function_calling_mode(mut self, mode: FunctionCallingMode) -> Self {
         self.tool_config
             .get_or_insert_with(Default::default)
-            .function_calling_config = Some(FunctionCallingConfig { mode });
+            .function_calling_config = Some(FunctionCallingConfig {
+            mode,
+            allowed_function_names: None,
+        });
+        self
+    }
+
+    /// Sets the function calling mode and optional allowed function names.
+    pub fn with_function_calling_config(
+        mut self,
+        mode: FunctionCallingMode,
+        allowed_function_names: Option<Vec<String>>,
+    ) -> Self {
+        self.tool_config
+            .get_or_insert_with(Default::default)
+            .function_calling_config = Some(FunctionCallingConfig {
+            mode,
+            allowed_function_names,
+        });
+        self
+    }
+
+    /// Controls whether server-side tool invocations are included in responses.
+    pub fn with_include_server_side_tool_invocations(mut self, include: bool) -> Self {
+        self.tool_config
+            .get_or_insert_with(Default::default)
+            .include_server_side_tool_invocations = Some(include);
         self
     }
 

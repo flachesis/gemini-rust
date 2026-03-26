@@ -281,6 +281,20 @@ impl Content {
         }
     }
 
+    /// Create a new content with a function response from name, id, and JSON value
+    pub fn function_response_json_with_id(
+        name: impl Into<String>,
+        id: impl Into<String>,
+        response: serde_json::Value,
+    ) -> Self {
+        Self {
+            parts: Some(vec![Part::FunctionResponse {
+                function_response: super::tools::FunctionResponse::new(name, response).with_id(id),
+            }]),
+            role: None,
+        }
+    }
+
     /// Create a new content with inline data (blob data)
     pub fn inline_data(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
         Self {

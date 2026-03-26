@@ -334,6 +334,9 @@ impl FunctionDeclaration {
 /// A function call made by the model
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct FunctionCall {
+    /// Unique identifier of the function call.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     /// The name of the function
     pub name: String,
     /// The arguments for the function
@@ -365,6 +368,7 @@ impl FunctionCall {
     /// Create a new function call
     pub fn new(name: impl Into<String>, args: serde_json::Value) -> Self {
         Self {
+            id: None,
             name: name.into(),
             args,
             thought_signature: None,
@@ -378,10 +382,17 @@ impl FunctionCall {
         thought_signature: impl Into<String>,
     ) -> Self {
         Self {
+            id: None,
             name: name.into(),
             args,
             thought_signature: Some(thought_signature.into()),
         }
+    }
+
+    /// Attach a function call identifier.
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
     }
 
     /// Get a parameter from the arguments
@@ -410,21 +421,91 @@ impl FunctionCall {
 
 /// A response from a function
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FunctionResponsePart {
+    /// Inline multimodal data attached to the function response.
+    #[serde(rename = "inlineData")]
+    pub inline_data: FunctionResponseBlob,
+}
+
+/// Raw multimodal bytes for a function response part.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct FunctionResponseBlob {
+    /// The MIME type of the data.
+    pub mime_type: String,
+    /// Base64 encoded data.
+    pub data: String,
+    /// Optional display name used by `$ref` entries in the structured response.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
+}
+
+impl FunctionResponseBlob {
+    /// Create a new function response blob.
+    pub fn new(mime_type: impl Into<String>, data: impl Into<String>) -> Self {
+        Self {
+            mime_type: mime_type.into(),
+            data: data.into(),
+            display_name: None,
+        }
+    }
+
+    /// Attach a display name to the blob.
+    pub fn with_display_name(mut self, display_name: impl Into<String>) -> Self {
+        self.display_name = Some(display_name.into());
+        self
+    }
+}
+
+/// Scheduling hint for non-blocking function responses.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum Scheduling {
+    /// Unspecified scheduling behavior.
+    SchedulingUnspecified,
+    /// Only add the result to the conversation context.
+    Silent,
+    /// Add the result when the model is idle.
+    WhenIdle,
+    /// Interrupt ongoing generation and resume with the result.
+    Interrupt,
+}
+
+/// A response from a function
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct FunctionResponse {
+    /// The identifier of the function call this response matches.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
     /// The name of the function
     pub name: String,
     /// The response from the function
     /// This must be a valid JSON object
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response: Option<serde_json::Value>,
+    /// Optional multimodal parts attached to the function response.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parts: Option<Vec<FunctionResponsePart>>,
+    /// Whether more responses will follow for a non-blocking function call.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub will_continue: Option<bool>,
+    /// Scheduling hint for non-blocking function calls.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scheduling: Option<Scheduling>,
 }
 
 impl FunctionResponse {
     /// Create a new function response with a JSON value
     pub fn new(name: impl Into<String>, response: serde_json::Value) -> Self {
         Self {
+            id: None,
             name: name.into(),
             response: Some(response),
+            parts: None,
+            will_continue: None,
+            scheduling: None,
         }
     }
 
@@ -438,8 +519,12 @@ impl FunctionResponse {
     {
         let json = serde_json::to_value(&response)?;
         Ok(Self {
+            id: None,
             name: name.into(),
             response: Some(json),
+            parts: None,
+            will_continue: None,
+            scheduling: None,
         })
     }
 
@@ -450,31 +535,46 @@ impl FunctionResponse {
     ) -> Result<Self, serde_json::Error> {
         let json = serde_json::from_str(&response.into())?;
         Ok(Self {
+            id: None,
             name: name.into(),
             response: Some(json),
+            parts: None,
+            will_continue: None,
+            scheduling: None,
         })
+    }
+
+    /// Attach a function call identifier.
+    pub fn with_id(mut self, id: impl Into<String>) -> Self {
+        self.id = Some(id.into());
+        self
     }
 }
 
 /// Configuration for tools
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct ToolConfig {
     /// The function calling config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_calling_config: Option<FunctionCallingConfig>,
-    /// Whether to include server-side tool invocations
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub include_server_side_tool_invocations: Option<bool>,
     /// The retrieval config for location-based tools like Google Maps
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retrieval_config: Option<RetrievalConfig>,
+    /// Whether to include server-side tool invocations in the response content.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_server_side_tool_invocations: Option<bool>,
 }
 
 /// Configuration for function calling
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
 pub struct FunctionCallingConfig {
     /// The mode for function calling
     pub mode: FunctionCallingMode,
+    /// Optional subset of function names the model may call.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed_function_names: Option<Vec<String>>,
 }
 
 /// Mode for function calling
@@ -487,6 +587,8 @@ pub enum FunctionCallingMode {
     Any,
     /// The model must not use function calling
     None,
+    /// The model may use function calling, but calls are constrained to the schema.
+    Validated,
 }
 
 /// Retrieval configuration for location-based tools
