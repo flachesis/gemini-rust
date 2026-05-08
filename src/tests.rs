@@ -197,7 +197,10 @@ fn test_multi_turn_content_structure() {
 
     let content_from_helper = Content::function_call(function_call);
     let helper_json = serde_json::to_value(&content_from_helper).unwrap();
-    assert_eq!(helper_json["parts"][0]["thoughtSignature"], "sample_thought_signature");
+    assert_eq!(
+        helper_json["parts"][0]["thoughtSignature"],
+        "sample_thought_signature"
+    );
     assert!(helper_json["parts"][0]["functionCall"]
         .get("thoughtSignature")
         .is_none());
