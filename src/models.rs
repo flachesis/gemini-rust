@@ -193,11 +193,12 @@ impl Content {
     }
 
     /// Create a new content with a function call
-    pub fn function_call(function_call: super::tools::FunctionCall) -> Self {
+    pub fn function_call(mut function_call: super::tools::FunctionCall) -> Self {
+        let thought_signature = function_call.thought_signature.take();
         Self {
             parts: Some(vec![Part::FunctionCall {
                 function_call,
-                thought_signature: None,
+                thought_signature,
             }]),
             role: None,
         }
@@ -205,9 +206,10 @@ impl Content {
 
     /// Create a new content with a function call and thought signature
     pub fn function_call_with_thought(
-        function_call: super::tools::FunctionCall,
+        mut function_call: super::tools::FunctionCall,
         thought_signature: impl Into<String>,
     ) -> Self {
+        function_call.thought_signature = None;
         Self {
             parts: Some(vec![Part::FunctionCall {
                 function_call,
