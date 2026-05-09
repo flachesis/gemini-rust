@@ -442,6 +442,9 @@ pub struct ToolConfig {
     /// The function calling config
     #[serde(skip_serializing_if = "Option::is_none")]
     pub function_calling_config: Option<FunctionCallingConfig>,
+    /// Whether to include server-side tool invocations
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub include_server_side_tool_invocations: Option<bool>,
     /// The retrieval config for location-based tools like Google Maps
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retrieval_config: Option<RetrievalConfig>,

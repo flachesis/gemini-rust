@@ -51,6 +51,7 @@ async fn basic_restaurant_recommendations(
                 lat_lng: Some(LatLng::new(34.050481, -118.248526)), // Los Angeles coordinates
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
@@ -90,6 +91,7 @@ async fn place_specific_question(gemini: &Gemini) -> Result<(), Box<dyn std::err
                 lat_lng: Some(LatLng::new(34.050481, -118.248526)), // Los Angeles coordinates
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
@@ -142,6 +144,7 @@ async fn family_friendly_recommendations(
                 lat_lng: Some(LatLng::new(30.2672, -97.7431)), // Austin, TX coordinates
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
@@ -193,6 +196,7 @@ async fn travel_itinerary_planning(gemini: &Gemini) -> Result<(), Box<dyn std::e
                 lat_lng: Some(LatLng::new(37.78193, -122.40476)), // San Francisco coordinates
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
