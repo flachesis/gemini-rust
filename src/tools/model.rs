@@ -227,11 +227,15 @@ where
 
     let schema = schema_generator.into_root_schema_for::<Parameters>();
     let mut value = serde_json::to_value(&schema).expect("schema should serialize to JSON value");
-    if let Value::Object(map) = &mut value {
+    sanitize_json_schema_openapi3(&mut value);
+    value
+}
+
+fn sanitize_json_schema_openapi3(value: &mut Value) {
+    if let Value::Object(map) = value {
         map.remove("title");
         map.remove("components");
     }
-    value
 }
 
 /// Returns JSON Schema for the given parameters (JSON Schema field for Gemini).
@@ -290,6 +294,15 @@ impl FunctionDeclaration {
         self
     }
 
+    /// Set the parameters for the function using a JSON serde value.
+    pub fn with_parameters_value(mut self, mut value: Value) -> Self
+    {
+        sanitize_json_schema_openapi3(&mut value);
+        self.parameters = Some(value);
+        self.parameters_json_schema = None;
+        self
+    }
+
     /// Set the response schema for the function using a struct that implements `JsonSchema`
     pub fn with_response<Response>(mut self) -> Self
     where
@@ -307,6 +320,15 @@ impl FunctionDeclaration {
     {
         self.response_json_schema = Some(generate_parameters_json_schema::<Response>());
         self.response = None;
+        self
+    }
+
+    /// Set the response schema for the function using a JSON serde value.
+    pub fn with_response_value(mut self, mut value: Value) -> Self
+    {
+        sanitize_json_schema_openapi3(&mut value);
+        self.response = Some(value);
+        self.response_json_schema = None;
         self
     }
 }
