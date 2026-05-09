@@ -28,6 +28,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 lat_lng: Some(LatLng::new(37.7749, -122.4194)), // San Francisco
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;

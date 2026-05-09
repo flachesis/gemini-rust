@@ -42,6 +42,7 @@ async fn manual_tool_configuration(gemini: &Gemini) -> Result<(), Box<dyn std::e
             lat_lng: Some(LatLng::new(40.7128, -74.0060)), // New York City
         }),
         function_calling_config: None,
+        include_server_side_tool_invocations: None,
     };
 
     let response = gemini
@@ -75,6 +76,7 @@ async fn widget_enabled_grounding(gemini: &Gemini) -> Result<(), Box<dyn std::er
                 lat_lng: Some(LatLng::new(41.8781, -87.6298)), // Chicago
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
@@ -136,6 +138,7 @@ async fn location_comparison(gemini: &Gemini) -> Result<(), Box<dyn std::error::
                 lat_lng: Some(LatLng::new(47.6062, -122.3321)), // Seattle
             }),
             function_calling_config: None,
+            include_server_side_tool_invocations: None,
         })
         .execute()
         .await?;
