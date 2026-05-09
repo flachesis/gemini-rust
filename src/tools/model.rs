@@ -295,8 +295,7 @@ impl FunctionDeclaration {
     }
 
     /// Set the parameters for the function using a JSON serde value.
-    pub fn with_parameters_value(mut self, mut value: Value) -> Self
-    {
+    pub fn with_parameters_value(mut self, mut value: Value) -> Self {
         sanitize_json_schema_openapi3(&mut value);
         self.parameters = Some(value);
         self.parameters_json_schema = None;
@@ -324,8 +323,7 @@ impl FunctionDeclaration {
     }
 
     /// Set the response schema for the function using a JSON serde value.
-    pub fn with_response_value(mut self, mut value: Value) -> Self
-    {
+    pub fn with_response_value(mut self, mut value: Value) -> Self {
         sanitize_json_schema_openapi3(&mut value);
         self.response = Some(value);
         self.response_json_schema = None;
