@@ -15,15 +15,18 @@
 pub use crate::{ClientError, Gemini, Model};
 
 // Builders for creating requests
+#[allow(deprecated)]
 pub use crate::{ContentBuilder, EmbedBuilder};
 
 // Core data types for messages and content
 pub use crate::{Content, FileData, Message, Role};
 
 // Main response types
+#[allow(deprecated)]
 pub use crate::{ContentEmbeddingResponse, CountTokensResponse, GenerationResponse};
 
 // Configuration types
+#[allow(deprecated)]
 pub use crate::{GenerationConfig, TaskType};
 
 // Safety settings
@@ -39,4 +42,18 @@ pub use crate::{Batch, FileHandle};
 pub use crate::{
     ChunkingConfig, CustomMetadata, CustomMetadataValue, DocumentHandle, FileSearchStoreHandle,
     OperationHandle, WhiteSpaceConfig,
+};
+
+// Interactions API — the modern way to use Gemini
+pub use crate::{
+    AgentConfig, AllowedTools, Annotation, AspectRatio, AudioMimeType, AudioOutputMimeType,
+    CodeExecutionCallArguments, CodeLanguage, DeliveryMode, DocumentMimeType, EnvironmentConfig,
+    EnvironmentConfigOrString, EnvironmentSource, GoogleSearchType, ImageMimeType,
+    ImageOutputMimeType, ImageSize, Interaction, InteractionBuilder, InteractionContent,
+    InteractionEvent, InteractionGenerationConfig, InteractionHandle, InteractionInput,
+    InteractionSpeechConfig, InteractionStatus, InteractionStream, InteractionThinkingLevel,
+    InteractionTool, InteractionUsage, MediaResolution, ResponseFormat, ResponseModality,
+    ServiceTier, Step, StepDeltaData, StepResult, TextMimeType, ThinkingSummaries,
+    ThoughtSummaryContent, ToolChoiceConfig, VideoAspectRatio, VideoConfig, VideoMimeType,
+    Visualization, WebhookConfig,
 };

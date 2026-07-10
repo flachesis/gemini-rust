@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use std::{collections::VecDeque, env};
 
 use gemini_rust::{

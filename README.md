@@ -40,6 +40,57 @@ gemini-rust = "1.7.1"
 
 ## 🚀 Quick Start
 
+### Interactions API (Recommended)
+
+The Interactions API is the simplest and best way to use Gemini models and agents. It provides server-side state management, observable execution steps, background execution, and unified support for models and agents.
+
+```rust,no_run
+use gemini_rust::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let api_key = std::env::var("GEMINI_API_KEY")?;
+    let client = Gemini::new(api_key)?;
+
+    // Basic text generation
+    let interaction = client
+        .create_interaction()
+        .with_model("gemini-2.5-flash")
+        .with_text("Hello! What is AI?")
+        .execute()
+        .await?;
+
+    println!("{}", interaction.output_text());
+
+    // Multi-turn with server-side state
+    let interaction2 = client
+        .create_interaction()
+        .with_model("gemini-2.5-flash")
+        .with_text("Give me 3 examples")
+        .with_previous_interaction(interaction.id().unwrap())
+        .execute()
+        .await?;
+
+    println!("{}", interaction2.output_text());
+
+    Ok(())
+}
+```
+
+Key features:
+- **Server-side state** — `previous_interaction_id` for multi-turn conversations
+- **Background execution** — `.with_background()` + polling
+- **Managed agents** — Deep Research, Antigravity
+- **Observable steps** — thoughts, function calls, tool usage as typed steps
+- **SSE streaming** — step lifecycle events (start/delta/stop)
+- **Structured output** — JSON schema via `.with_json_schema()`
+
+See the `interaction_*.rs` examples for complete coverage of every feature.
+
+### Legacy generateContent API
+
+The original `generateContent` API is still available but deprecated. New code should use the Interactions API.
+
 ### Basic Content Generation
 
 Get started with simple text generation, system prompts, and conversations. See [`basic_generation.rs`](examples/basic_generation.rs) for complete examples including simple messages, system prompts, and multi-turn conversations.
