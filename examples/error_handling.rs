@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use std::process::ExitCode;
 
 use display_error_chain::DisplayErrorChain;

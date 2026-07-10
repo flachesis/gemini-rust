@@ -1,3 +1,4 @@
+#[allow(deprecated)]
 use crate::{
     batch::{BatchBuilder, BatchHandle},
     cache::{CacheBuilder, CachedContentHandle},
@@ -10,6 +11,12 @@ use crate::{
         model::{File, ListFilesResponse},
     },
     generation::{ContentBuilder, GenerateContentRequest, GenerationResponse},
+    interactions::{
+        builder::InteractionBuilder,
+        handle::InteractionHandle,
+        model::{CreateInteractionRequest, Interaction},
+        stream::{InteractionEvent, InteractionStream},
+    },
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
@@ -37,6 +44,7 @@ use crate::cache::model::*;
 /// A pinned, boxed stream that yields `GenerationResponse` chunks as they arrive
 /// from the API. Used for streaming content generation to receive partial results
 /// before the complete response is ready.
+#[allow(deprecated)]
 pub type GenerationStream = Pin<Box<dyn Stream<Item = Result<GenerationResponse, Error>> + Send>>;
 
 static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
@@ -362,6 +370,7 @@ impl GeminiClient {
     }
 
     /// Generate content
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -398,6 +407,7 @@ impl GeminiClient {
     }
 
     /// Generate content with streaming
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -423,6 +433,7 @@ impl GeminiClient {
             stream
                 .eventsource()
                 .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
                 .and_then(|event| async move {
                     serde_json::from_str::<GenerationResponse>(&event.data)
                         .context(DeserializeSnafu)
@@ -431,6 +442,7 @@ impl GeminiClient {
     }
 
     /// Count tokens for content
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -765,6 +777,132 @@ impl GeminiClient {
         }
 
         self.get_json(url).await
+    }
+
+    // ========== Interactions API ==========
+
+    /// Create an interaction (non-streaming).
+    #[instrument(skip_all, fields(
+        model = request.model.as_deref().unwrap_or(""),
+        agent = request.agent.as_deref().unwrap_or(""),
+        tools.count = request.tools.len(),
+        background = request.background.unwrap_or(false),
+        previous.interaction.present = request.previous_interaction_id.is_some(),
+        status.code,
+        usage.total_tokens,
+    ))]
+    pub(crate) async fn create_interaction(
+        &self,
+        request: CreateInteractionRequest,
+    ) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix("interactions")?;
+        let response: Interaction = self.post_json(url, &request).await?;
+
+        Span::current().record("status.code", response.status.as_ref());
+
+        if let Some(usage) = &response.usage {
+            Span::current().record("usage.total_tokens", usage.total_tokens);
+        }
+
+        Ok(response)
+    }
+
+    /// Create an interaction (streaming).
+    #[instrument(skip_all, fields(
+        model = request.model.as_deref().unwrap_or(""),
+        agent = request.agent.as_deref().unwrap_or(""),
+        tools.count = request.tools.len(),
+    ))]
+    pub(crate) async fn create_interaction_stream(
+        &self,
+        mut request: CreateInteractionRequest,
+    ) -> Result<InteractionStream, Error> {
+        let mut url = self.build_url_with_suffix("interactions")?;
+        url.query_pairs_mut().append_pair("alt", "sse");
+        request.stream = Some(true);
+
+        let stream = self
+            .perform_request(
+                |c| c.post(url).json(&request),
+                async |r| Ok(r.bytes_stream()),
+            )
+            .await?;
+
+        Ok(Box::pin(
+            stream
+                .eventsource()
+                .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
+                .and_then(|event| async move {
+                    serde_json::from_str::<InteractionEvent>(&event.data)
+                        .context(DeserializeSnafu)
+                }),
+        ))
+    }
+
+    /// Get an interaction by ID.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn get_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        self.get_json(url).await
+    }
+
+    /// Get an interaction in streaming mode (resume from last_event_id).
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn get_interaction_stream(
+        &self,
+        id: &str,
+        last_event_id: Option<&str>,
+    ) -> Result<InteractionStream, Error> {
+        let mut url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        url.query_pairs_mut().append_pair("stream", "true");
+        if let Some(event_id) = last_event_id {
+            url.query_pairs_mut().append_pair("last_event_id", event_id);
+        }
+
+        let stream = self
+            .perform_request(
+                |c| c.get(url),
+                async |r| Ok(r.bytes_stream()),
+            )
+            .await?;
+
+        Ok(Box::pin(
+            stream
+                .eventsource()
+                .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
+                .and_then(|event| async move {
+                    serde_json::from_str::<InteractionEvent>(&event.data)
+                        .context(DeserializeSnafu)
+                }),
+        ))
+    }
+
+    /// Cancel an interaction.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn cancel_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}/cancel"))?;
+        self.perform_request(
+            |c| c.post(url).json(&json!({})),
+            async |r| r.json().await.context(DecodeResponseSnafu),
+        )
+        .await
+    }
+
+    /// Delete an interaction.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn delete_interaction(&self, id: &str) -> Result<(), Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        self.perform_request(|c| c.delete(url), async |_r| Ok(())).await
     }
 
     /// Build a URL with the given suffix
@@ -1187,8 +1325,34 @@ impl Gemini {
     }
 
     /// Start building a content generation request
+    #[deprecated(
+        since = "1.8.0",
+        note = "Use Gemini::create_interaction() instead. See migration guide: interactions-api/migration-plan.md"
+    )]
+    #[allow(deprecated)]
     pub fn generate_content(&self) -> ContentBuilder {
         ContentBuilder::new(self.client.clone())
+    }
+
+    /// Start building an interaction request.
+    ///
+    /// The Interactions API is the recommended way to use Gemini models and agents.
+    /// It provides server-side state management, observable steps, background execution,
+    /// and unified support for models and agents.
+    pub fn create_interaction(&self) -> InteractionBuilder {
+        InteractionBuilder::new(self.client.clone())
+    }
+
+    /// Get a handle to an interaction by its ID.
+    ///
+    /// The handle can be used for get, cancel, delete, and poll operations.
+    pub fn interaction(&self, id: &str) -> InteractionHandle {
+        InteractionHandle::new(id.to_string(), self.client.clone())
+    }
+
+    /// Get the full interaction resource by ID.
+    pub async fn get_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        self.client.get_interaction(id).await
     }
 
     /// Start building a content embedding request
