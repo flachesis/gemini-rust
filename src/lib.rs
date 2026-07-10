@@ -1,19 +1,21 @@
 //! # gemini-rust
 //!
-//! A Rust client library for Google's Gemini 2.0 API.
+//! A Rust client library for Google's Gemini API.
 //!
 //! ## Crate Organization
 //!
 //! This crate is organized into domain-specific modules that align with the Gemini API's
 //! capabilities:
 //!
-//! - **`generation`** - Content generation, including text, images, and audio
+//! - **`interactions`** - Interactions API (recommended) — unified interface for models and agents
+//! - **`generation`** - Legacy `generateContent` API (deprecated, still available)
 //! - **`embedding`** - Text embedding generation for semantic analysis
 //! - **`batch`** - Batch processing for multiple requests
 //! - **`files`** - File upload and management
 //! - **`cache`** - Content caching for reusable contexts
 //! - **`safety`** - Content moderation and safety settings
 //! - **`tools`** - Function calling and tool integration
+//! - **`file_search`** - Retrieval augmented generation (RAG)
 //! - **`models`** - Core primitive types shared across modules
 //! - **`prelude`** - Convenient re-exports of commonly used types
 //!
@@ -27,6 +29,24 @@
 //!
 //! For more specialized types, import them directly from the crate root or their
 //! respective modules.
+//!
+//! ### Interactions API (Recommended)
+//!
+//! The Interactions API is the simplest and best way to use Gemini models and agents:
+//!
+//! ```no_run
+//! # use gemini_rust::prelude::*;
+//! # async fn example(client: &Gemini) -> Result<(), Box<dyn std::error::Error>> {
+//! let interaction = client.create_interaction()
+//!     .with_model("gemini-2.5-flash")
+//!     .with_text("Hello, world!")
+//!     .execute()
+//!     .await?;
+//!
+//! println!("{}", interaction.output_text());
+//! # Ok(())
+//! # }
+//! ```
 
 pub mod client;
 mod models;
