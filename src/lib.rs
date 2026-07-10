@@ -52,6 +52,9 @@ pub mod files;
 /// Content generation including text, images, and audio
 pub mod generation;
 
+/// Interactions API — the modern interface for Gemini models and agents
+pub mod interactions;
+
 /// Content moderation and safety settings
 pub mod safety;
 
@@ -83,7 +86,7 @@ pub use models::{Blob, Content, FileData, Message, Modality, Part, Role};
 
 // ========== Content Generation ==========
 // Types for generating text, images, and audio content
-
+#[allow(deprecated)]
 pub use generation::{
     builder::ContentBuilder, model::BlockReason, model::Candidate, model::CitationMetadata,
     model::CitationSource, model::CountTokensResponse, model::FinishReason,
@@ -94,6 +97,14 @@ pub use generation::{
     model::PromptFeedback, model::PromptTokenDetails, model::SpeakerVoiceConfig,
     model::SpeechConfig, model::ThinkingConfig, model::ThinkingLevel, model::UsageMetadata,
     model::VoiceConfig, model::WebGroundingChunk,
+};
+
+// ========== Interactions API ==========
+// Types for the Interactions API — the modern interface for Gemini models and agents
+
+pub use interactions::model::*;
+pub use interactions::{
+    InteractionBuilder, InteractionEvent, InteractionHandle, InteractionStream, StepDeltaData,
 };
 
 // ========== Text Embeddings ==========

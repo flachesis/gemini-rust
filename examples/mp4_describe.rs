@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 // Please put your sample video at examples/sample.mp4
 // This example sends the mp4 video content to Gemini API and asks AI to describe the video.
 

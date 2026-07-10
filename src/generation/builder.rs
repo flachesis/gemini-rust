@@ -15,6 +15,10 @@ use crate::{
 };
 
 /// Builder for content generation requests
+#[deprecated(
+    since = "1.8.0",
+    note = "Use crate::interactions::InteractionBuilder instead. See migration guide: interactions-api/migration-plan.md"
+)]
 #[derive(Clone)]
 pub struct ContentBuilder {
     client: Arc<GeminiClient>,

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Google Maps Grounding Examples
 //!
 //! This example demonstrates how to use the Google Maps grounding functionality
