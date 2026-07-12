@@ -149,7 +149,8 @@ pub use safety::model::{
 pub use tools::model::{
     CodeExecutionConfig, CodeExecutionOutcome, CodeExecutionResult, CodeLanguage, ExecutableCode,
     FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionDeclaration,
-    FunctionResponse, GoogleMapsConfig, LatLng, RetrievalConfig, Tool, ToolConfig,
+    FunctionResponse, FunctionResponseBlob, FunctionResponsePart, GoogleMapsConfig, LatLng,
+    RetrievalConfig, Scheduling, Tool, ToolConfig,
 };
 
 // ========== Batch Processing ==========
