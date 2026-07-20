@@ -208,6 +208,10 @@ pub struct GroundingSegment {
 }
 
 /// Response from the Gemini API for content generation
+#[deprecated(
+    since = "1.8.0",
+    note = "Use crate::interactions::Interaction instead. See migration guide: interactions-api/migration-plan.md"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationResponse {
@@ -414,6 +418,10 @@ impl GenerationResponse {
 }
 
 /// Request to generate content
+#[deprecated(
+    since = "1.8.0",
+    note = "Use crate::interactions::CreateInteractionRequest instead. See migration guide: interactions-api/migration-plan.md"
+)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateContentRequest {
@@ -567,6 +575,10 @@ impl Default for ThinkingConfig {
 }
 
 /// Configuration for generation
+#[deprecated(
+    since = "1.8.0",
+    note = "Use crate::interactions::InteractionGenerationConfig instead"
+)]
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationConfig {
@@ -628,6 +640,12 @@ pub struct GenerationConfig {
     /// Specifies the JSON schema for structured responses.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub response_schema: Option<serde_json::Value>,
+
+    /// The response JSON schema (strict mode).
+    ///
+    /// Prefer this field for modern Gemini models that support JSON Schema natively.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_json_schema: Option<serde_json::Value>,
 
     /// Response modalities (for TTS and other multimodal outputs)
     #[serde(skip_serializing_if = "Option::is_none")]

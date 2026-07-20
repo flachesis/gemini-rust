@@ -8,12 +8,15 @@ A comprehensive Rust client library for Google's Gemini API.
 
 ## ✨ Features
 
+- **🤝 Interactions API (Recommended)** - Unified interface for models and agents with server-side state, observable execution steps, and background execution
+- **🤖 Managed Agents** - Built-in Deep Research and Antigravity agents with sandbox environments
+- **🔄 Background Execution** - Long-running interactions with polling and webhook callbacks
 - **🚀 Complete Gemini API Implementation** - Full support for all Gemini API endpoints
 - **🛠️ Function Calling & Tools** - Custom functions, Google Search, and Google Maps integration with OpenAPI schema support
 - **🗺️ Google Maps Grounding** - Location-aware responses with Google Maps data and widget support
 - **📦 Batch Processing** - Efficient batch content generation and embedding
 - **💾 Content Caching** - Cache system instructions and conversation history for cost optimization
-- **🔄 Streaming Responses** - Real-time streaming of generated content
+- **🔄 Streaming Responses** - Real-time streaming of generated content via SSE step lifecycle events
 - **🧠 Thinking Mode** - Support for Gemini 2.5+ thinking capabilities
 - **🚀 Gemini 3 Pro** - Code execution, advanced thinking levels, and media resolution control
 - **🔢 Token Count API** - Pre-calculate token usage for cost optimization
@@ -35,10 +38,203 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-gemini-rust = "1.7.1"
+gemini-rust = "2.0.0"
 ```
 
 ## 🚀 Quick Start
+
+### Interactions API (Recommended)
+
+The Interactions API is the simplest and best way to use Gemini models and agents. It provides server-side state management, observable execution steps, background execution, and unified support for models and agents.
+
+```rust,no_run
+use gemini_rust::prelude::*;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let api_key = std::env::var("GEMINI_API_KEY")?;
+    let client = Gemini::new(api_key)?;
+
+    // Basic text generation
+    let interaction = client
+        .create_interaction()
+        .with_model("gemini-2.5-flash")
+        .with_text("Hello! What is AI?")
+        .execute()
+        .await?;
+
+    println!("{}", interaction.output_text());
+
+    // Multi-turn with server-side state
+    let interaction2 = client
+        .create_interaction()
+        .with_model("gemini-2.5-flash")
+        .with_text("Give me 3 examples")
+        .with_previous_interaction(interaction.id().unwrap())
+        .execute()
+        .await?;
+
+    println!("{}", interaction2.output_text());
+
+    Ok(())
+}
+```
+
+Key features:
+- **Server-side state** — `previous_interaction_id` for multi-turn conversations
+- **Background execution** — `.with_background()` + polling
+- **Managed agents** — Deep Research, Antigravity
+- **Observable steps** — thoughts, function calls, tool usage as typed steps
+- **SSE streaming** — step lifecycle events (start/delta/stop)
+- **Structured output** — JSON schema via `.with_json_schema()`
+
+See the `interaction_*.rs` examples for complete coverage of every feature.
+
+### Legacy generateContent API
+
+The original `generateContent` API is still available but deprecated. New code should use the Interactions API.
+
+## 🔁 Migration Guide: generateContent → Interactions API
+
+### Paradigm Shift
+
+The Interactions API introduces a fundamentally different request/response model:
+
+```
+generateContent (Legacy)                  Interactions API (Recommended)
+
+Contents (messages)  →  Candidates        Interaction (input)  →  Steps (typed actions)
+```
+
+| Aspect | generateContent (Legacy) | Interactions API (Recommended) |
+|---|---|---|
+| **Request** | `contents: Vec<Content>` (role + parts) | `input: string \| Content[] \| Step[]` |
+| **Response** | `candidates: Vec<Candidate>` (parts) | `steps: Vec<Step>` (typed enum) |
+| **Multi-turn state** | Client manages full history | Server-side `previous_interaction_id` |
+| **Streaming** | SSE chunks of `GenerationResponse` | SSE step lifecycle events (`step.start/delta/stop`) |
+| **Function calling** | `Part::FunctionCall` / `Part::FunctionResponse` | `Step::FunctionCall` / `Step::FunctionResult` |
+| **Background execution** | Not supported | `background=true` + polling or webhook |
+| **Managed agents** | Not supported | Deep Research, Antigravity |
+| **Sandbox environments** | Not supported | `environment: "remote"` |
+| **Service tiers** | Not supported | `flex`, `standard`, `priority` |
+
+### Side-by-Side Code Comparison
+
+#### Basic Text Generation
+
+```rust
+// ── Legacy generateContent ──
+let response = client.generate_content(
+    GenerateContentRequest::builder()
+        .model("gemini-2.5-flash")
+        .contents(vec![Message::new_user("What is AI?")])
+        .build()
+).await?;
+println!("{}", response.candidates[0].content.parts[0].text);
+
+// ── Interactions API ──
+let interaction = client.create_interaction()
+    .with_model("gemini-2.5-flash")
+    .with_text("What is AI?")
+    .execute()
+    .await?;
+println!("{}", interaction.output_text());
+```
+
+#### Multi-Turn Conversation
+
+```rust
+// ── Legacy: manually resend entire history ──
+let response2 = client.generate_content(
+    GenerateContentRequest::builder()
+        .model("gemini-2.5-flash")
+        .contents(vec![
+            Message::new_user("What is AI?"),
+            Message::new_model(&response.candidates[0].content.parts[0].text),
+            Message::new_user("Give me 3 examples"),
+        ])
+        .build()
+).await?;
+
+// ── Interactions: server-side state via previous_interaction_id ──
+let interaction2 = client.create_interaction()
+    .with_model("gemini-2.5-flash")
+    .with_text("Give me 3 examples")
+    .with_previous_interaction(interaction.id().unwrap())
+    .execute()
+    .await?;
+```
+
+#### Streaming
+
+```rust
+// ── Legacy: SSE chunks of GenerationResponse ──
+use gemini_rust::prelude::*;
+let mut stream = client.generate_content_stream(request).await?;
+while let Some(chunk) = stream.next().await {
+    let chunk = chunk?;
+    if let Some(part) = chunk.candidates[0].content.parts.first() {
+        print!("{}", part.text);
+    }
+}
+
+// ── Interactions: SSE step lifecycle events ──
+let mut stream = client.create_interaction_stream(
+    client.create_interaction()
+        .with_model("gemini-2.5-flash")
+        .with_text("Write a haiku about Rust")
+).await?;
+while let Some(event) = stream.next().await {
+    let event = event?;
+    match event {
+        InteractionEvent::StepStart(step) => { /* step began */ }
+        InteractionEvent::StepDelta(delta) => { /* incremental text */ }
+        InteractionEvent::StepStop(step) => { /* step finished */ }
+        InteractionEvent::InteractionCompleted(i) => { /* done */ }
+        _ => {}
+    }
+}
+```
+
+### Feature Availability
+
+**New in Interactions API (not in generateContent):**
+- Server-side conversation state (`previous_interaction_id`)
+- Background execution with polling or webhooks
+- Managed agents (Deep Research, Antigravity)
+- Remote sandbox environments
+- Observable execution steps (thoughts, tool calls, code execution)
+- Service tiers (`flex`, `standard`, `priority`)
+- Webhook callbacks
+
+**Only in generateContent (not yet in Interactions API):**
+- Batch API
+- Explicit content caching
+- Custom safety settings
+- Video metadata (clipping, frame rate)
+- Automatic function calling
+
+### Type Mapping
+
+| Legacy Type | Interactions Type | Notes |
+|---|---|---|
+| `Content` / `Part` | `InteractionContent` | Type-tagged polymorphic |
+| `Candidate` | `Step::ModelOutput` | Filter `steps` for `ModelOutput` variant |
+| `Part::Text` | `InteractionContent::Text` | |
+| `Part::InlineData` | `InteractionContent::Image` / `Audio` / `Video` | Typed per media |
+| `Part::FunctionCall` | `Step::FunctionCall` | Now a top-level step, not a Part |
+| `Part::FunctionResponse` | `Step::FunctionResult` | Provide tool results back |
+| `GenerationConfig` | `InteractionGenerationConfig` | Shared subset of fields |
+| `Tool` | `InteractionTool` | Type-tagged polymorphic |
+
+### Migration Checklist
+
+1. **Start with simple text generation** — swap `generate_content()` for `create_interaction().execute()`
+2. **Replace multi-turn logic** — use `with_previous_interaction()` instead of rebuilding history
+3. **Update response parsing** — use `interaction.output_text()` instead of `response.candidates[0]...`
+4. **Switch streaming** — handle `InteractionEvent` variants instead of raw chunks
+5. **Map tools** — convert `Tool` to `InteractionTool` (function, google_search, code_execution, etc.)
+6. **Explore new features** — try `with_background()`, `with_agent()`, or `with_environment()`
 
 ### Basic Content Generation
 
@@ -197,6 +393,30 @@ The repository includes 30+ comprehensive examples demonstrating all features. S
 - [`google_search.rs`](examples/google_search.rs) - Google Search integration
 - [`url_context.rs`](examples/url_context.rs) - URL Context tool for web content analysis
 
+### Interactions API Examples
+
+- [`interaction_basic.rs`](examples/interaction_basic.rs) - Basic text generation (simplest starting point)
+- [`interaction_multi_turn.rs`](examples/interaction_multi_turn.rs) - Multi-turn with `previous_interaction_id`
+- [`interaction_streaming.rs`](examples/interaction_streaming.rs) - SSE step lifecycle events
+- [`interaction_advanced.rs`](examples/interaction_advanced.rs) - Advanced configuration (tools, thinking, system prompt)
+- [`interaction_function_calling.rs`](examples/interaction_function_calling.rs) - Function calling with `Step::FunctionCall`
+- [`interaction_google_search.rs`](examples/interaction_google_search.rs) - Google Search grounding
+- [`interaction_google_maps.rs`](examples/interaction_google_maps.rs) - Google Maps grounding
+- [`interaction_code_execution.rs`](examples/interaction_code_execution.rs) - Python code execution
+- [`interaction_thinking.rs`](examples/interaction_thinking.rs) - Thinking levels (low/medium/high)
+- [`interaction_structured.rs`](examples/interaction_structured.rs) - JSON schema structured output
+- [`interaction_multimodal.rs`](examples/interaction_multimodal.rs) - Image, audio, and video input
+- [`interaction_image_gen.rs`](examples/interaction_image_gen.rs) - Image generation
+- [`interaction_tts.rs`](examples/interaction_tts.rs) - Text-to-speech output
+- [`interaction_background.rs`](examples/interaction_background.rs) - Background execution with polling
+- [`interaction_deep_research.rs`](examples/interaction_deep_research.rs) - Deep Research managed agent
+- [`interaction_antigravity.rs`](examples/interaction_antigravity.rs) - Antigravity agent with sandbox environment
+- [`interaction_url_context.rs`](examples/interaction_url_context.rs) - URL context tool
+- [`interaction_file_search.rs`](examples/interaction_file_search.rs) - RAG file search
+- [`interaction_error_handling.rs`](examples/interaction_error_handling.rs) - Error handling patterns
+- [`interaction_tracing.rs`](examples/interaction_tracing.rs) - Tracing and telemetry
+- [`interaction_custom_client.rs`](examples/interaction_custom_client.rs) - Custom HTTP client configuration
+
 Run any example:
 
 ```bash
@@ -213,6 +433,8 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ## 🚦 Supported Models
 
+### Standard Models (Both APIs)
+
 - **Gemini 2.5 Flash** - Fast, efficient model (default) - `Model::Gemini25Flash`
 - **Gemini 2.5 Flash Lite** - Lightweight model - `Model::Gemini25FlashLite`
 - **Gemini 2.5 Pro** - Advanced model with thinking capabilities - `Model::Gemini25Pro`
@@ -220,6 +442,11 @@ export GEMINI_API_KEY="your-api-key-here"
 - **Gemini 3 Flash** - Fast model with thinking levels (Minimal, Low, Medium, High) - `Model::Gemini3Flash` (Preview)
 - **Text Embedding 004** - Latest embedding model - `Model::TextEmbedding004`
 - **Custom models** - Use `Model::Custom(String)` or string literals for other models
+
+### Managed Agents (Interactions API only)
+
+- **Deep Research** - Multi-step research agent with report generation - `AgentConfig::DeepResearch` or `.with_agent("deepresearch-2.5")`
+- **Antigravity** - Code-writing agent with remote sandbox - `.with_agent("antigravity-preview-05-2026")`
 
 ## 🤝 Contributing
 

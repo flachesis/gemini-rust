@@ -15,6 +15,10 @@ use crate::{
 };
 
 /// Builder for content generation requests
+#[deprecated(
+    since = "1.8.0",
+    note = "Use crate::interactions::InteractionBuilder instead. See migration guide: interactions-api/migration-plan.md"
+)]
 #[derive(Clone)]
 pub struct ContentBuilder {
     client: Arc<GeminiClient>,
@@ -272,9 +276,19 @@ impl ContentBuilder {
     /// When used with a JSON MIME type, this schema will be used to validate the model's
     /// output.
     pub fn with_response_schema(mut self, schema: serde_json::Value) -> Self {
-        self.generation_config
-            .get_or_insert_with(Default::default)
-            .response_schema = Some(schema);
+        let config = self.generation_config.get_or_insert_with(Default::default);
+        config.response_schema = Some(schema);
+        config.response_json_schema = None;
+        self
+    }
+
+    /// Sets the response JSON schema for strict structured output.
+    ///
+    /// Prefer this over `with_response_schema` for modern Gemini models.
+    pub fn with_response_json_schema(mut self, schema: serde_json::Value) -> Self {
+        let config = self.generation_config.get_or_insert_with(Default::default);
+        config.response_json_schema = Some(schema);
+        config.response_schema = None;
         self
     }
 
