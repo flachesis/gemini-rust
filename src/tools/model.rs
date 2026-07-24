@@ -238,12 +238,144 @@ fn sanitize_json_schema_openapi3(value: &mut Value) {
     }
 }
 
+use std::collections::{HashMap, HashSet};
+
+/// Converts `const` fields to `enum` with a single value for Gemini compatibility.
+/// Gemini's schema doesn't support `const`, but `enum: ["value"]` achieves the same effect.
+fn convert_const_to_enum(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            // If this object has a "const" field, convert it to "enum"
+            if let Some(const_val) = map.remove("const") {
+                map.insert("enum".to_string(), Value::Array(vec![const_val]));
+            }
+            // Recursively process all children
+            for v in map.values_mut() {
+                convert_const_to_enum(v);
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                convert_const_to_enum(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Creates a short hash identifier from description content.
+/// Uses first 8 chars of a simple hash for uniqueness.
+fn hash_description(desc: &str) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    desc.hash(&mut hasher);
+    format!("{:x}", hasher.finish()).chars().take(8).collect()
+}
+
+/// Deduplicates descriptions in a JSON schema using a two-pass approach:
+/// 1. First pass: find all descriptions that appear more than once
+/// 2. Second pass: label first occurrence, replace duplicates with references
+fn deduplicate_descriptions(value: &mut Value) {
+    // First pass: count occurrences of each description
+    let mut counts: HashMap<String, usize> = HashMap::new();
+    count_descriptions(value, &mut counts);
+
+    // Filter to only descriptions that appear more than once
+    let duplicates: HashSet<String> = counts
+        .into_iter()
+        .filter(|(_, count)| *count > 1)
+        .map(|(desc, _)| desc)
+        .collect();
+
+    // Second pass: label first occurrences and replace duplicates
+    let mut labeled: HashMap<String, String> = HashMap::new();
+    apply_deduplication(value, &duplicates, &mut labeled);
+}
+
+/// First pass: count how many times each description appears
+fn count_descriptions(value: &Value, counts: &mut HashMap<String, usize>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(desc)) = map.get("description") {
+                if desc.len() >= 50 {
+                    *counts.entry(desc.clone()).or_insert(0) += 1;
+                }
+            }
+            for (key, v) in map.iter() {
+                if key != "description" {
+                    count_descriptions(v, counts);
+                }
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr.iter() {
+                count_descriptions(item, counts);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Second pass: apply deduplication only to descriptions that have duplicates
+fn apply_deduplication(
+    value: &mut Value,
+    duplicates: &HashSet<String>,
+    labeled: &mut HashMap<String, String>,
+) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::String(desc)) = map.get("description") {
+                let desc_clone = desc.clone();
+
+                // Only process descriptions that have duplicates
+                if duplicates.contains(&desc_clone) {
+                    if let Some(ref_id) = labeled.get(&desc_clone) {
+                        // Already labeled - this is a duplicate, replace with reference
+                        map.insert(
+                            "description".to_string(),
+                            Value::String(format!("(see @{})", ref_id)),
+                        );
+                    } else {
+                        // First occurrence - create hash-based identifier and label it
+                        let ref_id = hash_description(&desc_clone);
+                        map.insert(
+                            "description".to_string(),
+                            Value::String(format!("{} [@{}]", desc_clone, ref_id)),
+                        );
+                        labeled.insert(desc_clone, ref_id);
+                    }
+                }
+            }
+
+            // Recursively process children
+            for (key, v) in map.iter_mut() {
+                if key != "description" {
+                    apply_deduplication(v, duplicates, labeled);
+                }
+            }
+        }
+        Value::Array(arr) => {
+            for item in arr.iter_mut() {
+                apply_deduplication(item, duplicates, labeled);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Returns JSON Schema for the given parameters (JSON Schema field for Gemini).
+/// Uses inlined schemas (for model visibility) with deduplicated descriptions (for token savings).
+///
+/// NOTE: Gemini's function calling does NOT properly resolve $refs in parametersJsonSchema,
+/// so we must inline all subschemas. However, we deduplicate descriptions to reduce token usage -
+/// the first occurrence of each description is kept, and duplicates are replaced with
+/// a short reference like "(See: properties.changes.[0].processor)".
 fn generate_parameters_json_schema<Parameters>() -> Value
 where
     Parameters: JsonSchema + Serialize,
 {
     let schema_generator = SchemaGenerator::new(SchemaSettings::draft07().with(|s| {
+        // Must inline subschemas - Gemini doesn't resolve $refs in function parameters
         s.inline_subschemas = true;
         s.meta_schema = None;
     }));
@@ -256,6 +388,10 @@ where
         map.remove("definitions");
         map.remove("$defs");
     }
+    // Convert const to enum (Gemini doesn't support const)
+    convert_const_to_enum(&mut value);
+    // Deduplicate descriptions - keep first occurrence, replace duplicates with references
+    deduplicate_descriptions(&mut value);
     value
 }
 
