@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Basic text generation
     let interaction = client
         .create_interaction()
-        .with_model("gemini-2.5-flash")
+        .with_model("gemini-3.7-flash")
         .with_text("Hello! What is AI?")
         .execute()
         .await?;
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Multi-turn with server-side state
     let interaction2 = client
         .create_interaction()
-        .with_model("gemini-2.5-flash")
+        .with_model("gemini-3.7-flash")
         .with_text("Give me 3 examples")
         .with_previous_interaction(interaction.id().unwrap())
         .execute()
@@ -126,7 +126,7 @@ Contents (messages)  →  Candidates        Interaction (input)  →  Steps (typ
 // ── Legacy generateContent ──
 let response = client.generate_content(
     GenerateContentRequest::builder()
-        .model("gemini-2.5-flash")
+        .model("gemini-3.7-flash")
         .contents(vec![Message::new_user("What is AI?")])
         .build()
 ).await?;
@@ -134,7 +134,7 @@ println!("{}", response.candidates[0].content.parts[0].text);
 
 // ── Interactions API ──
 let interaction = client.create_interaction()
-    .with_model("gemini-2.5-flash")
+    .with_model("gemini-3.7-flash")
     .with_text("What is AI?")
     .execute()
     .await?;
@@ -147,7 +147,7 @@ println!("{}", interaction.output_text());
 // ── Legacy: manually resend entire history ──
 let response2 = client.generate_content(
     GenerateContentRequest::builder()
-        .model("gemini-2.5-flash")
+        .model("gemini-3.7-flash")
         .contents(vec![
             Message::new_user("What is AI?"),
             Message::new_model(&response.candidates[0].content.parts[0].text),
@@ -158,7 +158,7 @@ let response2 = client.generate_content(
 
 // ── Interactions: server-side state via previous_interaction_id ──
 let interaction2 = client.create_interaction()
-    .with_model("gemini-2.5-flash")
+    .with_model("gemini-3.7-flash")
     .with_text("Give me 3 examples")
     .with_previous_interaction(interaction.id().unwrap())
     .execute()
@@ -181,7 +181,7 @@ while let Some(chunk) = stream.next().await {
 // ── Interactions: SSE step lifecycle events ──
 let mut stream = client.create_interaction_stream(
     client.create_interaction()
-        .with_model("gemini-2.5-flash")
+        .with_model("gemini-3.7-flash")
         .with_text("Write a haiku about Rust")
 ).await?;
 while let Some(event) = stream.next().await {
@@ -435,13 +435,41 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ### Standard Models (Both APIs)
 
-- **Gemini 2.5 Flash** - Fast, efficient model (default) - `Model::Gemini25Flash`
+- **Gemini 3.7 Flash** - Latest and most capable Flash model (default) - `Model::Gemini37Flash`
+- **Gemini 3.6 Flash** - Previous-generation Flash model - `Model::Gemini36Flash`
+- **Gemini 3.5 Flash** - Legacy Flash model - `Model::Gemini35Flash`
+- **Gemini 3.5 Flash-Lite** - Fastest, most cost-effective 3.5 model - `Model::Gemini35FlashLite`
+- **Gemini 3.1 Flash-Lite** - Cost-efficient multimodal model - `Model::Gemini31FlashLite`
+- **Gemini 3.1 Pro** - Current Pro model with advanced thinking and agentic capabilities (Preview) - `Model::Gemini31Pro`
+- **Gemini 3 Flash** - Flash model with thinking levels (Minimal, Low, Medium, High) (Preview) - `Model::Gemini3Flash`
+- **Gemini 2.5 Flash** - Previous generation, unavailable to newly created API keys - `Model::Gemini25Flash`
 - **Gemini 2.5 Flash Lite** - Lightweight model - `Model::Gemini25FlashLite`
 - **Gemini 2.5 Pro** - Advanced model with thinking capabilities - `Model::Gemini25Pro`
-- **Gemini 3 Pro** - Latest model with code execution and advanced thinking - `Model::Gemini3Pro` (Preview)
-- **Gemini 3 Flash** - Fast model with thinking levels (Minimal, Low, Medium, High) - `Model::Gemini3Flash` (Preview)
-- **Text Embedding 004** - Latest embedding model - `Model::TextEmbedding004`
-- **Custom models** - Use `Model::Custom(String)` or string literals for other models
+
+### Image Generation
+
+- **Gemini 3.1 Flash Image** - Nano Banana 2, high-efficiency image generation - `Model::Gemini31FlashImage`
+- **Gemini 3.1 Flash-Lite Image** - Nano Banana 2 Lite, ultra-low latency - `Model::Gemini31FlashLiteImage`
+- **Gemini 3 Pro Image** - Nano Banana Pro, studio-quality generation - `Model::Gemini3ProImage`
+- **Gemini 2.5 Flash Image** - Nano Banana (shutting down October 2, 2026) - `Model::Gemini25FlashImage`
+
+### Speech, Video, and Tools
+
+- **Gemini 3.1 Flash TTS** - Low-latency speech generation - `Model::Gemini31FlashTts` (Preview)
+- **Gemini 2.5 Flash TTS** / **2.5 Pro TTS** - Text-to-speech - `Model::Gemini25FlashTts` / `Model::Gemini25ProTts`
+- **Gemini Omni Flash** - Conversational video generation and editing - `Model::GeminiOmniFlash`
+- **Gemini 2.5 Computer Use** - UI automation model - `Model::Gemini25ComputerUse`
+
+### Embeddings
+
+- **Gemini Embedding 2** - Multimodal embeddings (text, images, video, audio, PDFs) - `Model::GeminiEmbedding2`
+- **Gemini Embedding 001** - Text embeddings for search and RAG - `Model::GeminiEmbedding001`
+
+### Deprecated
+
+- **Gemini 3 Pro** - `Model::Gemini3Pro` (shut down on March 9, 2026; use `Model::Gemini31Pro`)
+- **Text Embedding 004** - `Model::TextEmbedding004` (shut down on January 14, 2026; use `Model::GeminiEmbedding2`)
+- **Custom models** - Use `Model::Custom(String)` or string literals for any other model
 
 ### Managed Agents (Interactions API only)
 
