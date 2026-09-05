@@ -26,6 +26,7 @@ impl FileHandle {
     }
 
     /// Delete the file.
+    #[allow(clippy::result_large_err)]
     pub async fn delete(self) -> Result<(), (Self, Error)> {
         match self
             .client
