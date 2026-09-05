@@ -1,4 +1,7 @@
-use crate::{FinishReason, FunctionCall, GenerationResponse, Model, Part};
+use crate::{
+    FinishReason, FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionResponse,
+    GenerationResponse, Model, Part, ToolConfig,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
@@ -34,6 +37,7 @@ fn test_thought_signature_deserialization() {
                     "parts": [
                         {
                             "functionCall": {
+                                "id": "call_weather_123",
                                 "name": "get_current_weather",
                                 "args": {
                                     "location": "Kaohsiung Zuoying District"
@@ -76,6 +80,7 @@ fn test_thought_signature_deserialization() {
             function_call,
             thought_signature,
         } => {
+            assert_eq!(function_call.id.as_deref(), Some("call_weather_123"));
             assert_eq!(function_call.name, "get_current_weather");
             assert_eq!(function_call.args["location"], "Kaohsiung Zuoying District");
 
@@ -93,6 +98,7 @@ fn test_thought_signature_deserialization() {
     assert_eq!(function_calls_with_thoughts.len(), 1);
 
     let (function_call, thought_signature) = &function_calls_with_thoughts[0];
+    assert_eq!(function_call.id.as_deref(), Some("call_weather_123"));
     assert_eq!(function_call.name, "get_current_weather");
     assert!(thought_signature.is_some());
 
@@ -143,6 +149,50 @@ fn test_function_call_without_thought_signature() {
     let serialized = serde_json::to_string(&function_call).unwrap();
     println!("Serialized FunctionCall without thought: {serialized}");
     assert!(!serialized.contains("thought_signature"));
+}
+
+#[test]
+fn test_function_call_with_id_serialization() {
+    let function_call =
+        FunctionCall::new("test_function", json!({"param": "value"})).with_id("call_123");
+
+    let serialized = serde_json::to_value(&function_call).unwrap();
+    assert_eq!(serialized["id"], "call_123");
+    assert_eq!(serialized["name"], "test_function");
+}
+
+#[test]
+fn test_function_response_with_id_serialization() {
+    let function_response =
+        FunctionResponse::new("test_function", json!({"result": "ok"})).with_id("call_123");
+
+    let serialized = serde_json::to_value(&function_response).unwrap();
+    assert_eq!(serialized["id"], "call_123");
+    assert_eq!(serialized["name"], "test_function");
+    assert_eq!(serialized["response"]["result"], "ok");
+}
+
+#[test]
+fn test_tool_config_serializes_validated_mode_and_allowed_function_names() {
+    let tool_config = ToolConfig {
+        function_calling_config: Some(FunctionCallingConfig {
+            mode: FunctionCallingMode::Validated,
+            allowed_function_names: Some(vec!["get_weather".to_string()]),
+        }),
+        retrieval_config: None,
+        include_server_side_tool_invocations: Some(true),
+    };
+
+    let serialized = serde_json::to_value(&tool_config).unwrap();
+    assert_eq!(
+        serialized["functionCallingConfig"]["mode"],
+        serde_json::json!("VALIDATED")
+    );
+    assert_eq!(
+        serialized["functionCallingConfig"]["allowedFunctionNames"],
+        serde_json::json!(["get_weather"])
+    );
+    assert_eq!(serialized["includeServerSideToolInvocations"], true);
 }
 
 #[test]
