@@ -282,6 +282,13 @@ impl GenerationResponse {
             .unwrap_or_default()
     }
 
+    /// Get the finish reason of the first candidate
+    pub fn finish_reason(&self) -> Option<FinishReason> {
+        self.candidates
+            .first()
+            .and_then(|c| c.finish_reason.clone())
+    }
+
     /// Get function calls from the response
     pub fn function_calls(&self) -> Vec<&crate::tools::FunctionCall> {
         self.candidates
