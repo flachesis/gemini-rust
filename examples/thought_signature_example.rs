@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use display_error_chain::DisplayErrorChain;
 /// Comprehensive example demonstrating thoughtSignature support in Gemini 2.5 Pro
 ///

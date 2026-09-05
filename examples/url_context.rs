@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 /*!
 # URL Context Tool Example
 

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use gemini_rust::{prelude::*, ThinkingLevel};
 
 #[tokio::main]

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Simple Google Maps Grounding Example
 //!
 //! A minimal example showing how to use Google Maps grounding for location-aware queries.

@@ -1,3 +1,4 @@
+#[allow(deprecated)]
 use crate::{
     batch::{BatchBuilder, BatchHandle},
     cache::{CacheBuilder, CachedContentHandle},
@@ -10,6 +11,12 @@ use crate::{
         model::{File, ListFilesResponse},
     },
     generation::{ContentBuilder, GenerateContentRequest, GenerationResponse},
+    interactions::{
+        builder::InteractionBuilder,
+        handle::InteractionHandle,
+        model::{CreateInteractionRequest, Interaction},
+        stream::{InteractionEvent, InteractionStream},
+    },
 };
 use eventsource_stream::{EventStreamError, Eventsource};
 use futures::{Stream, StreamExt, TryStreamExt};
@@ -37,6 +44,7 @@ use crate::cache::model::*;
 /// A pinned, boxed stream that yields `GenerationResponse` chunks as they arrive
 /// from the API. Used for streaming content generation to receive partial results
 /// before the complete response is ready.
+#[allow(deprecated)]
 pub type GenerationStream = Pin<Box<dyn Stream<Item = Result<GenerationResponse, Error>> + Send>>;
 
 static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
@@ -44,23 +52,85 @@ static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
         .expect("unreachable error: failed to parse default base URL")
 });
 
+/// Gemini API models.
+///
+/// The default is `Gemini37Flash`, the latest stable Flash model.
+/// Any model not listed here (e.g. `gemini-flash-latest`, preview or
+/// experimental releases) can be used via `Model::Custom` or a string literal.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Model {
+    /// Latest stable Flash model and the library default.
     #[default]
+    #[serde(rename = "models/gemini-3.7-flash")]
+    Gemini37Flash,
+    #[serde(rename = "models/gemini-3.6-flash")]
+    Gemini36Flash,
+    #[serde(rename = "models/gemini-3.5-flash")]
+    Gemini35Flash,
+    #[serde(rename = "models/gemini-3.5-flash-lite")]
+    Gemini35FlashLite,
+    #[serde(rename = "models/gemini-3.1-flash-lite")]
+    Gemini31FlashLite,
+    /// Current Pro model (preview).
+    #[serde(rename = "models/gemini-3.1-pro-preview")]
+    Gemini31Pro,
+    /// Image generation model, also known as Nano Banana 2.
+    #[serde(rename = "models/gemini-3.1-flash-image")]
+    Gemini31FlashImage,
+    /// Low-latency image generation model, also known as Nano Banana 2 Lite.
+    #[serde(rename = "models/gemini-3.1-flash-lite-image")]
+    Gemini31FlashLiteImage,
+    /// Pro image generation model, also known as Nano Banana Pro.
+    #[serde(rename = "models/gemini-3-pro-image")]
+    Gemini3ProImage,
+    #[serde(rename = "models/gemini-3-flash-preview")]
+    Gemini3Flash,
+    /// Video generation and editing model: turn text and images into video and
+    /// refine results through natural language.
+    #[serde(rename = "models/gemini-omni-flash")]
+    GeminiOmniFlash,
+    /// Low-latency speech generation model (preview).
+    #[serde(rename = "models/gemini-3.1-flash-tts-preview")]
+    Gemini31FlashTts,
+    /// Shut down by Google; fails for all requests.
+    #[deprecated(
+        since = "2.1.0",
+        note = "gemini-3-pro-preview has been shut down; use Model::Gemini31Pro instead"
+    )]
+    #[serde(rename = "models/gemini-3-pro-preview")]
+    Gemini3Pro,
+    /// Previous generation; still served, but unavailable to newly created API keys.
     #[serde(rename = "models/gemini-2.5-flash")]
     Gemini25Flash,
     #[serde(rename = "models/gemini-2.5-flash-lite")]
     Gemini25FlashLite,
+    /// Image generation model, also known as Nano Banana. Shutting down on
+    /// October 2, 2026; use [Model::Gemini31FlashImage] instead.
     #[serde(rename = "models/gemini-2.5-flash-image")]
     Gemini25FlashImage,
     #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
-    #[serde(rename = "models/gemini-3-flash-preview")]
-    Gemini3Flash,
-    #[serde(rename = "models/gemini-3-pro-preview")]
-    Gemini3Pro,
-    #[serde(rename = "models/gemini-3-pro-image-preview")]
-    Gemini3ProImage,
+    /// Fast and controllable text-to-speech model (2.5 family).
+    #[serde(rename = "models/gemini-2.5-flash-preview-tts")]
+    Gemini25FlashTts,
+    /// High-fidelity speech synthesis model (2.5 family).
+    #[serde(rename = "models/gemini-2.5-pro-preview-tts")]
+    Gemini25ProTts,
+    /// Computer use model that can "see" a digital screen and perform UI
+    /// actions like clicking, typing, and navigating.
+    #[serde(rename = "models/gemini-2.5-computer-use-preview-10-2025")]
+    Gemini25ComputerUse,
+    /// Multimodal embedding model mapping text, images, video, audio, and PDFs
+    /// into a unified embedding space.
+    #[serde(rename = "models/gemini-embedding-2")]
+    GeminiEmbedding2,
+    /// Text embedding model for semantic search, classification, and RAG.
+    #[serde(rename = "models/gemini-embedding-001")]
+    GeminiEmbedding001,
+    #[deprecated(
+        since = "2.1.0",
+        note = "shut down on January 14, 2026; use Model::GeminiEmbedding2 instead"
+    )]
     #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
     #[serde(untagged)]
@@ -68,15 +138,31 @@ pub enum Model {
 }
 
 impl Model {
+    #[allow(deprecated)]
     pub fn as_str(&self) -> &str {
         match self {
+            Model::Gemini37Flash => "models/gemini-3.7-flash",
+            Model::Gemini36Flash => "models/gemini-3.6-flash",
+            Model::Gemini35Flash => "models/gemini-3.5-flash",
+            Model::Gemini35FlashLite => "models/gemini-3.5-flash-lite",
+            Model::Gemini31FlashLite => "models/gemini-3.1-flash-lite",
+            Model::Gemini31Pro => "models/gemini-3.1-pro-preview",
+            Model::Gemini31FlashImage => "models/gemini-3.1-flash-image",
+            Model::Gemini31FlashLiteImage => "models/gemini-3.1-flash-lite-image",
+            Model::Gemini3ProImage => "models/gemini-3-pro-image",
+            Model::Gemini3Flash => "models/gemini-3-flash-preview",
+            Model::GeminiOmniFlash => "models/gemini-omni-flash",
+            Model::Gemini31FlashTts => "models/gemini-3.1-flash-tts-preview",
+            Model::Gemini3Pro => "models/gemini-3-pro-preview",
             Model::Gemini25Flash => "models/gemini-2.5-flash",
             Model::Gemini25FlashLite => "models/gemini-2.5-flash-lite",
             Model::Gemini25FlashImage => "models/gemini-2.5-flash-image",
             Model::Gemini25Pro => "models/gemini-2.5-pro",
-            Model::Gemini3Flash => "models/gemini-3-flash-preview",
-            Model::Gemini3Pro => "models/gemini-3-pro-preview",
-            Model::Gemini3ProImage => "models/gemini-3-pro-image-preview",
+            Model::Gemini25FlashTts => "models/gemini-2.5-flash-preview-tts",
+            Model::Gemini25ProTts => "models/gemini-2.5-pro-preview-tts",
+            Model::Gemini25ComputerUse => "models/gemini-2.5-computer-use-preview-10-2025",
+            Model::GeminiEmbedding2 => "models/gemini-embedding-2",
+            Model::GeminiEmbedding001 => "models/gemini-embedding-001",
             Model::TextEmbedding004 => "models/text-embedding-004",
             Model::Custom(model) => model,
         }
@@ -90,15 +176,33 @@ impl From<String> for Model {
 }
 
 impl fmt::Display for Model {
+    #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Model::Gemini37Flash => write!(f, "models/gemini-3.7-flash"),
+            Model::Gemini36Flash => write!(f, "models/gemini-3.6-flash"),
+            Model::Gemini35Flash => write!(f, "models/gemini-3.5-flash"),
+            Model::Gemini35FlashLite => write!(f, "models/gemini-3.5-flash-lite"),
+            Model::Gemini31FlashLite => write!(f, "models/gemini-3.1-flash-lite"),
+            Model::Gemini31Pro => write!(f, "models/gemini-3.1-pro-preview"),
+            Model::Gemini31FlashImage => write!(f, "models/gemini-3.1-flash-image"),
+            Model::Gemini31FlashLiteImage => write!(f, "models/gemini-3.1-flash-lite-image"),
+            Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image"),
+            Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
+            Model::GeminiOmniFlash => write!(f, "models/gemini-omni-flash"),
+            Model::Gemini31FlashTts => write!(f, "models/gemini-3.1-flash-tts-preview"),
+            Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25FlashImage => write!(f, "models/gemini-2.5-flash-image"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
-            Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
-            Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
-            Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image-preview"),
+            Model::Gemini25FlashTts => write!(f, "models/gemini-2.5-flash-preview-tts"),
+            Model::Gemini25ProTts => write!(f, "models/gemini-2.5-pro-preview-tts"),
+            Model::Gemini25ComputerUse => {
+                write!(f, "models/gemini-2.5-computer-use-preview-10-2025")
+            }
+            Model::GeminiEmbedding2 => write!(f, "models/gemini-embedding-2"),
+            Model::GeminiEmbedding001 => write!(f, "models/gemini-embedding-001"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
             Model::Custom(model) => write!(f, "{model}"),
         }
@@ -362,6 +466,7 @@ impl GeminiClient {
     }
 
     /// Generate content
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -398,6 +503,7 @@ impl GeminiClient {
     }
 
     /// Generate content with streaming
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -423,6 +529,7 @@ impl GeminiClient {
             stream
                 .eventsource()
                 .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
                 .and_then(|event| async move {
                     serde_json::from_str::<GenerationResponse>(&event.data)
                         .context(DeserializeSnafu)
@@ -431,6 +538,7 @@ impl GeminiClient {
     }
 
     /// Count tokens for content
+    #[allow(deprecated)]
     #[instrument(skip_all, fields(
         model,
         messages.parts.count = request.contents.len(),
@@ -765,6 +873,128 @@ impl GeminiClient {
         }
 
         self.get_json(url).await
+    }
+
+    // ========== Interactions API ==========
+
+    /// Create an interaction (non-streaming).
+    #[instrument(skip_all, fields(
+        model = request.model.as_deref().unwrap_or(""),
+        agent = request.agent.as_deref().unwrap_or(""),
+        tools.count = request.tools.len(),
+        background = request.background.unwrap_or(false),
+        previous.interaction.present = request.previous_interaction_id.is_some(),
+        status.code,
+        usage.total_tokens,
+    ))]
+    pub(crate) async fn create_interaction(
+        &self,
+        request: CreateInteractionRequest,
+    ) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix("interactions")?;
+        let response: Interaction = self.post_json(url, &request).await?;
+
+        Span::current().record("status.code", response.status.as_ref());
+
+        if let Some(usage) = &response.usage {
+            Span::current().record("usage.total_tokens", usage.total_tokens);
+        }
+
+        Ok(response)
+    }
+
+    /// Create an interaction (streaming).
+    #[instrument(skip_all, fields(
+        model = request.model.as_deref().unwrap_or(""),
+        agent = request.agent.as_deref().unwrap_or(""),
+        tools.count = request.tools.len(),
+    ))]
+    pub(crate) async fn create_interaction_stream(
+        &self,
+        mut request: CreateInteractionRequest,
+    ) -> Result<InteractionStream, Error> {
+        let mut url = self.build_url_with_suffix("interactions")?;
+        url.query_pairs_mut().append_pair("alt", "sse");
+        request.stream = Some(true);
+
+        let stream = self
+            .perform_request(
+                |c| c.post(url).json(&request),
+                async |r| Ok(r.bytes_stream()),
+            )
+            .await?;
+
+        Ok(Box::pin(
+            stream
+                .eventsource()
+                .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
+                .and_then(|event| async move {
+                    serde_json::from_str::<InteractionEvent>(&event.data).context(DeserializeSnafu)
+                }),
+        ))
+    }
+
+    /// Get an interaction by ID.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn get_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        self.get_json(url).await
+    }
+
+    /// Get an interaction in streaming mode (resume from last_event_id).
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn get_interaction_stream(
+        &self,
+        id: &str,
+        last_event_id: Option<&str>,
+    ) -> Result<InteractionStream, Error> {
+        let mut url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        url.query_pairs_mut().append_pair("stream", "true");
+        if let Some(event_id) = last_event_id {
+            url.query_pairs_mut().append_pair("last_event_id", event_id);
+        }
+
+        let stream = self
+            .perform_request(|c| c.get(url), async |r| Ok(r.bytes_stream()))
+            .await?;
+
+        Ok(Box::pin(
+            stream
+                .eventsource()
+                .map(|event| event.context(BadPartSnafu))
+                .try_filter(|event| std::future::ready(event.data != "[DONE]"))
+                .and_then(|event| async move {
+                    serde_json::from_str::<InteractionEvent>(&event.data).context(DeserializeSnafu)
+                }),
+        ))
+    }
+
+    /// Cancel an interaction.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn cancel_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}/cancel"))?;
+        self.perform_request(
+            |c| c.post(url).json(&json!({})),
+            async |r| r.json().await.context(DecodeResponseSnafu),
+        )
+        .await
+    }
+
+    /// Delete an interaction.
+    #[instrument(skip_all, fields(
+        interaction.id = id,
+    ))]
+    pub(crate) async fn delete_interaction(&self, id: &str) -> Result<(), Error> {
+        let url = self.build_url_with_suffix(&format!("interactions/{id}"))?;
+        self.perform_request(|c| c.delete(url), async |_r| Ok(()))
+            .await
     }
 
     /// Build a URL with the given suffix
@@ -1153,12 +1383,12 @@ impl Gemini {
         Self::with_model(api_key, Model::default())
     }
 
-    /// Create a new client for the Gemini Pro model
+    /// Create a new client for the Gemini Pro model (`gemini-3.1-pro-preview`)
     pub fn pro<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
-        Self::with_model(api_key, Model::Gemini25Pro)
+        Self::with_model(api_key, Model::Gemini31Pro)
     }
 
-    /// Create a new client for the Gemini Pro 3 image model
+    /// Create a new client for the Gemini Pro image model (`gemini-3-pro-image`)
     pub fn pro_image<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
         Self::with_model(api_key, Model::Gemini3ProImage)
     }
@@ -1187,8 +1417,34 @@ impl Gemini {
     }
 
     /// Start building a content generation request
+    #[deprecated(
+        since = "1.8.0",
+        note = "Use Gemini::create_interaction() instead. See migration guide: interactions-api/migration-plan.md"
+    )]
+    #[allow(deprecated)]
     pub fn generate_content(&self) -> ContentBuilder {
         ContentBuilder::new(self.client.clone())
+    }
+
+    /// Start building an interaction request.
+    ///
+    /// The Interactions API is the recommended way to use Gemini models and agents.
+    /// It provides server-side state management, observable steps, background execution,
+    /// and unified support for models and agents.
+    pub fn create_interaction(&self) -> InteractionBuilder {
+        InteractionBuilder::new(self.client.clone())
+    }
+
+    /// Get a handle to an interaction by its ID.
+    ///
+    /// The handle can be used for get, cancel, delete, and poll operations.
+    pub fn interaction(&self, id: &str) -> InteractionHandle {
+        InteractionHandle::new(id.to_string(), self.client.clone())
+    }
+
+    /// Get the full interaction resource by ID.
+    pub async fn get_interaction(&self, id: &str) -> Result<Interaction, Error> {
+        self.client.get_interaction(id).await
     }
 
     /// Start building a content embedding request

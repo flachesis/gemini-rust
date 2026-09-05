@@ -1,10 +1,11 @@
+#![allow(deprecated)]
 use gemini_rust::{prelude::*, ThinkingLevel};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("GEMINI_API_KEY").expect("GEMINI_API_KEY must be set");
 
-    let gemini = Gemini::with_model(api_key, Model::Gemini3Pro)?;
+    let gemini = Gemini::with_model(api_key, Model::Gemini31Pro)?;
 
     println!("=== Gemini 3 Pro: Thinking Level Demo ===\n");
 

@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use snafu::Snafu;
 
 pub mod builder;

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use display_error_chain::DisplayErrorChain;
 use gemini_rust::{Gemini, Tool};
 use std::env;

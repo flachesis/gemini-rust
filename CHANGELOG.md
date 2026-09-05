@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🤖 Model List Update
+
+Synced `Model` enum with the Gemini API model lineup (August 2026), see [#75](https://github.com/flachesis/gemini-rust/issues/75).
+
+- **Default model** changed from `Model::Gemini25Flash` (`gemini-2.5-flash`) to `Model::Gemini37Flash` (`gemini-3.7-flash`), the latest stable Flash model; `gemini-2.5-flash` is no longer available to newly created API keys
+- **Added current models**:
+  - `Model::Gemini37Flash` (`gemini-3.7-flash`)
+  - `Model::Gemini36Flash` (`gemini-3.6-flash`)
+  - `Model::Gemini35Flash` (`gemini-3.5-flash`)
+  - `Model::Gemini35FlashLite` (`gemini-3.5-flash-lite`)
+  - `Model::Gemini31FlashLite` (`gemini-3.1-flash-lite`)
+  - `Model::Gemini31Pro` (`gemini-3.1-pro-preview`)
+  - `Model::Gemini31FlashImage` (`gemini-3.1-flash-image`, Nano Banana 2)
+  - `Model::Gemini31FlashLiteImage` (`gemini-3.1-flash-lite-image`, Nano Banana 2 Lite)
+  - `Model::GeminiOmniFlash` (`gemini-omni-flash`, video generation)
+  - `Model::Gemini31FlashTts` (`gemini-3.1-flash-tts-preview`)
+  - `Model::Gemini25FlashTts` (`gemini-2.5-flash-preview-tts`)
+  - `Model::Gemini25ProTts` (`gemini-2.5-pro-preview-tts`)
+  - `Model::Gemini25ComputerUse` (`gemini-2.5-computer-use-preview-10-2025`)
+  - `Model::GeminiEmbedding2` (`gemini-embedding-2`, multimodal embeddings)
+  - `Model::GeminiEmbedding001` (`gemini-embedding-001`)
+- **Changed**: `Model::Gemini3ProImage` now points to `gemini-3-pro-image` (Nano Banana Pro GA; the old `gemini-3-pro-image-preview` was shut down on June 25, 2026)
+- **Changed**: `Gemini::pro()` now uses `Model::Gemini31Pro` instead of `Model::Gemini25Pro`
+- **Deprecated**:
+  - `Model::Gemini3Pro` (`gemini-3-pro-preview`, shut down on March 9, 2026) — use `Model::Gemini31Pro`
+  - `Model::TextEmbedding004` (`text-embedding-004`, shut down on January 14, 2026) — use `Model::GeminiEmbedding2`
+- **Note**: `Model::Gemini25FlashImage` (Nano Banana) shuts down on October 2, 2026; use `Model::Gemini31FlashImage`
+
+## [2.0.0] - 2026-07-10
+
+### 🤝 Interactions API (Recommended)
+
+The Interactions API is now the recommended interface for all Gemini model and agent interactions. It provides server-side state management, observable execution steps, background execution, and unified support for models and agents.
+
+- **Unified interface** — single `Interaction` request/response model replacing `Contents → Candidates` with `Interaction → Steps`
+- **Server-side state** — `previous_interaction_id` for multi-turn conversations without client-side history management
+- **Observable execution steps** — typed `Step` enum with variants for `ModelOutput`, `Thought`, `FunctionCall`, `FunctionResult`, `CodeExecutionCall`, `GoogleSearchCall`, `GoogleMapsCall`, `UrlContextCall`, `FileSearchCall`, `McpToolCall`, and more
+- **SSE streaming** — step lifecycle events (`step.start/delta/stop`) instead of raw content chunks
+- **Background execution** — `.with_background()` + polling via `InteractionHandle` or webhook callbacks
+- **Managed agents** — Deep Research and Antigravity built-in agents with `.with_agent()`
+- **Sandbox environments** — remote code execution with `environment: "remote"` and `environment_id` reuse
+- **Structured output** — JSON schema via `.with_json_schema()`
+- **Text-to-speech** — `generation_config.speech_config` for audio output
+- **Service tiers** — `flex`, `standard`, `priority`
+- **Thinking levels** — `low` / `medium` / `high` via `InteractionThinkingLevel`
+- **MCP server tools** — Model Context Protocol tool integration
+- **Computer use tool** — `.with_computer_use()` for agent-driven UI interaction
+- **Retrieval tool** — `.with_retrieval()` with `RagRetrievalConfig`, `HybridSearch`, and `RagFilter`
+
+### 🤖 Managed Agents
+
+- **Deep Research** — multi-step research agent with configurable `AgentConfig::DeepResearch` (enable_research, enable_consensus, max_citations, etc.)
+- **Antigravity** — code-writing agent with remote sandbox provisioning and multi-turn file persistence
+
+### 🔄 Migration Guide
+
+- Added comprehensive migration guide to README.md with paradigm comparison, side-by-side code examples, feature availability matrix, type mapping table, and migration checklist
+
+### 📦 New Examples (21 Interactions API examples)
+
+`interaction_basic`, `interaction_multi_turn`, `interaction_streaming`, `interaction_advanced`, `interaction_function_calling`, `interaction_google_search`, `interaction_google_maps`, `interaction_code_execution`, `interaction_thinking`, `interaction_structured`, `interaction_multimodal`, `interaction_image_gen`, `interaction_tts`, `interaction_background`, `interaction_deep_research`, `interaction_antigravity`, `interaction_url_context`, `interaction_file_search`, `interaction_error_handling`, `interaction_tracing`, `interaction_custom_client`
+
+### ⚠️ Breaking Changes
+
+- **New module** `interactions` added to crate root with full type exports
+- **Prelude** now includes Interactions API types (`Interaction`, `InteractionBuilder`, `Step`, `InteractionTool`, `AgentConfig`, etc.)
+- **Legacy `generateContent`** API marked `#[deprecated]` — still functional but discouraged for new code
+
+### 📄 Documentation
+
+- Updated README.md with Interactions API features, migration guide, and managed agent models
+- Updated `src/lib.rs` crate doc comment to reflect the new API surface
+- Fixed Chinese comment in `.github/workflows/sync-to-gitlab.yml`
+
 ## [1.7.1] - 2025-01-17
 
 ### ✨ Features

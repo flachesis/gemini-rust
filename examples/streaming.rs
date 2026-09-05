@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 use display_error_chain::DisplayErrorChain;
 use futures_util::TryStreamExt;
 use gemini_rust::Gemini;

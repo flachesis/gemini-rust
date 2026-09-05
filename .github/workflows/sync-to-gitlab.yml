@@ -2,7 +2,7 @@ name: Sync to GitLab
 on:
   push:
     branches:
-      - main # 您可以指定要同步的分支
+      - main # Specify the branch to sync
 jobs:
   sync:
     runs-on: ubuntu-latest

@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Demonstrates using file handles in content generation requests.
 //!
 //! This example shows how to upload a file and reference it in a generation request

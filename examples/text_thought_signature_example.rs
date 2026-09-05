@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 /// Example demonstrating text responses with thoughtSignature support
 ///
 /// This example shows how to handle text responses that include thought signatures,

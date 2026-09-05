@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Advanced Google Maps Configuration Example
 //!
 //! This example demonstrates advanced configuration options for Google Maps grounding,
