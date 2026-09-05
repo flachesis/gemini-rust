@@ -6,7 +6,7 @@ use gemini_rust::{ClientError, Gemini, Model, TaskType};
 use tracing::{error, info};
 
 async fn do_main(api_key: &str) -> Result<(), ClientError> {
-    let client = Gemini::with_model(api_key, Model::TextEmbedding004)
+    let client = Gemini::with_model(api_key, Model::GeminiEmbedding2)
         .expect("unable to create Gemini API client");
 
     info!("sending embedding request to gemini api");

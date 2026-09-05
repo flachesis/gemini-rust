@@ -52,23 +52,85 @@ static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
         .expect("unreachable error: failed to parse default base URL")
 });
 
+/// Gemini API models.
+///
+/// The default is `Gemini37Flash`, the latest stable Flash model.
+/// Any model not listed here (e.g. `gemini-flash-latest`, preview or
+/// experimental releases) can be used via `Model::Custom` or a string literal.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Model {
+    /// Latest stable Flash model and the library default.
     #[default]
+    #[serde(rename = "models/gemini-3.7-flash")]
+    Gemini37Flash,
+    #[serde(rename = "models/gemini-3.6-flash")]
+    Gemini36Flash,
+    #[serde(rename = "models/gemini-3.5-flash")]
+    Gemini35Flash,
+    #[serde(rename = "models/gemini-3.5-flash-lite")]
+    Gemini35FlashLite,
+    #[serde(rename = "models/gemini-3.1-flash-lite")]
+    Gemini31FlashLite,
+    /// Current Pro model (preview).
+    #[serde(rename = "models/gemini-3.1-pro-preview")]
+    Gemini31Pro,
+    /// Image generation model, also known as Nano Banana 2.
+    #[serde(rename = "models/gemini-3.1-flash-image")]
+    Gemini31FlashImage,
+    /// Low-latency image generation model, also known as Nano Banana 2 Lite.
+    #[serde(rename = "models/gemini-3.1-flash-lite-image")]
+    Gemini31FlashLiteImage,
+    /// Pro image generation model, also known as Nano Banana Pro.
+    #[serde(rename = "models/gemini-3-pro-image")]
+    Gemini3ProImage,
+    #[serde(rename = "models/gemini-3-flash-preview")]
+    Gemini3Flash,
+    /// Video generation and editing model: turn text and images into video and
+    /// refine results through natural language.
+    #[serde(rename = "models/gemini-omni-flash")]
+    GeminiOmniFlash,
+    /// Low-latency speech generation model (preview).
+    #[serde(rename = "models/gemini-3.1-flash-tts-preview")]
+    Gemini31FlashTts,
+    /// Shut down by Google; fails for all requests.
+    #[deprecated(
+        since = "2.1.0",
+        note = "gemini-3-pro-preview has been shut down; use Model::Gemini31Pro instead"
+    )]
+    #[serde(rename = "models/gemini-3-pro-preview")]
+    Gemini3Pro,
+    /// Previous generation; still served, but unavailable to newly created API keys.
     #[serde(rename = "models/gemini-2.5-flash")]
     Gemini25Flash,
     #[serde(rename = "models/gemini-2.5-flash-lite")]
     Gemini25FlashLite,
+    /// Image generation model, also known as Nano Banana. Shutting down on
+    /// October 2, 2026; use [Model::Gemini31FlashImage] instead.
     #[serde(rename = "models/gemini-2.5-flash-image")]
     Gemini25FlashImage,
     #[serde(rename = "models/gemini-2.5-pro")]
     Gemini25Pro,
-    #[serde(rename = "models/gemini-3-flash-preview")]
-    Gemini3Flash,
-    #[serde(rename = "models/gemini-3-pro-preview")]
-    Gemini3Pro,
-    #[serde(rename = "models/gemini-3-pro-image-preview")]
-    Gemini3ProImage,
+    /// Fast and controllable text-to-speech model (2.5 family).
+    #[serde(rename = "models/gemini-2.5-flash-preview-tts")]
+    Gemini25FlashTts,
+    /// High-fidelity speech synthesis model (2.5 family).
+    #[serde(rename = "models/gemini-2.5-pro-preview-tts")]
+    Gemini25ProTts,
+    /// Computer use model that can "see" a digital screen and perform UI
+    /// actions like clicking, typing, and navigating.
+    #[serde(rename = "models/gemini-2.5-computer-use-preview-10-2025")]
+    Gemini25ComputerUse,
+    /// Multimodal embedding model mapping text, images, video, audio, and PDFs
+    /// into a unified embedding space.
+    #[serde(rename = "models/gemini-embedding-2")]
+    GeminiEmbedding2,
+    /// Text embedding model for semantic search, classification, and RAG.
+    #[serde(rename = "models/gemini-embedding-001")]
+    GeminiEmbedding001,
+    #[deprecated(
+        since = "2.1.0",
+        note = "shut down on January 14, 2026; use Model::GeminiEmbedding2 instead"
+    )]
     #[serde(rename = "models/text-embedding-004")]
     TextEmbedding004,
     #[serde(untagged)]
@@ -76,15 +138,31 @@ pub enum Model {
 }
 
 impl Model {
+    #[allow(deprecated)]
     pub fn as_str(&self) -> &str {
         match self {
+            Model::Gemini37Flash => "models/gemini-3.7-flash",
+            Model::Gemini36Flash => "models/gemini-3.6-flash",
+            Model::Gemini35Flash => "models/gemini-3.5-flash",
+            Model::Gemini35FlashLite => "models/gemini-3.5-flash-lite",
+            Model::Gemini31FlashLite => "models/gemini-3.1-flash-lite",
+            Model::Gemini31Pro => "models/gemini-3.1-pro-preview",
+            Model::Gemini31FlashImage => "models/gemini-3.1-flash-image",
+            Model::Gemini31FlashLiteImage => "models/gemini-3.1-flash-lite-image",
+            Model::Gemini3ProImage => "models/gemini-3-pro-image",
+            Model::Gemini3Flash => "models/gemini-3-flash-preview",
+            Model::GeminiOmniFlash => "models/gemini-omni-flash",
+            Model::Gemini31FlashTts => "models/gemini-3.1-flash-tts-preview",
+            Model::Gemini3Pro => "models/gemini-3-pro-preview",
             Model::Gemini25Flash => "models/gemini-2.5-flash",
             Model::Gemini25FlashLite => "models/gemini-2.5-flash-lite",
             Model::Gemini25FlashImage => "models/gemini-2.5-flash-image",
             Model::Gemini25Pro => "models/gemini-2.5-pro",
-            Model::Gemini3Flash => "models/gemini-3-flash-preview",
-            Model::Gemini3Pro => "models/gemini-3-pro-preview",
-            Model::Gemini3ProImage => "models/gemini-3-pro-image-preview",
+            Model::Gemini25FlashTts => "models/gemini-2.5-flash-preview-tts",
+            Model::Gemini25ProTts => "models/gemini-2.5-pro-preview-tts",
+            Model::Gemini25ComputerUse => "models/gemini-2.5-computer-use-preview-10-2025",
+            Model::GeminiEmbedding2 => "models/gemini-embedding-2",
+            Model::GeminiEmbedding001 => "models/gemini-embedding-001",
             Model::TextEmbedding004 => "models/text-embedding-004",
             Model::Custom(model) => model,
         }
@@ -98,15 +176,33 @@ impl From<String> for Model {
 }
 
 impl fmt::Display for Model {
+    #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Model::Gemini37Flash => write!(f, "models/gemini-3.7-flash"),
+            Model::Gemini36Flash => write!(f, "models/gemini-3.6-flash"),
+            Model::Gemini35Flash => write!(f, "models/gemini-3.5-flash"),
+            Model::Gemini35FlashLite => write!(f, "models/gemini-3.5-flash-lite"),
+            Model::Gemini31FlashLite => write!(f, "models/gemini-3.1-flash-lite"),
+            Model::Gemini31Pro => write!(f, "models/gemini-3.1-pro-preview"),
+            Model::Gemini31FlashImage => write!(f, "models/gemini-3.1-flash-image"),
+            Model::Gemini31FlashLiteImage => write!(f, "models/gemini-3.1-flash-lite-image"),
+            Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image"),
+            Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
+            Model::GeminiOmniFlash => write!(f, "models/gemini-omni-flash"),
+            Model::Gemini31FlashTts => write!(f, "models/gemini-3.1-flash-tts-preview"),
+            Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
             Model::Gemini25FlashLite => write!(f, "models/gemini-2.5-flash-lite"),
             Model::Gemini25FlashImage => write!(f, "models/gemini-2.5-flash-image"),
             Model::Gemini25Pro => write!(f, "models/gemini-2.5-pro"),
-            Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
-            Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
-            Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image-preview"),
+            Model::Gemini25FlashTts => write!(f, "models/gemini-2.5-flash-preview-tts"),
+            Model::Gemini25ProTts => write!(f, "models/gemini-2.5-pro-preview-tts"),
+            Model::Gemini25ComputerUse => {
+                write!(f, "models/gemini-2.5-computer-use-preview-10-2025")
+            }
+            Model::GeminiEmbedding2 => write!(f, "models/gemini-embedding-2"),
+            Model::GeminiEmbedding001 => write!(f, "models/gemini-embedding-001"),
             Model::TextEmbedding004 => write!(f, "models/text-embedding-004"),
             Model::Custom(model) => write!(f, "{model}"),
         }
@@ -1287,12 +1383,12 @@ impl Gemini {
         Self::with_model(api_key, Model::default())
     }
 
-    /// Create a new client for the Gemini Pro model
+    /// Create a new client for the Gemini Pro model (`gemini-3.1-pro-preview`)
     pub fn pro<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
-        Self::with_model(api_key, Model::Gemini25Pro)
+        Self::with_model(api_key, Model::Gemini31Pro)
     }
 
-    /// Create a new client for the Gemini Pro 3 image model
+    /// Create a new client for the Gemini Pro image model (`gemini-3-pro-image`)
     pub fn pro_image<K: AsRef<str>>(api_key: K) -> Result<Self, Error> {
         Self::with_model(api_key, Model::Gemini3ProImage)
     }

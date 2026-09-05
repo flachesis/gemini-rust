@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🤖 Model List Update
+
+Synced `Model` enum with the Gemini API model lineup (August 2026), see [#75](https://github.com/flachesis/gemini-rust/issues/75).
+
+- **Default model** changed from `Model::Gemini25Flash` (`gemini-2.5-flash`) to `Model::Gemini37Flash` (`gemini-3.7-flash`), the latest stable Flash model; `gemini-2.5-flash` is no longer available to newly created API keys
+- **Added current models**:
+  - `Model::Gemini37Flash` (`gemini-3.7-flash`)
+  - `Model::Gemini36Flash` (`gemini-3.6-flash`)
+  - `Model::Gemini35Flash` (`gemini-3.5-flash`)
+  - `Model::Gemini35FlashLite` (`gemini-3.5-flash-lite`)
+  - `Model::Gemini31FlashLite` (`gemini-3.1-flash-lite`)
+  - `Model::Gemini31Pro` (`gemini-3.1-pro-preview`)
+  - `Model::Gemini31FlashImage` (`gemini-3.1-flash-image`, Nano Banana 2)
+  - `Model::Gemini31FlashLiteImage` (`gemini-3.1-flash-lite-image`, Nano Banana 2 Lite)
+  - `Model::GeminiOmniFlash` (`gemini-omni-flash`, video generation)
+  - `Model::Gemini31FlashTts` (`gemini-3.1-flash-tts-preview`)
+  - `Model::Gemini25FlashTts` (`gemini-2.5-flash-preview-tts`)
+  - `Model::Gemini25ProTts` (`gemini-2.5-pro-preview-tts`)
+  - `Model::Gemini25ComputerUse` (`gemini-2.5-computer-use-preview-10-2025`)
+  - `Model::GeminiEmbedding2` (`gemini-embedding-2`, multimodal embeddings)
+  - `Model::GeminiEmbedding001` (`gemini-embedding-001`)
+- **Changed**: `Model::Gemini3ProImage` now points to `gemini-3-pro-image` (Nano Banana Pro GA; the old `gemini-3-pro-image-preview` was shut down on June 25, 2026)
+- **Changed**: `Gemini::pro()` now uses `Model::Gemini31Pro` instead of `Model::Gemini25Pro`
+- **Deprecated**:
+  - `Model::Gemini3Pro` (`gemini-3-pro-preview`, shut down on March 9, 2026) — use `Model::Gemini31Pro`
+  - `Model::TextEmbedding004` (`text-embedding-004`, shut down on January 14, 2026) — use `Model::GeminiEmbedding2`
+- **Note**: `Model::Gemini25FlashImage` (Nano Banana) shuts down on October 2, 2026; use `Model::Gemini31FlashImage`
+
 ## [2.0.0] - 2026-07-10
 
 ### 🤝 Interactions API (Recommended)

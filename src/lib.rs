@@ -38,7 +38,7 @@
 //! # use gemini_rust::prelude::*;
 //! # async fn example(client: &Gemini) -> Result<(), Box<dyn std::error::Error>> {
 //! let interaction = client.create_interaction()
-//!     .with_model("gemini-2.5-flash")
+//!     .with_model("gemini-3.7-flash")
 //!     .with_text("Hello, world!")
 //!     .execute()
 //!     .await?;
