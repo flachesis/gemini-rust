@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Function calling (`generateContent`)
+
+- Tool configuration now uses the REST API's camelCase keys on output and still accepts legacy snake_case keys on input.
+- Added `VALIDATED` mode, an optional function-name allowlist, and call ID round-tripping. Use `ContentBuilder::with_function_responses` to return parallel results in one turn.
+- **Rust source compatibility:** Struct literals for `FunctionCall`, `FunctionResponse`, and `FunctionCallingConfig` now need the new optional fields. Exhaustive matches on `FunctionCallingMode` need to handle `Validated`.
+
 ## [2.1.1] - 2026-11-27
 
 ### 🤖 Model List Update

@@ -10,8 +10,8 @@ use crate::{
         SpeechConfig, ThinkingConfig, ThinkingLevel,
     },
     tools::{FunctionCallingConfig, ToolConfig},
-    Content, FileHandle, FunctionCallingMode, FunctionDeclaration, GenerationConfig,
-    GenerationResponse, Message, Role, SafetySetting, Tool,
+    Content, FileHandle, FunctionCallingMode, FunctionDeclaration, FunctionResponse,
+    GenerationConfig, GenerationResponse, Message, Part, Role, SafetySetting, Tool,
 };
 
 /// Builder for content generation requests
@@ -136,23 +136,23 @@ impl ContentBuilder {
     ///
     /// This is used to provide the model with the result of a function call it has requested.
     pub fn with_function_response<Response>(
-        mut self,
+        self,
         name: impl Into<String>,
         response: Response,
     ) -> std::result::Result<Self, serde_json::Error>
     where
         Response: serde::Serialize,
     {
-        let content = Content::function_response_json(name, serde_json::to_value(response)?)
-            .with_role(Role::User);
-        self.contents.push(content);
-        Ok(self)
+        let response = FunctionResponse::new(name, serde_json::to_value(response)?);
+        Ok(self.with_function_responses([response]))
     }
 
     /// Adds a function response to the request using a `Serialize` response and
     /// the original function call identifier.
+    ///
+    /// Use [`Self::with_function_responses`] to send parallel results in a single turn.
     pub fn with_function_response_with_id<Response>(
-        mut self,
+        self,
         name: impl Into<String>,
         id: impl Into<String>,
         response: Response,
@@ -160,41 +160,57 @@ impl ContentBuilder {
     where
         Response: serde::Serialize,
     {
-        let content =
-            Content::function_response_json_with_id(name, id, serde_json::to_value(response)?)
-                .with_role(Role::User);
-        self.contents.push(content);
-        Ok(self)
+        let response = FunctionResponse::new(name, serde_json::to_value(response)?).with_id(id);
+        Ok(self.with_function_responses([response]))
     }
 
     /// Adds a function response to the request using a JSON string.
     ///
     /// This is a convenience method that parses the string into a `serde_json::Value`.
     pub fn with_function_response_str(
-        mut self,
+        self,
         name: impl Into<String>,
         response: impl Into<String>,
     ) -> std::result::Result<Self, serde_json::Error> {
-        let response_str = response.into();
-        let json = serde_json::from_str(&response_str)?;
-        let content = Content::function_response_json(name, json).with_role(Role::User);
-        self.contents.push(content);
-        Ok(self)
+        let response = FunctionResponse::from_str(name, response)?;
+        Ok(self.with_function_responses([response]))
     }
 
     /// Adds a function response from a JSON string and the original function
     /// call identifier.
+    ///
+    /// Use [`Self::with_function_responses`] to send parallel results in a single turn.
     pub fn with_function_response_str_with_id(
-        mut self,
+        self,
         name: impl Into<String>,
         id: impl Into<String>,
         response: impl Into<String>,
     ) -> std::result::Result<Self, serde_json::Error> {
-        let response_str = response.into();
-        let json = serde_json::from_str(&response_str)?;
-        let content = Content::function_response_json_with_id(name, id, json).with_role(Role::User);
-        self.contents.push(content);
-        Ok(self)
+        let response = FunctionResponse::from_str(name, response)?.with_id(id);
+        Ok(self.with_function_responses([response]))
+    }
+
+    /// Adds all function responses from one model turn as parts of a single user message.
+    ///
+    /// First append the original model message with [`Self::with_message`] to preserve
+    /// the order and thought signatures of its parts. Pass responses in the same order
+    /// as the calls and include the matching IDs whenever the model supplied them.
+    /// An empty collection adds no message.
+    pub fn with_function_responses(
+        mut self,
+        responses: impl IntoIterator<Item = FunctionResponse>,
+    ) -> Self {
+        let parts: Vec<_> = responses
+            .into_iter()
+            .map(|function_response| Part::FunctionResponse { function_response })
+            .collect();
+        if !parts.is_empty() {
+            self.contents.push(Content {
+                parts: Some(parts),
+                role: Some(Role::User),
+            });
+        }
+        self
     }
 
     /// Adds a `Message` to the conversation history.
@@ -354,6 +370,9 @@ impl ContentBuilder {
     }
 
     /// Sets the function calling mode and optional allowed function names.
+    ///
+    /// Only pass an allowlist for [`FunctionCallingMode::Any`] or
+    /// [`FunctionCallingMode::Validated`]. Each name must match a declared function.
     pub fn with_function_calling_config(
         mut self,
         mode: FunctionCallingMode,

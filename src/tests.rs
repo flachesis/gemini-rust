@@ -1,6 +1,6 @@
 use crate::{
-    FinishReason, FunctionCall, FunctionCallingConfig, FunctionCallingMode, FunctionResponse,
-    GenerationResponse, Model, Part, ToolConfig,
+    FinishReason, FunctionCall, FunctionCallingMode, FunctionDeclaration, FunctionResponse, Gemini,
+    GenerationResponse, Message, Model, Part, Role, ToolConfig,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -173,26 +173,113 @@ fn test_function_response_with_id_serialization() {
 }
 
 #[test]
-fn test_tool_config_serializes_validated_mode_and_allowed_function_names() {
-    let tool_config = ToolConfig {
-        function_calling_config: Some(FunctionCallingConfig {
-            mode: FunctionCallingMode::Validated,
-            allowed_function_names: Some(vec!["get_weather".to_string()]),
-        }),
-        retrieval_config: None,
-        include_server_side_tool_invocations: Some(true),
-    };
+fn test_function_call_and_response_round_trip_without_id() {
+    let call_json = json!({"name": "get_weather", "args": {}});
+    let response_json = json!({"name": "get_weather", "response": {"temperature": 22}});
+    let call: FunctionCall = serde_json::from_value(call_json.clone()).unwrap();
+    let response: FunctionResponse = serde_json::from_value(response_json.clone()).unwrap();
 
-    let serialized = serde_json::to_value(&tool_config).unwrap();
+    assert_eq!(call.id, None);
+    assert_eq!(response.id, None);
+    assert_eq!(serde_json::to_value(call).unwrap(), call_json);
+    assert_eq!(serde_json::to_value(response).unwrap(), response_json);
+}
+
+#[test]
+fn test_legacy_tool_config_deserializes_and_serializes_as_camel_case() {
+    let config: ToolConfig = serde_json::from_value(json!({
+        "function_calling_config": {"mode": "ANY"},
+        "retrieval_config": {"latLng": {"latitude": 25.0, "longitude": 121.5}},
+        "include_server_side_tool_invocations": false
+    }))
+    .unwrap();
+
     assert_eq!(
-        serialized["functionCallingConfig"]["mode"],
-        serde_json::json!("VALIDATED")
+        serde_json::to_value(config).unwrap(),
+        json!({
+            "functionCallingConfig": {"mode": "ANY"},
+            "retrievalConfig": {"latLng": {"latitude": 25.0, "longitude": 121.5}},
+            "includeServerSideToolInvocations": false
+        })
+    );
+}
+
+#[test]
+fn test_parallel_function_responses_preserve_call_ids_and_thought_signature() {
+    let model_turn = json!({
+        "role": "model",
+        "parts": [
+            {
+                "functionCall": {
+                    "id": "call_tokyo",
+                    "name": "get_weather",
+                    "args": {"city": "Tokyo"}
+                },
+                "thoughtSignature": "c2lnbmF0dXJl"
+            },
+            {
+                "functionCall": {
+                    "id": "call_osaka",
+                    "name": "get_weather",
+                    "args": {"city": "Osaka"}
+                }
+            }
+        ]
+    });
+    let response: GenerationResponse = serde_json::from_value(json!({
+        "candidates": [{"content": model_turn.clone()}]
+    }))
+    .unwrap();
+    let results = response.function_calls().into_iter().map(|call| {
+        FunctionResponse::new(&call.name, json!({"city": call.args["city"]}))
+            .with_id(call.id.as_deref().unwrap())
+    });
+    let request = Gemini::new("test-key")
+        .unwrap()
+        .generate_content()
+        .with_function(FunctionDeclaration::new("get_weather", "Get weather", None))
+        .with_function_calling_config(
+            FunctionCallingMode::Validated,
+            Some(vec!["get_weather".into()]),
+        )
+        .with_include_server_side_tool_invocations(true)
+        .with_user_message("Check the weather in Tokyo and Osaka.")
+        .with_message(Message {
+            content: response.candidates[0].content.clone(),
+            role: Role::Model,
+        })
+        .with_function_responses(results)
+        .build();
+
+    let serialized = serde_json::to_value(request).unwrap();
+    assert_eq!(
+        serialized["toolConfig"],
+        json!({
+            "functionCallingConfig": {
+                "mode": "VALIDATED",
+                "allowedFunctionNames": ["get_weather"]
+            },
+            "includeServerSideToolInvocations": true
+        })
     );
     assert_eq!(
-        serialized["functionCallingConfig"]["allowedFunctionNames"],
-        serde_json::json!(["get_weather"])
+        serialized["contents"],
+        json!([
+            {"role": "user", "parts": [{"text": "Check the weather in Tokyo and Osaka."}]},
+            model_turn,
+            {
+                "role": "user",
+                "parts": [
+                    {"functionResponse": {
+                        "id": "call_tokyo", "name": "get_weather", "response": {"city": "Tokyo"}
+                    }},
+                    {"functionResponse": {
+                        "id": "call_osaka", "name": "get_weather", "response": {"city": "Osaka"}
+                    }}
+                ]
+            }
+        ])
     );
-    assert_eq!(serialized["includeServerSideToolInvocations"], true);
 }
 
 #[test]
