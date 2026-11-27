@@ -58,7 +58,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Basic text generation
     let interaction = client
         .create_interaction()
-        .with_model("gemini-3.7-flash")
+        .with_model("gemini-3.8-flash")
         .with_text("Hello! What is AI?")
         .execute()
         .await?;
@@ -68,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Multi-turn with server-side state
     let interaction2 = client
         .create_interaction()
-        .with_model("gemini-3.7-flash")
+        .with_model("gemini-3.8-flash")
         .with_text("Give me 3 examples")
         .with_previous_interaction(interaction.id().unwrap())
         .execute()
@@ -126,7 +126,7 @@ Contents (messages)  →  Candidates        Interaction (input)  →  Steps (typ
 // ── Legacy generateContent ──
 let response = client.generate_content(
     GenerateContentRequest::builder()
-        .model("gemini-3.7-flash")
+        .model("gemini-3.8-flash")
         .contents(vec![Message::new_user("What is AI?")])
         .build()
 ).await?;
@@ -134,7 +134,7 @@ println!("{}", response.candidates[0].content.parts[0].text);
 
 // ── Interactions API ──
 let interaction = client.create_interaction()
-    .with_model("gemini-3.7-flash")
+    .with_model("gemini-3.8-flash")
     .with_text("What is AI?")
     .execute()
     .await?;
@@ -147,7 +147,7 @@ println!("{}", interaction.output_text());
 // ── Legacy: manually resend entire history ──
 let response2 = client.generate_content(
     GenerateContentRequest::builder()
-        .model("gemini-3.7-flash")
+        .model("gemini-3.8-flash")
         .contents(vec![
             Message::new_user("What is AI?"),
             Message::new_model(&response.candidates[0].content.parts[0].text),
@@ -158,7 +158,7 @@ let response2 = client.generate_content(
 
 // ── Interactions: server-side state via previous_interaction_id ──
 let interaction2 = client.create_interaction()
-    .with_model("gemini-3.7-flash")
+    .with_model("gemini-3.8-flash")
     .with_text("Give me 3 examples")
     .with_previous_interaction(interaction.id().unwrap())
     .execute()
@@ -181,7 +181,7 @@ while let Some(chunk) = stream.next().await {
 // ── Interactions: SSE step lifecycle events ──
 let mut stream = client.create_interaction_stream(
     client.create_interaction()
-        .with_model("gemini-3.7-flash")
+        .with_model("gemini-3.8-flash")
         .with_text("Write a haiku about Rust")
 ).await?;
 while let Some(event) = stream.next().await {
@@ -435,8 +435,9 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ### Standard Models (Both APIs)
 
-- **Gemini 3.7 Flash** - Latest and most capable Flash model (default) - `Model::Gemini37Flash`
-- **Gemini 3.6 Flash** - Previous-generation Flash model - `Model::Gemini36Flash`
+- **Gemini 3.8 Flash** - Latest and most capable Flash model (default) - `Model::Gemini38Flash`
+- **Gemini 3.7 Flash** - Previous-generation Flash model - `Model::Gemini37Flash`
+- **Gemini 3.6 Flash** - Legacy Flash model - `Model::Gemini36Flash`
 - **Gemini 3.5 Flash** - Legacy Flash model - `Model::Gemini35Flash`
 - **Gemini 3.5 Flash-Lite** - Fastest, most cost-effective 3.5 model - `Model::Gemini35FlashLite`
 - **Gemini 3.1 Flash-Lite** - Cost-efficient multimodal model - `Model::Gemini31FlashLite`
@@ -455,6 +456,9 @@ export GEMINI_API_KEY="your-api-key-here"
 
 ### Speech, Video, and Tools
 
+- **Gemini 3.5 Transcribe** - Speech-to-text with speaker diarization and timestamps - `Model::Gemini35Transcribe`
+- **Gemini 3.8 Flash TTS** - Studio-grade expressive speech generation with natural styling - `Model::Gemini38FlashTts`
+- **Gemini 3.8 Flash-Lite TTS** - High-throughput, cost-effective speech synthesis - `Model::Gemini38FlashLiteTts`
 - **Gemini 3.1 Flash TTS** - Low-latency speech generation - `Model::Gemini31FlashTts` (Preview)
 - **Gemini 2.5 Flash TTS** / **2.5 Pro TTS** - Text-to-speech - `Model::Gemini25FlashTts` / `Model::Gemini25ProTts`
 - **Gemini Omni Flash** - Conversational video generation and editing - `Model::GeminiOmniFlash`

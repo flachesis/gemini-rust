@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### 🤖 Model List Update
+
+Synced `Model` enum with the Gemini API model lineup (September 2026):
+
+- **Default model** changed from `Model::Gemini37Flash` (`gemini-3.7-flash`) to `Model::Gemini38Flash` (`gemini-3.8-flash`), the latest stable Flash model
+- **Added current models**:
+  - `Model::Gemini38Flash` (`gemini-3.8-flash`)
+  - `Model::Gemini35Transcribe` (`gemini-3.5-transcribe`, speech-to-text with diarization and timestamps)
+  - `Model::Gemini38FlashTts` (`gemini-3.8-flash-tts`, expressive studio-grade TTS)
+  - `Model::Gemini38FlashLiteTts` (`gemini-3.8-flash-lite-tts`, high-throughput TTS)
+
 ## [2.1.0] - 2026-09-05
 
 ### Added

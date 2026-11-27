@@ -54,13 +54,15 @@ static DEFAULT_BASE_URL: LazyLock<Url> = LazyLock::new(|| {
 
 /// Gemini API models.
 ///
-/// The default is `Gemini37Flash`, the latest stable Flash model.
+/// The default is `Gemini38Flash`, the latest stable Flash model.
 /// Any model not listed here (e.g. `gemini-flash-latest`, preview or
 /// experimental releases) can be used via `Model::Custom` or a string literal.
 #[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub enum Model {
     /// Latest stable Flash model and the library default.
     #[default]
+    #[serde(rename = "models/gemini-3.8-flash")]
+    Gemini38Flash,
     #[serde(rename = "models/gemini-3.7-flash")]
     Gemini37Flash,
     #[serde(rename = "models/gemini-3.6-flash")]
@@ -89,6 +91,15 @@ pub enum Model {
     /// refine results through natural language.
     #[serde(rename = "models/gemini-omni-flash")]
     GeminiOmniFlash,
+    /// Dedicated speech-to-text model with speaker diarization and timestamp generation.
+    #[serde(rename = "models/gemini-3.5-transcribe")]
+    Gemini35Transcribe,
+    /// Creative, expressive text-to-speech model with studio fidelity and voice styling.
+    #[serde(rename = "models/gemini-3.8-flash-tts")]
+    Gemini38FlashTts,
+    /// High-throughput, cost-effective text-to-speech model for large-scale audio synthesis.
+    #[serde(rename = "models/gemini-3.8-flash-lite-tts")]
+    Gemini38FlashLiteTts,
     /// Low-latency speech generation model (preview).
     #[serde(rename = "models/gemini-3.1-flash-tts-preview")]
     Gemini31FlashTts,
@@ -141,6 +152,7 @@ impl Model {
     #[allow(deprecated)]
     pub fn as_str(&self) -> &str {
         match self {
+            Model::Gemini38Flash => "models/gemini-3.8-flash",
             Model::Gemini37Flash => "models/gemini-3.7-flash",
             Model::Gemini36Flash => "models/gemini-3.6-flash",
             Model::Gemini35Flash => "models/gemini-3.5-flash",
@@ -152,6 +164,9 @@ impl Model {
             Model::Gemini3ProImage => "models/gemini-3-pro-image",
             Model::Gemini3Flash => "models/gemini-3-flash-preview",
             Model::GeminiOmniFlash => "models/gemini-omni-flash",
+            Model::Gemini35Transcribe => "models/gemini-3.5-transcribe",
+            Model::Gemini38FlashTts => "models/gemini-3.8-flash-tts",
+            Model::Gemini38FlashLiteTts => "models/gemini-3.8-flash-lite-tts",
             Model::Gemini31FlashTts => "models/gemini-3.1-flash-tts-preview",
             Model::Gemini3Pro => "models/gemini-3-pro-preview",
             Model::Gemini25Flash => "models/gemini-2.5-flash",
@@ -179,6 +194,7 @@ impl fmt::Display for Model {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
+            Model::Gemini38Flash => write!(f, "models/gemini-3.8-flash"),
             Model::Gemini37Flash => write!(f, "models/gemini-3.7-flash"),
             Model::Gemini36Flash => write!(f, "models/gemini-3.6-flash"),
             Model::Gemini35Flash => write!(f, "models/gemini-3.5-flash"),
@@ -190,6 +206,9 @@ impl fmt::Display for Model {
             Model::Gemini3ProImage => write!(f, "models/gemini-3-pro-image"),
             Model::Gemini3Flash => write!(f, "models/gemini-3-flash-preview"),
             Model::GeminiOmniFlash => write!(f, "models/gemini-omni-flash"),
+            Model::Gemini35Transcribe => write!(f, "models/gemini-3.5-transcribe"),
+            Model::Gemini38FlashTts => write!(f, "models/gemini-3.8-flash-tts"),
+            Model::Gemini38FlashLiteTts => write!(f, "models/gemini-3.8-flash-lite-tts"),
             Model::Gemini31FlashTts => write!(f, "models/gemini-3.1-flash-tts-preview"),
             Model::Gemini3Pro => write!(f, "models/gemini-3-pro-preview"),
             Model::Gemini25Flash => write!(f, "models/gemini-2.5-flash"),
